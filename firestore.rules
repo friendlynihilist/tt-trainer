@@ -1,0 +1,61 @@
+rules_version = '2';
+
+// Ognuno legge e scrive solo i propri dati. Il gruppo è su invito:
+// config/access elenca chi può entrare; il primo che accede lo crea e ne diventa amministratore.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function email() {
+      return request.auth.token.email;
+    }
+    function accessPath() {
+      return /databases/$(database)/documents/config/access;
+    }
+    function hasAccess() {
+      return exists(accessPath());
+    }
+    function access() {
+      return get(accessPath()).data;
+    }
+    function isAdmin() {
+      return signedIn() && hasAccess() && email() in access().admins;
+    }
+    function isMember() {
+      return signedIn() && hasAccess() && (email() in access().admins || email() in access().emails);
+    }
+
+    match /config/access {
+      allow get: if isMember();
+      // Primo avvio: chi crea il documento deve mettersi come unico amministratore.
+      allow create: if signedIn() && !hasAccess()
+        && request.resource.data.admins == [email()]
+        && request.resource.data.emails == [];
+      // Un amministratore non può togliersi da solo dagli amministratori.
+      allow update: if isAdmin() && email() in request.resource.data.admins;
+    }
+
+    // Richieste di accesso: ciascuno scrive la propria, gli amministratori le vedono e le chiudono.
+    match /requests/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && request.auth.uid == uid && request.resource.data.email == email();
+      allow list, delete: if isAdmin();
+    }
+
+    // Dati personali: impostazioni, piano, attività.
+    match /users/{uid} {
+      allow read, write: if isMember() && request.auth.uid == uid;
+      match /events/{id} {
+        allow read, write: if isMember() && request.auth.uid == uid;
+      }
+    }
+
+    // Profilo visibile al gruppo: nome e livelli. Lo scrive solo il proprietario.
+    match /profiles/{uid} {
+      allow read: if isMember();
+      allow write: if isMember() && request.auth.uid == uid;
+    }
+  }
+}
