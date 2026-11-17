@@ -7,8 +7,8 @@
 // Finché apiKey è vuota l'app funziona in modalità locale: i dati restano nel browser.
 
 export const firebaseConfig = {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  appId: ''
+  apiKey: 'AIzaSyCBDPp5HbS9bDimHmAagZ-94ILQMoTV1Xs',
+  authDomain: 'tt-trainer-19e1a.firebaseapp.com',
+  projectId: 'tt-trainer-19e1a',
+  appId: '1:850504660523:web:f9f732de26301f98301c6e'
 };
