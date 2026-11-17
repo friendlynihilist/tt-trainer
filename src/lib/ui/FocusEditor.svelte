@@ -5,14 +5,14 @@
   import { app } from '../store/app.svelte.js';
   import { buzz } from '../store/ui.svelte.js';
   import { ERROR_GROUPS } from '../data/taxonomy.js';
-  import { exerciseLabel } from '../data/program.js';
+  import { exerciseLabel } from '../data/catalog.js';
   import { drillsFor } from '../engine/stats.js';
   import { pickStroke, pickExercise, pickError } from './pickers.js';
 
   let { value = null, onchange } = $props();
 
   const v = $derived(value ?? {});
-  const suggestions = $derived(v.stroke ? drillsFor(v.stroke, app.tracks) : []);
+  const suggestions = $derived(v.stroke ? drillsFor(v.stroke, app.tracks, app.catalog) : []);
   const customErrors = $derived(app.errors.filter((e) => e.custom));
 
   function set(patch) {
@@ -27,7 +27,7 @@
         if (!stroke) return onchange?.(null);
         // Cambiando colpo l'esercizio suggerito segue, a meno che non sia stato scelto a mano.
         const auto = !v.exercise || suggestions.includes(v.exercise);
-        set({ stroke, exercise: auto ? (drillsFor(stroke, app.tracks)[0] ?? null) : v.exercise });
+        set({ stroke, exercise: auto ? (drillsFor(stroke, app.tracks, app.catalog)[0] ?? null) : v.exercise });
       }
     });
   }
@@ -66,11 +66,11 @@
       <div class="chips">
         {#each suggestions as id (id)}
           <button class="chip" aria-pressed={v.exercise === id} onclick={() => set({ exercise: v.exercise === id ? null : id })}>
-            {exerciseLabel(id)}
+            {exerciseLabel(id, app.catalog)}
           </button>
         {/each}
         {#if v.exercise && !suggestions.includes(v.exercise)}
-          <button class="chip on" onclick={() => set({ exercise: null })}>{exerciseLabel(v.exercise)}</button>
+          <button class="chip on" onclick={() => set({ exercise: null })}>{exerciseLabel(v.exercise, app.catalog)}</button>
         {/if}
         <button class="chip more" onclick={() => pickExercise({ value: v.exercise, onpick: (exercise) => set({ exercise }) })}>Altro…</button>
       </div>

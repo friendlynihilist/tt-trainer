@@ -14,6 +14,8 @@ class UI {
   /** Sessione dal vivo aperta: { slot, weekIdx } oppure null */
   live = $state.raw(null);
   toasts = $state.raw([]);
+  /** La finestra delle novità aperta a mano: { history: true } oppure null. */
+  news = $state.raw(null);
 
   constructor() {
     if (typeof window !== 'undefined') {

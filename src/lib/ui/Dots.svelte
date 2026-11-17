@@ -1,17 +1,17 @@
 <script>
-  // I cinque livelli di un percorso: pieni quelli superati, arancione quello attuale.
+  // I livelli di un percorso: pieni quelli superati, arancione quello attuale.
   import { LEVELS } from '../data/program.js';
 
-  let { level = 1, started = true, completed = false, size = 8, label = true } = $props();
+  let { level = 1, started = true, completed = false, size = 8, label = true, max = LEVELS } = $props();
 </script>
 
 <span
   class="dots"
   style:--s="{size}px"
   role="img"
-  aria-label={label ? (started ? `Livello ${level} di ${LEVELS}` : 'Da iniziare') : undefined}
+  aria-label={label ? (started ? `Livello ${level} di ${max}` : 'Da iniziare') : undefined}
 >
-  {#each Array(LEVELS) as _, i (i)}
+  {#each Array(max) as _, i (i)}
     <i class:past={started && (i + 1 < level || completed)} class:now={started && !completed && i + 1 === level}></i>
   {/each}
 </span>

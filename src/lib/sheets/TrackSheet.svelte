@@ -1,9 +1,10 @@
 <script>
-  // Un percorso: i cinque livelli, dove sei, e la storia dei test.
+  // Un percorso: i livelli, dove sei, e la storia dei test.
   import Target from '@lucide/svelte/icons/target';
+  import Pencil from '@lucide/svelte/icons/pencil';
+  import Copy from '@lucide/svelte/icons/copy';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { TRACKS, LEVELS } from '../data/program.js';
   import { OUTCOME, testsToClimb } from '../engine/levels.js';
   import { fmtDay } from '../util/dates.js';
   import Sheet from '../ui/Sheet.svelte';
@@ -11,7 +12,7 @@
 
   let { id } = $props();
 
-  const track = TRACKS[id];
+  const track = $derived(app.catalog.track(id));
   const state = $derived(app.tracks[id]);
   const recent = $derived([...state.history].reverse().slice(0, 8));
 
@@ -28,6 +29,7 @@
   }
 </script>
 
+{#if track && state}
 <Sheet title={track.short} onclose={() => ui.close()} tall>
   <div class="stack g-24">
     <div class="stack g-8">
@@ -37,7 +39,7 @@
           {#if state.completed}
             <span class="tag up">Completato</span>
           {:else}
-            <span class="tag accent">Livello {state.level} di {LEVELS}</span>
+            <span class="tag accent">Livello {state.level} di {state.max}</span>
             <span class="small muted">
               {testsToClimb(state) === 1 ? `ancora un test da ${app.rules.up} per salire` : `due test di fila da ${app.rules.up} per salire`}
             </span>
@@ -82,9 +84,19 @@
       </section>
     {/if}
 
-    <button class="btn ghost" onclick={setLevel}>Imposta il livello a mano</button>
+    <div class="stack g-8">
+      <button class="btn ghost" onclick={setLevel}>Imposta il livello a mano</button>
+      {#if track.custom}
+        <button class="btn plain" onclick={() => ui.open('trackedit', { id })}><Pencil size={16} /> Modifica il percorso</button>
+      {:else}
+        <button class="btn plain" onclick={() => ui.open('trackedit', { draft: { name: `${track.name} (variante)`, short: track.short, side: track.side, strokes: track.strokes, levels: track.levels } })}>
+          <Copy size={16} /> Crea una variante tua
+        </button>
+      {/if}
+    </div>
   </div>
 </Sheet>
+{/if}
 
 <style>
   .ladder {

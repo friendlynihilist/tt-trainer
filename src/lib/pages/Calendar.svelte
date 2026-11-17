@@ -1,40 +1,47 @@
 <script>
-  // Diario: il mese a colpo d'occhio, con le sessioni previste e quelle fatte.
+  // Diario: il mese a colpo d'occhio. Ogni tipo ha un colore; il pallino pieno indica le attività fatte,
+  // il cerchio vuoto quelle in programma.
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Plus from '@lucide/svelte/icons/plus';
-  import Play from '@lucide/svelte/icons/play';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { plannedBetween, weekSessions } from '../engine/plan.js';
+  import { agenda, eventColor, eventTitle, itemColor, itemTitle } from '../engine/events.js';
   import { byTime } from '../engine/levels.js';
   import { monthGrid, monthKey, addMonths, fmtMonth, fmtLong, WEEKDAYS_MIN } from '../util/dates.js';
   import PageHead from '../ui/PageHead.svelte';
   import EventRow from '../ui/EventRow.svelte';
+  import PlannedRow from '../ui/PlannedRow.svelte';
 
   let month = $state(monthKey(app.today));
   let selected = $state(app.today);
 
   const grid = $derived(monthGrid(month));
-  const entries = $derived(app.events.filter((e) => e.kind !== 'livello'));
-  const byDate = $derived.by(() => {
-    const m = new Map();
-    for (const e of entries) m.set(e.date, [...(m.get(e.date) ?? []), e]);
-    return m;
-  });
-  // Sessioni previste e non ancora fatte nella loro settimana.
-  const planned = $derived.by(() => {
-    const m = new Map();
-    if (!app.plan) return m;
-    for (const p of plannedBetween(app.plan, grid[0][0], grid[grid.length - 1][6])) {
-      if (weekSessions(app.events, p.week)[p.slot]) continue;
-      m.set(p.date, [...(m.get(p.date) ?? []), p]);
+  const days = $derived(agenda(app.plan, app.events, app.planned, grid[0][0], grid[grid.length - 1][6], app.catalog));
+  const day = $derived(days.get(selected) ?? { todo: [], done: [] });
+  const monthEvents = $derived(app.events.filter((e) => e.kind !== 'livello' && monthKey(e.date) === month).sort((a, b) => byTime(b, a)));
+
+  /** I pallini di un giorno: prima il fatto, poi il previsto. Al massimo quattro. */
+  function pips(d) {
+    const v = days.get(d);
+    if (!v) return { list: [], more: 0 };
+    const list = [
+      ...v.done.map((e) => ({ id: e.id, color: eventColor(e, app.catalog), state: 'done' })),
+      ...v.todo.map((x) => ({ id: x.key, color: itemColor(x, app.catalog), state: d < app.today ? 'missed' : 'todo' }))
+    ];
+    return { list: list.slice(0, 4), more: Math.max(0, list.length - 4) };
+  }
+
+  // La legenda mostra solo i tipi che compaiono nel mese.
+  const legend = $derived.by(() => {
+    const seen = new Map();
+    for (const v of days.values()) {
+      if (monthKey(v.date) !== month) continue;
+      for (const e of v.done) seen.set(eventTitle(e, app.catalog), eventColor(e, app.catalog));
+      for (const x of v.todo) seen.set(itemTitle(x, app.catalog), itemColor(x, app.catalog));
     }
-    return m;
+    return [...seen.entries()].map(([name, color]) => ({ name, color }));
   });
-  const dayEvents = $derived([...(byDate.get(selected) ?? [])].sort(byTime));
-  const dayPlanned = $derived(planned.get(selected) ?? []);
-  const monthEvents = $derived(entries.filter((e) => monthKey(e.date) === month).sort((a, b) => byTime(b, a)));
 
   function shift(n) {
     month = addMonths(month, n);
@@ -61,75 +68,61 @@
     {#key month}
       <div class="grid">
         {#each grid as week (week[0])}
-          {#each week as day (day)}
-            {@const evs = byDate.get(day) ?? []}
-            {@const pl = planned.get(day) ?? []}
+          {#each week as d (d)}
+            {@const p = pips(d)}
             <button
               class="day"
-              class:out={monthKey(day) !== month}
-              class:today={day === app.today}
-              class:sel={day === selected}
-              onclick={() => (selected = day)}
-              aria-label={fmtLong(day)}
-              aria-pressed={day === selected}
+              class:out={monthKey(d) !== month}
+              class:today={d === app.today}
+              class:sel={d === selected}
+              onclick={() => (selected = d)}
+              aria-label={fmtLong(d)}
+              aria-pressed={d === selected}
             >
-              <span class="n">{Number(day.slice(8))}</span>
+              <span class="n">{Number(d.slice(8))}</span>
               <span class="marks">
-                {#each evs.slice(0, 3) as e (e.id)}
-                  <i class="done" class:b={e.kind === 'B'} class:other={e.kind !== 'A' && e.kind !== 'B'}></i>
+                {#each p.list as x (x.id)}
+                  <i class="pip {x.state === 'done' ? '' : 'todo'} {x.state === 'missed' ? 'missed' : ''}" data-color={x.color}></i>
                 {/each}
-                {#each pl as p (p.slot)}
-                  <i class="plan" class:late={day < app.today}></i>
-                {/each}
+                {#if p.more}<b class="more">+</b>{/if}
               </span>
             </button>
           {/each}
         {/each}
       </div>
     {/key}
-    <div class="legend small faint">
-      <span><i class="done"></i> A</span>
-      <span><i class="done b"></i> B</span>
-      <span><i class="done other"></i> altro</span>
-      <span><i class="plan"></i> prevista</span>
-    </div>
+    {#if legend.length}
+      <div class="legend small">
+        {#each legend as l (l.name)}
+          <span data-color={l.color}><i class="pip"></i>{l.name}</span>
+        {/each}
+        <span class="faint"><i class="pip todo" data-color="slate"></i>in programma</span>
+      </div>
+    {/if}
   </section>
 
   <section class="section">
     <div class="spread heading-row">
       <h2 class="heading cap">{selected === app.today ? `Oggi · ${fmtLong(selected)}` : fmtLong(selected)}</h2>
-      <button class="btn ghost small" onclick={() => ui.open('add', { date: selected })}><Plus size={16} /> Aggiungi</button>
+      <button class="btn ghost small" onclick={() => ui.open('add', { date: selected })}><Plus size={16} /> {selected > app.today ? 'Pianifica' : 'Aggiungi'}</button>
     </div>
-    {#if dayEvents.length || dayPlanned.length}
+    {#if day.todo.length || day.done.length}
       <div class="card flush list">
-        {#each dayPlanned as p (p.slot)}
-          <div class="item">
-            <span class="ring">{p.slot}</span>
-            <span class="grow">
-              <strong>Sessione {p.slot}</strong>
-              <span class="small muted block">{p.week.kind === 'R' ? 'Recupero' : `Settimana ${p.week.number}`} · {p.week.block.theme}</span>
-            </span>
-            {#if selected === app.today}
-              <button class="btn accent small" onclick={() => (ui.live = { slot: p.slot, date: app.today, monday: p.week.monday })}>
-                <Play size={14} fill="currentColor" /> Inizia
-              </button>
-            {:else if selected < app.today}
-              <button class="btn ghost small" onclick={() => ui.open('event', { draft: { kind: p.slot, date: selected } })}>Registra</button>
-            {/if}
-          </div>
+        {#each day.todo as item (item.key)}
+          <PlannedRow {item} />
         {/each}
-        {#each dayEvents as e (e.id)}
+        {#each day.done as e (e.id)}
           <EventRow event={e} showDate={false} />
         {/each}
       </div>
     {:else}
-      <p class="muted">Niente in questo giorno.</p>
+      <p class="muted">{selected > app.today ? 'Niente in programma.' : 'Niente in questo giorno.'}</p>
     {/if}
   </section>
 
   {#if monthEvents.length}
     <section class="section">
-      <h2 class="heading">Nel mese</h2>
+      <h2 class="heading">Nel mese · {monthEvents.length}</h2>
       <div class="card flush list">
         {#each monthEvents as e (e.id)}
           <EventRow event={e} />
@@ -201,65 +194,44 @@
   }
   .marks {
     display: flex;
-    gap: 3px;
-    height: 6px;
+    align-items: center;
+    gap: 2px;
+    height: 7px;
   }
-  i {
-    display: inline-block;
+  .marks .pip {
     width: 6px;
     height: 6px;
-    border-radius: 50%;
   }
-  i.done {
-    background: var(--ink);
+  .marks .pip.todo {
+    box-shadow: inset 0 0 0 1.4px var(--c);
   }
-  i.done.b {
-    background: var(--accent);
-  }
-  i.done.other {
-    background: var(--ink-3);
-  }
-  i.plan {
-    box-shadow: inset 0 0 0 1.5px var(--ink-3);
-  }
-  i.plan.late {
-    opacity: 0.4;
+  .more {
+    font-size: 9px;
+    line-height: 1;
+    color: var(--ink-3);
   }
   .legend {
     display: flex;
-    gap: 14px;
+    flex-wrap: wrap;
+    gap: 6px 14px;
     justify-content: center;
-    margin-top: 10px;
+    margin-top: 12px;
     font-size: 11px;
+    color: var(--ink-2);
   }
   .legend span {
     display: inline-flex;
     align-items: center;
     gap: 5px;
   }
+  .legend .pip {
+    width: 7px;
+    height: 7px;
+  }
   .heading-row {
     margin-bottom: 12px;
   }
   .cap::first-letter {
     text-transform: uppercase;
-  }
-  .ring {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    box-shadow: inset 0 0 0 1.5px var(--line-strong);
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--ink-2);
-  }
-  .block {
-    display: block;
-  }
-  strong {
-    font-weight: 560;
   }
 </style>

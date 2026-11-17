@@ -3,7 +3,7 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { FAMILIES, POINT_PHASE } from '../data/taxonomy.js';
-  import { exerciseLabel } from '../data/program.js';
+  import { exerciseLabel } from '../data/catalog.js';
   import { drillsFor, weaknesses } from '../engine/stats.js';
   import Sheet from '../ui/Sheet.svelte';
 
@@ -11,7 +11,7 @@
 
   const stroke = $derived(app.stroke(id));
   const family = $derived(FAMILIES.find((f) => f.id === stroke?.family)?.name ?? 'I tuoi colpi');
-  const drills = $derived(drillsFor(id, app.tracks));
+  const drills = $derived(drillsFor(id, app.tracks, app.catalog));
   const stat = $derived(weaknesses(app.events).strokes.find((s) => s.id === id));
 
   function remove() {
@@ -36,7 +36,7 @@
         <section class="stack g-8">
           <h3 class="heading">Dove lo alleni</h3>
           {#each drills as d (d)}
-            <p>{exerciseLabel(d)}</p>
+            <p>{exerciseLabel(d, app.catalog)}</p>
           {/each}
         </section>
       {/if}

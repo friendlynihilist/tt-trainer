@@ -9,6 +9,7 @@
   import { app } from '../store/app.svelte.js';
   import { buzz } from '../store/ui.svelte.js';
   import { createPlan } from '../engine/plan.js';
+  import { VERSION } from '../data/changelog.js';
   import { BLOCKS, PHASES, TRACKS, LEVELS, CYCLE_BLOCKS, WEEKS_PER_BLOCK } from '../data/program.js';
   import { addDays, mondayOf, fmtLong, WEEKDAYS, WEEKDAYS_MIN } from '../util/dates.js';
   import Dots from '../ui/Dots.svelte';
@@ -48,8 +49,9 @@
 
   function toggleDay(d) {
     buzz();
-    if (days.includes(d)) return;
-    days = [days[1], d]; // sempre due giorni: il nuovo sostituisce il più vecchio
+    if (days.includes(d)) {
+      if (days.length > 1) days = days.filter((x) => x !== d);
+    } else days = [...days, d];
   }
 
   function setStart(track, level) {
@@ -58,11 +60,12 @@
   }
 
   function finish() {
-    const plan = createPlan({ start, days: { A: sortedDays[0], B: sortedDays[1] } });
+    const plan = createPlan({ start, days: sortedDays });
     const tests = knownTracks.filter((t) => startLevels[t]).map((t) => ({ track: t, type: 'set', level: startLevels[t] }));
     if (tests.length) app.saveEvent({ kind: 'livello', date: addDays(start, -1), tests });
     app.patchMeta({
       onboarded: true,
+      seenVersion: VERSION,
       profile: { name: name.trim() },
       plan,
       settings: { share }
@@ -82,7 +85,7 @@
       <section in:fly={{ x: 28 * dir, duration: 420, easing: cubicOut }}>
         {#if step === 'ciao'}
           <h1 class="display">{app.firstName ? `Ciao ${app.firstName}.` : 'Benvenuto.'}</h1>
-          <p class="lead muted">Tre mesi, due sessioni a settimana. Ogni volta trovi la sessione già pronta, al tuo livello.</p>
+          <p class="lead muted">Tre mesi, quante sessioni vuoi. Ogni volta trovi l’allenamento già pronto, al tuo livello.</p>
 
           {#if !app.user?.name}
             <input class="field" placeholder="Come ti chiami?" bind:value={name} autocomplete="given-name" />
@@ -94,8 +97,8 @@
               <span><strong>mesi</strong><br /><span class="muted">Dritto, rovescio, primi colpi</span></span>
             </li>
             <li>
-              <b class="mono">2</b>
-              <span><strong>sessioni a settimana</strong><br /><span class="muted">A per allenare, B per misurare</span></span>
+              <b class="mono">+1</b>
+              <span><strong>test a settimana</strong><br /><span class="muted">Allenarsi è una cosa, misurarsi un’altra</span></span>
             </li>
             <li>
               <b class="mono">5</b>
@@ -118,8 +121,8 @@
           </ol>
 
           <div class="ab">
-            <div class="card"><span class="letter">A</span><p>Ti alleni sugli esercizi del tuo livello.</p></div>
-            <div class="card"><span class="letter">B</span><p>Ogni esercizio comincia con un test da 10 tentativi.</p></div>
+            <div class="card" data-color="blue"><span class="letter">Allenamento</span><p>Gli esercizi del mese, al tuo livello. Scegli tu il tipo di allenamento, oppure lascia che lo prepari l’app.</p></div>
+            <div class="card" data-color="orange"><span class="letter">Test</span><p>10 tentativi per ogni esercizio: il risultato decide il livello. Puoi farlo da solo o durante un allenamento.</p></div>
           </div>
         {:else if step === 'livelli'}
           <h1 class="display">Sali quando lo dice il test.</h1>
@@ -154,15 +157,15 @@
               {@const on = days.includes(n + 1)}
               <button class:on aria-pressed={on} aria-label={WEEKDAYS[n]} onclick={() => toggleDay(n + 1)}>
                 {d}
-                {#if on}<i>{sortedDays[0] === n + 1 ? 'A' : 'B'}</i>{/if}
+                {#if on && sortedDays[sortedDays.length - 1] === n + 1}<i>T</i>{/if}
               </button>
             {/each}
           </div>
 
           <p class="muted">
-            Sessione A il {WEEKDAYS[sortedDays[0] - 1]}, sessione B il {WEEKDAYS[sortedDays[1] - 1]}.
+            {sortedDays.length} {sortedDays.length === 1 ? 'allenamento' : 'allenamenti'} a settimana, il test il {WEEKDAYS[sortedDays[sortedDays.length - 1] - 1]}.
             {when === 'mid' ? 'Il ciclo è cominciato' : 'Si comincia'}
-            {fmtLong(start)}.
+            {fmtLong(start)}. Modelli, giorni e mesi si cambiano quando vuoi.
           </p>
 
           {#if knownTracks.length}
@@ -338,9 +341,12 @@
     padding: 16px;
     font-size: 14px;
   }
+  .ab .card {
+    border-top: 3px solid var(--c);
+  }
   .letter {
     font-family: var(--serif);
-    font-size: 30px;
+    font-size: 22px;
     line-height: 1;
     font-weight: 500;
   }

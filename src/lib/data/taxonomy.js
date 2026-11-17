@@ -124,15 +124,23 @@ export const ERROR_GROUPS = [
 ];
 
 /** Tipi di attività. A e B sono le sessioni del ciclo; le altre vanno nel diario. */
+/**
+ * Tipi di voce del diario. Ognuno ha il suo colore nel calendario; gli allenamenti prendono
+ * il colore del proprio modello. Le vecchie «Sessione A/B» vengono lette come allenamenti
+ * (vedi engine/events.js): non compaiono più qui ma restano valide.
+ */
 export const KINDS = [
-  { id: 'A', name: 'Sessione A', short: 'A', cycle: true, minutes: 90 },
-  { id: 'B', name: 'Sessione B', short: 'B', cycle: true, minutes: 90 },
-  { id: 'lezione', name: 'Lezione con l’allenatore', short: 'Lezione', minutes: 60 },
-  { id: 'servizi', name: 'Servizi da solo', short: 'Servizi', minutes: 30 },
-  { id: 'partite', name: 'Partite di allenamento', short: 'Partite', minutes: 90 },
-  { id: 'torneo', name: 'Torneo o campionato', short: 'Torneo', minutes: 180 },
-  { id: 'altro', name: 'Altro allenamento', short: 'Altro', minutes: 60 }
+  { id: 'training', name: 'Allenamento', short: 'Allenamento', color: 'blue', minutes: 90 },
+  { id: 'test', name: 'Test', short: 'Test', color: 'orange', minutes: 20 },
+  { id: 'lezione', name: 'Lezione con l’allenatore', short: 'Lezione', color: 'violet', minutes: 60 },
+  { id: 'servizi', name: 'Servizi da solo', short: 'Servizi', color: 'brown', minutes: 30 },
+  { id: 'partite', name: 'Partite di allenamento', short: 'Partite', color: 'teal', minutes: 90 },
+  { id: 'torneo', name: 'Torneo o campionato', short: 'Torneo', color: 'pink', minutes: 180 },
+  { id: 'altro', name: 'Altro allenamento', short: 'Altro', color: 'slate', minutes: 60 }
 ];
+
+/** Le attività «libere»: niente modello e niente test, solo durata e diario. */
+export const FREE_KINDS = KINDS.filter((k) => k.id !== 'training' && k.id !== 'test');
 
 export const KIND = Object.fromEntries(KINDS.map((k) => [k.id, k]));
 

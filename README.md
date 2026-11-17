@@ -26,6 +26,25 @@ impediscono di leggere o scrivere quelli degli altri.
 Il livello di un percorso non è mai salvato: si ricalcola dalla storia dei test. Correggere una sessione
 passata aggiorna da solo il livello di oggi.
 
+### Allenamenti, test e calendario
+
+- **Modelli** (`src/lib/data/templates.js`): la scaletta di un allenamento. Di base: Completo (il programma
+  del foglio), Breve, Servizi e terza palla. Ognuno può crearne di suoi dalla Libreria.
+- **Percorsi e mesi personali**: in `meta.custom` (tracks, blocks, templates) di ciascun utente; il catalogo
+  (`src/lib/data/catalog.js`) li unisce a quelli di base. I percorsi personali hanno da 1 a 8 livelli.
+- **Piano**: mesi in fila (di base o personali), settimane per mese, e un ritmo settimanale libero
+  (`slots`: quanti allenamenti e test si vuole, in che giorni). Cambiare il ritmo non riscrive il passato.
+- **Test**: un appuntamento a sé. Se cade lo stesso giorno di un allenamento si fa dentro l'allenamento.
+- **Suggeritore** (`src/lib/engine/suggest.js`): quali percorsi misurare e una sessione su misura, con i motivi.
+- **Importazione**: Libreria → Importa. Il formato (con le istruzioni da dare a un assistente) è in
+  `src/lib/data/importer.js`.
+
+### Dati del primo modello
+
+Le voci salvate come «Sessione A/B» e il piano con due giorni fissi non vengono riscritti: si leggono così come
+sono (`normalizeEvent`, `normalizePlan`) e restano identici finché non li si modifica. I test in
+`tests/migration.test.js` verificano che livelli, storia e calendario restino gli stessi.
+
 ## Sviluppo
 
 ```sh
@@ -55,8 +74,10 @@ Nel repository: **Settings → Pages → Source: GitHub Actions**.
 
 ## Stato dei lavori
 
-Scritto e provato nel browser in modalità locale: wizard, Oggi, sessione dal vivo, diario, progressi,
-libreria, guida, impostazioni. Il motore ha 30 test, incluso il confronto con le formule dell'Excel.
+Scritto e provato nel browser in modalità locale (`VITE_LOCAL=1 npm run dev` forza la modalità locale anche
+con Firebase configurato): wizard, Oggi, sessione dal vivo, diario, progressi, libreria, editor di modelli,
+importazione, piano, e il passaggio dei dati del primo modello. Il motore ha 52 test, incluso il confronto con
+le formule dell'Excel.
 
 Non ancora provato: il backend cloud (`src/lib/store/cloud.js`) e le regole Firestore, che richiedono un
 progetto Firebase o gli emulatori (`VITE_EMULATOR=1 npm run dev` insieme a `npm run emulators`).

@@ -1,6 +1,6 @@
 // Letture dei dati: cosa correggere, cosa migliora, quanto ci si allena.
 
-import { BLOCKS, TRACKS, TRACK_IDS, levelOf } from '../data/program.js';
+import { BASE } from '../data/catalog.js';
 import { STROKE_DRILLS } from '../data/taxonomy.js';
 import { addDays, mondayOf, today } from '../util/dates.js';
 import { byTime } from './levels.js';
@@ -19,8 +19,13 @@ export function lastFocus(events, { before = null, days = 21 } = {}) {
  * Esercizi che allenano un colpo, al livello giusto per l'utente.
  * @returns id di esercizio (es. '1-2-3', '2-S')
  */
-export function drillsFor(strokeId, tracks) {
+export function drillsFor(strokeId, tracks, catalog = BASE) {
   const out = [];
+  // I colpi personali indicano i propri percorsi in `strokes`: si allenano lì, al livello raggiunto.
+  for (const id of catalog.activeTrackIds) {
+    const t = catalog.track(id);
+    if (t.custom && t.strokes?.includes(strokeId)) out.push(`${id}-${tracks?.[id]?.level ?? 1}`);
+  }
   for (const d of STROKE_DRILLS[strokeId] ?? []) {
     if (d.serve) {
       out.push(`${d.serve}-S`);
@@ -87,7 +92,7 @@ export function totals(events) {
       }
     }
   }
-  const sessions = events.filter((e) => e.kind !== 'livello').length;
+  const sessions = events.filter((e) => e.kind !== 'livello' && !e.planned).length;
   return { sessions, minutes, tests, average: tests ? sum / tests : null };
 }
 
@@ -100,7 +105,7 @@ export function weeklyActivity(events, n = 12) {
     weeks.push({ monday, sunday: addDays(monday, 6), count: 0, minutes: 0 });
   }
   for (const e of events) {
-    if (e.kind === 'livello') continue;
+    if (e.kind === 'livello' || e.planned) continue;
     const w = weeks.find((x) => e.date >= x.monday && e.date <= x.sunday);
     if (w) {
       w.count++;
@@ -112,7 +117,7 @@ export function weeklyActivity(events, n = 12) {
 
 /** Settimane di fila (fino a questa) con almeno un'attività. */
 export function weekStreak(events) {
-  const mondays = new Set(events.filter((e) => e.kind !== 'livello').map((e) => mondayOf(e.date)));
+  const mondays = new Set(events.filter((e) => e.kind !== 'livello' && !e.planned).map((e) => mondayOf(e.date)));
   let monday = mondayOf(today());
   if (!mondays.has(monday)) monday = addDays(monday, -7); // la settimana in corso può essere ancora vuota
   let n = 0;
@@ -126,8 +131,9 @@ export function weekStreak(events) {
 /** Ciò che gli altri del gruppo vedono di te: solo livelli e ritmo, mai note o errori. */
 export function publicSummary(tracks, events, plan, week) {
   const levels = {};
-  for (const id of TRACK_IDS) if (tracks[id].started) levels[id] = tracks[id].level;
-  const sessions = events.filter((e) => e.kind === 'A' || e.kind === 'B');
+  // Si condividono i percorsi di base: quelli personali gli altri non li conoscono.
+  for (const id of BASE.trackIds) if (tracks[id]?.started) levels[id] = tracks[id].level;
+  const sessions = events.filter((e) => (e.kind === 'training' || e.kind === 'A' || e.kind === 'B') && !e.planned);
   const last = sessions.sort(byTime)[sessions.length - 1];
   return {
     levels,
@@ -139,12 +145,9 @@ export function publicSummary(tracks, events, plan, week) {
 }
 
 /** L'esercizio del compagno per un percorso, dal suo profilo pubblico. */
-export function partnerExercise(profile, trackId) {
+export function partnerExercise(profile, trackId, catalog = BASE) {
   const level = profile?.levels?.[trackId];
-  if (!level) return null;
-  return { level, exercise: levelOf(trackId, level), name: TRACKS[trackId].short };
-}
-
-export function blockOfTrack(trackId) {
-  return BLOCKS[TRACKS[trackId].block];
+  const exercise = level ? catalog.level(trackId, level) : null;
+  if (!exercise) return null;
+  return { level, exercise, name: catalog.track(trackId).short };
 }

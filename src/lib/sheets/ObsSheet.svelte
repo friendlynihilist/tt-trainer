@@ -4,7 +4,7 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { BALLS, POINT_PHASES } from '../data/taxonomy.js';
-  import { exerciseLabel } from '../data/program.js';
+  import { exerciseLabel } from '../data/catalog.js';
   import { pickStroke, pickError, pickExercise } from '../ui/pickers.js';
   import Sheet from '../ui/Sheet.svelte';
   import Score from '../ui/Score.svelte';
@@ -67,7 +67,7 @@
     </section>
 
     <button class="select" class:empty={!o.exercise} onclick={() => pickExercise({ value: o.exercise, onpick: (v) => (o.exercise = v) })}>
-      <span class="grow">{o.exercise ? exerciseLabel(o.exercise) : 'Esercizio'}</span><ChevronDown size={18} />
+      <span class="grow">{o.exercise ? exerciseLabel(o.exercise, app.catalog) : 'Esercizio'}</span><ChevronDown size={18} />
     </button>
 
     <textarea class="field" placeholder="Nota" bind:value={o.note}></textarea>

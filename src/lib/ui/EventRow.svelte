@@ -1,20 +1,20 @@
 <script>
-  // Una voce del diario in elenco.
+  // Una voce del diario in elenco, con il colore del suo tipo.
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { KIND } from '../data/taxonomy.js';
-  import { TRACKS } from '../data/program.js';
+  import { eventColor, eventTitle, realTests } from '../engine/events.js';
   import { fmtShort, fmtDuration } from '../util/dates.js';
 
   let { event, showDate = true } = $props();
 
-  const cycle = $derived(event.kind === 'A' || event.kind === 'B');
-  const scores = $derived((event.tests ?? []).filter((t) => t.score != null && t.type !== 'placement'));
-  const title = $derived(event.kind === 'livello' ? 'Livello impostato' : (KIND[event.kind]?.name ?? 'Attività'));
+  const scores = $derived(realTests(event).filter((t) => t.score != null && t.type !== 'placement'));
+  const title = $derived(eventTitle(event, app.catalog));
+  const color = $derived(event.kind === 'livello' ? 'slate' : eventColor(event, app.catalog));
+  const initial = $derived(event.kind === 'test' ? 'T' : event.kind === 'livello' ? 'L' : (title[0] ?? '·').toUpperCase());
 </script>
 
 <button class="item" onclick={() => ui.open('event', { id: event.id })}>
-  <span class="badge" class:cycle class:b={event.kind === 'B'}>{cycle ? event.kind : (KIND[event.kind]?.short ?? '·').slice(0, 1)}</span>
+  <span class="badge" data-color={color}>{initial}</span>
   <span class="grow stack">
     <span class="top">
       <strong>{title}</strong>
@@ -22,8 +22,8 @@
     </span>
     <span class="small muted line">
       {#if scores.length}
-        {scores.map((t) => `${TRACKS[t.track].short} ${t.score}`).join(' · ')}
-      {:else if event.minutes}
+        {scores.map((t) => `${app.catalog.track(t.track)?.short ?? 'Percorso'} ${t.score}`).join(' · ')}
+      {:else if event.minutes && event.kind !== 'test'}
         {fmtDuration(event.minutes)}
       {/if}
       {#if event.focus?.stroke}
@@ -45,19 +45,11 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--sunk);
-    color: var(--ink-2);
+    background: color-mix(in srgb, var(--c) 16%, var(--card));
+    color: var(--c);
+    box-shadow: inset 0 0 0 1.5px var(--c);
     font-size: 13px;
-    font-weight: 600;
-  }
-  .badge.cycle {
-    background: var(--ink);
-    color: var(--paper);
-    font-family: var(--mono);
-  }
-  .badge.b {
-    background: var(--accent);
-    color: #15171a;
+    font-weight: 650;
   }
   strong {
     font-weight: 560;

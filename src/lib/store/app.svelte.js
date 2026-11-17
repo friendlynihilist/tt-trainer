@@ -4,13 +4,16 @@
 import { firebaseConfig } from '../../firebase.config.js';
 import { createLocalBackend } from './local.js';
 import { computeTracks, DEFAULT_RULES } from '../engine/levels.js';
-import { weekAt, weekIndex, planPhase, gateStatus } from '../engine/plan.js';
+import { weekAt, weekIndex, planPhase, gateStatus, normalizePlan } from '../engine/plan.js';
+import { normalizeEvent } from '../engine/events.js';
 import { publicSummary } from '../engine/stats.js';
+import { buildCatalog } from '../data/catalog.js';
 import { STROKES, ERRORS } from '../data/taxonomy.js';
 import { today } from '../util/dates.js';
 
 const EMULATOR = import.meta.env.VITE_EMULATOR === '1';
-const CLOUD = EMULATOR || Boolean(firebaseConfig.apiKey);
+// VITE_LOCAL=1 forza la modalità locale anche con Firebase configurato (per provare in sviluppo).
+const CLOUD = import.meta.env.VITE_LOCAL !== '1' && (EMULATOR || Boolean(firebaseConfig.apiKey));
 const DEMO_CONFIG = { apiKey: 'demo', authDomain: 'demo-tt-trainer.firebaseapp.com', projectId: 'demo-tt-trainer', appId: 'demo' };
 
 const DEFAULT_SETTINGS = {
@@ -41,7 +44,8 @@ class AppState {
   role = $state(null);
   requested = $state(false);
   meta = $state.raw(null);
-  events = $state.raw([]);
+  /** Le voci come arrivano dal backend, mai riscritte qui. */
+  rawEvents = $state.raw([]);
   profiles = $state.raw([]);
   access = $state.raw(null);
   requests = $state.raw([]);
@@ -49,12 +53,20 @@ class AppState {
   today = $state(today());
   online = $state(typeof navigator === 'undefined' ? true : navigator.onLine);
 
+  /** Tutte le voci, lette nel formato attuale (le vecchie A/B diventano allenamenti). */
+  allEvents = $derived(this.rawEvents.map(normalizeEvent));
+  /** Ciò che è stato fatto: è la base di livelli, statistiche e diario. */
+  events = $derived(this.allEvents.filter((e) => !e.planned));
+  /** Ciò che è stato aggiunto a mano come previsto e non è ancora fatto. */
+  planned = $derived(this.allEvents.filter((e) => e.planned));
+
   settings = $derived({ ...DEFAULT_SETTINGS, ...(this.meta?.settings ?? {}) });
   rules = $derived({ up: this.settings.up, down: this.settings.down });
-  tracks = $derived(computeTracks(this.events, this.rules));
-  plan = $derived(this.meta?.plan ?? null);
+  catalog = $derived(buildCatalog(this.meta?.custom));
+  tracks = $derived(computeTracks(this.events, this.rules, {}, this.catalog));
+  plan = $derived(normalizePlan(this.meta?.plan));
   weekIdx = $derived(this.plan ? weekIndex(this.plan, this.today) : null);
-  week = $derived(this.plan ? weekAt(this.plan, this.weekIdx) : null);
+  week = $derived(this.plan ? weekAt(this.plan, this.weekIdx, this.catalog) : null);
   phase = $derived(this.plan ? planPhase(this.plan, this.today) : 'none');
   gate = $derived(gateStatus(this.tracks));
   onboarded = $derived(Boolean(this.meta?.onboarded));
@@ -118,7 +130,7 @@ class AppState {
     this.#got = { meta: false, events: false };
     this.user = user;
     this.meta = null;
-    this.events = [];
+    this.rawEvents = [];
     this.profiles = [];
     this.requests = [];
     this.access = null;
@@ -158,7 +170,7 @@ class AppState {
           arrived('meta');
         },
         events: (events) => {
-          this.events = events;
+          this.rawEvents = events;
           arrived('events');
         },
         profiles: (profiles) => (this.profiles = profiles),
@@ -258,6 +270,42 @@ class AppState {
     this.#run(this.#backend.deleteEvent(this.user.uid, id));
   }
 
+  eventById(id) {
+    return this.allEvents.find((e) => e.id === id) ?? null;
+  }
+
+  /** Aggiunge al calendario un appuntamento fuori dal ritmo (o ne sposta uno). */
+  planEvent({ kind, template = null, date }) {
+    return this.saveEvent({ kind, template: kind === 'training' ? template : null, date, planned: true, adhoc: true });
+  }
+
+  /** Toglie un appuntamento del ritmo, solo quello. */
+  skipOccurrence(key) {
+    if (!this.plan) return;
+    this.setPlan({ ...this.plan, skip: [...new Set([...this.plan.skip, key])] });
+  }
+
+  restoreOccurrence(key) {
+    if (!this.plan) return;
+    this.setPlan({ ...this.plan, skip: this.plan.skip.filter((k) => k !== key) });
+  }
+
+  /** Sposta un appuntamento: del ritmo (lo toglie e ne crea uno a mano) o già aggiunto a mano. */
+  moveItem(item, date) {
+    if (item.source === 'event') {
+      const ev = this.eventById(item.eventId);
+      if (ev) this.saveEvent({ ...ev, date });
+    } else {
+      this.skipOccurrence(item.key);
+      this.planEvent({ kind: item.kind, template: item.template, date });
+    }
+  }
+
+  removeItem(item) {
+    if (item.source === 'event') this.deleteEvent(item.eventId);
+    else this.skipOccurrence(item.key);
+  }
+
   /** Imposta a mano il livello di un percorso (resta nella storia come «Impostato»). */
   setLevel(trackId, level) {
     return this.saveEvent({ kind: 'livello', date: this.today, tests: [{ track: trackId, type: 'set', level }] });
@@ -268,6 +316,27 @@ class AppState {
     const full = { ...item, id: newId('c'), custom: true };
     this.patchMeta({ custom: { [list]: [...current, full] } });
     return full;
+  }
+
+  /** Crea o aggiorna una voce personale (colpi, errori, percorsi, mesi, modelli). */
+  saveCustom(list, item) {
+    const current = this.meta?.custom?.[list] ?? [];
+    const full = { ...item, id: item.id ?? newId('c'), custom: true };
+    const next = current.some((x) => x.id === full.id) ? current.map((x) => (x.id === full.id ? full : x)) : [...current, full];
+    this.patchMeta({ custom: { [list]: next } });
+    return full;
+  }
+
+  /** Più voci personali in un colpo (l'importazione). */
+  saveCustomMany(lists) {
+    const patch = {};
+    for (const [list, items] of Object.entries(lists)) {
+      if (!items?.length) continue;
+      const current = this.meta?.custom?.[list] ?? [];
+      const ids = new Set(items.map((x) => x.id));
+      patch[list] = [...current.filter((x) => !ids.has(x.id)), ...items.map((x) => ({ ...x, custom: true }))];
+    }
+    if (Object.keys(patch).length) this.patchMeta({ custom: patch });
   }
 
   removeCustom(list, id) {

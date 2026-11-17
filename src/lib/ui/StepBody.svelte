@@ -2,12 +2,13 @@
   // Le istruzioni di una fase della sessione. Usato sia in «Oggi» sia nella sessione dal vivo.
   import Target from '@lucide/svelte/icons/target';
   import { partnerExercise } from '../engine/stats.js';
+  import { app } from '../store/app.svelte.js';
   import { VALID_ATTEMPT } from '../data/program.js';
   import Avatar from './Avatar.svelte';
 
   let { step, partner = null, big = false, showTest = true } = $props();
 
-  const mate = $derived(step.kind === 'exercise' && partner ? partnerExercise(partner, step.track) : null);
+  const mate = $derived(step.kind === 'exercise' && partner ? partnerExercise(partner, step.track, app.catalog) : null);
 </script>
 
 <div class="body" class:big>
@@ -42,7 +43,7 @@
       {#if step.placement}
         <p class="test">
           <span class="tag accent">Test di partenza</span>
-          Parti dal livello 1: con almeno 8 su 10 provi quello dopo. Il primo che non passi è il tuo.
+          Parti dal livello 1: con almeno {app.rules.up} su 10 provi quello dopo. Il primo che non passi è il tuo.
         </p>
       {:else if step.test}
         <p class="test"><span class="tag accent">Test</span> {step.exercise.test}</p>
@@ -58,6 +59,8 @@
     {/if}
   {:else if step.kind === 'match'}
     <p>{step.rule}</p>
+  {:else if step.kind === 'free'}
+    {#if step.text}<p>{step.text}</p>{/if}
   {/if}
   {#if big && (step.test || step.placement || step.maint?.test)}
     <p class="small faint">{VALID_ATTEMPT}</p>

@@ -14,10 +14,9 @@
   import { app } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
   import { loadLive, saveLive, clearLive } from '../store/live.js';
-  import { weekAt, weekIndex } from '../engine/plan.js';
-  import { composeSession } from '../engine/compose.js';
+  import { weekFor } from '../engine/plan.js';
+  import { composeSession, composeTest, trainedTracks } from '../engine/compose.js';
   import { judge, placementResult } from '../engine/levels.js';
-  import { levelOf, LEVELS } from '../data/program.js';
   import { fmtClock } from '../util/dates.js';
   import { chime, keepAwake, unlockAudio } from '../util/device.js';
   import Dots from '../ui/Dots.svelte';
@@ -27,14 +26,28 @@
 
   const uid = app.user.uid;
 
+  const levelOf = (track, n) => app.catalog.level(track, n);
+  const maxOf = (track) => app.catalog.maxLevel(track);
+
   function create() {
-    const { slot, date, monday } = ui.live;
-    const week = weekAt(app.plan, weekIndex(app.plan, monday));
-    const session = composeSession({ week, slot, tracks: app.tracks });
+    const live = ui.live;
+    const date = live.date ?? app.today;
+    const week = weekFor(app.plan, date, app.catalog);
+    const test = live.mode === 'test';
+    const template = test ? null : (live.custom ?? app.catalog.template(live.template));
+    const session = test
+      ? composeTest({ week, trackIds: live.trackIds ?? [], tracks: app.tracks, catalog: app.catalog, serve: true })
+      : composeSession({ week, template, tracks: app.tracks, catalog: app.catalog, test: live.withTest });
     return {
-      slot,
+      mode: test ? 'test' : 'training',
+      template: test ? null : live.custom ? 'auto' : template.id,
+      title: test ? 'Test' : template.name,
+      color: test ? 'orange' : template.color,
       date,
-      planId: app.plan.id,
+      planId: app.plan?.id ?? null,
+      occ: live.occ ?? null,
+      eventId: live.eventId ?? null,
+      testItem: live.testItem ?? null,
       step: 0,
       timers: {},
       tests: {},
@@ -51,6 +64,10 @@
   function restore() {
     const saved = loadLive(uid);
     if (!saved) return null;
+    // Sessione lasciata a metà con la prima versione (A o B): si riprende uguale.
+    if (saved.slot && !saved.mode) {
+      Object.assign(saved, { mode: 'training', template: 'completo', title: `Sessione ${saved.slot}`, color: 'blue', legacy: saved.slot });
+    }
     // I timer rimasti accesi si fermano all'ultimo momento in cui l'app era viva.
     for (const t of Object.values(saved.timers)) {
       if (t.since) {
@@ -171,11 +188,13 @@
 
   function verdict(trackId, level, score) {
     if (score == null) return null;
-    const r = judge(app.tracks[trackId], level, score, app.rules);
+    const st = app.tracks[trackId];
+    if (!st) return null;
+    const r = judge(st, level, score, app.rules);
     if (r.outcome === 'sali') return { tone: 'up', text: `Sali al livello ${r.after}`, after: r.after, outcome: r.outcome };
     if (r.outcome === 'completato') return { tone: 'up', text: 'Percorso completato', after: r.after, outcome: r.outcome };
     if (r.outcome === 'scendi') return { tone: 'down', text: `Scendi al livello ${r.after}`, after: r.after, outcome: r.outcome };
-    const next = level >= LEVELS ? 'completi' : 'sali';
+    const next = level >= maxOf(trackId) ? 'completi' : 'sali';
     return {
       tone: 'stay',
       text: r.streak ? `Ancora un test da ${app.rules.up} e ${next}` : `Resti al livello ${level}`,
@@ -195,7 +214,7 @@
   function placementView(track) {
     const p = placementOf(track);
     if (p.set) return { done: true, level: p.set, current: null, waiting: false };
-    const res = placementResult(p.tries.filter((t) => t.score != null), app.rules);
+    const res = placementResult(p.tries.filter((t) => t.score != null), app.rules, maxOf(track));
     const current = p.tries[p.tries.length - 1];
     return { done: res.done, level: res.level, current, waiting: current.score != null && !res.done };
   }
@@ -215,7 +234,7 @@
       value: placementOf(track).set,
       groups: [
         {
-          options: Array.from({ length: LEVELS }, (_, i) => ({
+          options: Array.from({ length: maxOf(track) }, (_, i) => ({
             id: i + 1,
             label: `Livello ${i + 1}`,
             hint: levelOf(track, i + 1).name
@@ -237,6 +256,14 @@
     return { ...step, level, exercise: levelOf(step.track, level) };
   });
 
+  /** Un esercizio senza test può diventare un test in qualsiasi momento. */
+  function enableTest(index) {
+    const s = draft.session.steps[index];
+    if (s.kind === 'exercise' && !s.placement) s.test = true;
+    if (s.kind === 'serve') s.test = true;
+    buzz();
+  }
+
   // ── Chiusura ─────────────────────────────────────────────────────────────
 
   const results = $derived.by(() => {
@@ -244,17 +271,17 @@
     for (const s of steps) {
       if (s.maint?.test) {
         const t = draft.tests.maint;
-        out.push({ id: 'maint', name: `Mantenimento · ${s.maint.name}`, score: t?.score ?? null, before: s.maint.level, ...(verdict(s.maint.track, s.maint.level, t?.score ?? null) ?? {}) });
+        out.push({ id: 'maint', name: `Mantenimento · ${s.maint.name}`, max: s.maint.max, score: t?.score ?? null, before: s.maint.level, ...(verdict(s.maint.track, s.maint.level, t?.score ?? null) ?? {}) });
       }
       if (s.kind === 'serve' && s.test) {
         out.push({ id: 'serve', name: 'Servizi', score: draft.tests.serve?.score ?? null });
       }
       if (s.kind === 'exercise' && s.placement) {
         const p = placementView(s.track);
-        out.push({ id: s.track, name: s.name, score: null, start: p.done ? p.level : null, placement: true });
+        out.push({ id: s.track, name: s.name, max: s.max, score: null, start: p.done ? p.level : null, placement: true });
       } else if (s.kind === 'exercise' && s.test) {
         const t = draft.tests[s.track];
-        out.push({ id: s.track, name: s.name, score: t?.score ?? null, before: s.level, ...(verdict(s.track, s.level, t?.score ?? null) ?? {}) });
+        out.push({ id: s.track, name: s.name, max: s.max, score: t?.score ?? null, before: s.level, ...(verdict(s.track, s.level, t?.score ?? null) ?? {}) });
       }
     }
     return out;
@@ -277,26 +304,42 @@
         }
       } else if (s.test && draft.tests[s.track]?.score != null) {
         const t = draft.tests[s.track];
-        tests.push({ track: s.track, type: 'test', level: s.level, score: t.score, marks: (t.marks ?? []).join('') });
+        tests.push({ track: s.track, type: s.maintTest ? 'maint' : 'test', level: s.level, score: t.score, marks: (t.marks ?? []).join('') });
       }
     }
-    const serve = draft.tests.serve?.score != null ? { id: draft.session.block.serve.id, score: draft.tests.serve.score } : null;
+    const serve = draft.tests.serve?.score != null ? { id: draft.session.block.serve?.id ?? null, score: draft.tests.serve.score } : null;
     const seconds = Object.values(draft.timers).reduce((n, t) => n + t.acc + (t.since ? (Date.now() - t.since) / 1000 : 0), 0);
     // Se i timer non sono stati usati, vale la durata prevista.
     const minutes = seconds >= 600 ? Math.round(seconds / 60) : draft.session.minutes;
 
-    app.saveEvent({
-      kind: draft.slot,
+    const measured = tests.some((t) => t.type !== 'set') || serve != null;
+    const ev = {
+      kind: draft.mode,
       date: draft.date,
       planId: draft.planId,
-      block: draft.session.block.id,
+      block: draft.session.block?.id ?? null,
       minutes,
       tests,
       serve,
       focus: draft.focus,
       note: draft.note.trim(),
       feel: draft.feel
-    });
+    };
+    if (draft.mode === 'training') {
+      ev.template = draft.template;
+      ev.trained = draft.session.trained ?? trainedTracks(draft.session.steps);
+      ev.withTest = measured;
+      if (draft.legacy) ev.legacy = draft.legacy;
+    }
+    if (draft.occ) ev.occ = draft.occ;
+    // Era un appuntamento aggiunto a mano: diventa la voce fatta, con lo stesso id.
+    if (draft.eventId) {
+      ev.id = draft.eventId;
+      ev.adhoc = true;
+    }
+    app.saveEvent(ev);
+    // Il test aggiunto a mano per oggi è stato fatto qui dentro: non resta in sospeso.
+    if (measured && draft.testItem?.source === 'event' && draft.testItem.eventId) app.deleteEvent(draft.testItem.eventId);
     finished = true;
     clearLive(uid);
     ui.live = null;
@@ -318,7 +361,7 @@
           <Check size={11} strokeWidth={3} />
         </button>
       </div>
-      <span class="tag">{draft.slot}</span>
+      <span class="tag kind" data-color={draft.color}>{draft.title}</span>
     </header>
 
     <div class="scroll" bind:this={scroller}>
@@ -340,7 +383,7 @@
               {#if view.kind === 'exercise'}
                 <p class="row g-12 muted">
                   <span>Livello {view.level} · {view.exercise.name}</span>
-                  <Dots level={view.level} size={9} />
+                  <Dots level={view.level} max={view.max} size={9} />
                 </p>
               {/if}
             </div>
@@ -424,6 +467,10 @@
               </section>
             {/if}
 
+            {#if (step.kind === 'exercise' && !step.test && !step.placement) || (step.kind === 'serve' && !step.test)}
+              <button class="link self" onclick={() => enableTest(draft.step)}>Fai il test qui</button>
+            {/if}
+
             <StepBody step={view} partner={app.partner} big showTest={false} />
           {:else}
             <div class="head">
@@ -447,9 +494,9 @@
                       </p>
                     </div>
                     {#if r.after}
-                      <Dots level={r.after} completed={r.outcome === 'completato'} />
+                      <Dots level={r.after} max={r.max} completed={r.outcome === 'completato'} />
                     {:else if r.start}
-                      <Dots level={r.start} />
+                      <Dots level={r.start} max={r.max} />
                     {/if}
                     {#if r.score != null}
                       <span class="mono pts {r.tone ?? ''}">{r.score}</span>
@@ -523,14 +570,20 @@
   header {
     flex: none;
     display: grid;
-    grid-template-columns: 48px 1fr 48px;
+    grid-template-columns: 48px 1fr auto;
     align-items: center;
     padding: calc(env(safe-area-inset-top) + 8px) 12px 8px;
   }
   header .tag {
     justify-self: end;
     margin-right: 6px;
-    font-family: var(--mono);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  header .tag.kind {
+    background: color-mix(in srgb, var(--c) 16%, var(--card));
+    color: var(--c);
   }
   .steps {
     display: flex;

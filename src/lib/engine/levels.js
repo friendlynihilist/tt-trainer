@@ -5,9 +5,12 @@
 // Regola (identica al foglio Diario):
 //   · si sale con due test di fila allo stesso livello con punteggio >= up
 //   · si scende con un solo test <= down (mai sotto il livello 1)
-//   · al livello 5, due test di fila >= up danno «Completato»
+//   · all'ultimo livello, due test di fila >= up danno «Completato»
+//
+// I percorsi di base hanno 5 livelli; quelli creati da ciascuno possono averne da 1 a 8.
 
-import { LEVELS, TRACK_IDS } from '../data/program.js';
+import { LEVELS } from '../data/program.js';
+import { BASE } from '../data/catalog.js';
 
 export const DEFAULT_RULES = { up: 8, down: 4 };
 
@@ -17,9 +20,10 @@ export function byTime(a, b) {
   return (a.createdAt ?? 0) - (b.createdAt ?? 0);
 }
 
-function fresh(id) {
+function fresh(id, max = LEVELS) {
   return {
     id,
+    max,
     level: 1,
     started: false, // true dopo il test di partenza, un test o un livello impostato a mano
     streak: 0, // test di fila >= up al livello attuale (0 o 1)
@@ -33,22 +37,23 @@ function fresh(id) {
  * Esito di un test al livello `level` con punteggio `score`, dato lo stato del percorso.
  * Non modifica nulla: serve anche per l'anteprima durante la sessione.
  */
-export function judge(state, level, score, rules = DEFAULT_RULES) {
+export function judge(state, level, score, rules = DEFAULT_RULES, max = state.max ?? LEVELS) {
   const streak = state.started && state.level === level ? state.streak : 0;
   if (score <= rules.down && level > 1) {
     return { outcome: 'scendi', after: level - 1, streak: 0, completed: false };
   }
   if (score >= rules.up) {
     if (streak >= 1) {
-      if (level >= LEVELS) return { outcome: 'completato', after: LEVELS, streak: 1, completed: true };
+      if (level >= max) return { outcome: 'completato', after: max, streak: 1, completed: true };
       return { outcome: 'sali', after: level + 1, streak: 0, completed: false };
     }
-    return { outcome: 'resta', after: level, streak: 1, completed: state.completed && level >= LEVELS };
+    return { outcome: 'resta', after: level, streak: 1, completed: state.completed && level >= max };
   }
-  return { outcome: 'resta', after: level, streak: 0, completed: state.completed && level >= LEVELS };
+  return { outcome: 'resta', after: level, streak: 0, completed: state.completed && level >= max };
 }
 
 function apply(state, t, ev, rules) {
+  const clamp = (n) => clampLevel(n, state.max);
   const entry = { eventId: ev.id, date: ev.date, type: t.type ?? 'test', level: t.level, score: t.score ?? null };
 
   if (entry.type === 'set') {
@@ -65,7 +70,7 @@ function apply(state, t, ev, rules) {
     entry.outcome = 'partenza';
     entry.passed = passed;
   } else {
-    const r = judge(state, clamp(t.level), t.score, rules);
+    const r = judge(state, clamp(t.level), t.score, rules, state.max);
     state.level = r.after;
     state.streak = r.streak;
     state.completed = r.completed;
@@ -77,8 +82,8 @@ function apply(state, t, ev, rules) {
   state.history.push(entry);
 }
 
-function clamp(n) {
-  return Math.max(1, Math.min(LEVELS, Math.round(Number(n) || 1)));
+function clampLevel(n, max = LEVELS) {
+  return Math.max(1, Math.min(max, Math.round(Number(n) || 1)));
 }
 
 /**
@@ -87,13 +92,14 @@ function clamp(n) {
  * @param rules   soglie { up, down }
  * @param opts    { before: 'YYYY-MM-DD' } considera solo ciò che viene prima di quella data;
  *                { exclude: id } ignora un'attività (quando la si sta modificando)
+ * @param catalog percorsi di base e personali (i test di percorsi sconosciuti si ignorano)
  */
-export function computeTracks(events, rules = DEFAULT_RULES, opts = {}) {
+export function computeTracks(events, rules = DEFAULT_RULES, opts = {}, catalog = BASE) {
   const state = {};
-  for (const id of TRACK_IDS) state[id] = fresh(id);
+  for (const id of catalog.trackIds) state[id] = fresh(id, catalog.maxLevel(id));
 
   const list = events
-    .filter((e) => e.tests?.length)
+    .filter((e) => e.tests?.length && !e.planned)
     .filter((e) => (opts.exclude ? e.id !== opts.exclude : true))
     .filter((e) => (opts.before ? e.date < opts.before : true))
     .sort(byTime);
@@ -122,12 +128,12 @@ export const OUTCOME = {
 };
 
 /** Il livello di partenza che risulta da una sequenza di test di partenza [{level, score}]. */
-export function placementResult(attempts, rules = DEFAULT_RULES) {
+export function placementResult(attempts, rules = DEFAULT_RULES, max = LEVELS) {
   let level = 1;
   for (const a of attempts) {
-    if (a.score >= rules.up) level = clamp(a.level + 1);
+    if (a.score >= rules.up) level = clampLevel(a.level + 1, max);
     else return { level: a.level, done: true };
   }
   const lastLevel = attempts.length ? attempts[attempts.length - 1].level : 0;
-  return { level, done: lastLevel >= LEVELS };
+  return { level, done: lastLevel >= max };
 }

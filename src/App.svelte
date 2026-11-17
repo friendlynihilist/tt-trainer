@@ -12,6 +12,8 @@
   import NoAccess from './lib/screens/NoAccess.svelte';
   import Wizard from './lib/screens/Wizard.svelte';
   import Live from './lib/screens/Live.svelte';
+  import WhatsNew from './lib/ui/WhatsNew.svelte';
+  import { VERSION, unseen } from './lib/data/changelog.js';
 
   import Today from './lib/pages/Today.svelte';
   import Calendar from './lib/pages/Calendar.svelte';
@@ -28,6 +30,11 @@
   import StrokeSheet from './lib/sheets/StrokeSheet.svelte';
   import ObsSheet from './lib/sheets/ObsSheet.svelte';
   import PlanSheet from './lib/sheets/PlanSheet.svelte';
+  import DateSheet from './lib/sheets/DateSheet.svelte';
+  import TemplateSheet from './lib/sheets/TemplateSheet.svelte';
+  import BlockSheet from './lib/sheets/BlockSheet.svelte';
+  import TrackEditSheet from './lib/sheets/TrackEditSheet.svelte';
+  import ImportSheet from './lib/sheets/ImportSheet.svelte';
 
   const PAGES = { oggi: Today, calendario: Calendar, progressi: Progress, libreria: Library, guida: Guide, impostazioni: Settings };
   const SHEETS = {
@@ -38,7 +45,12 @@
     track: TrackSheet,
     stroke: StrokeSheet,
     obs: ObsSheet,
-    plan: PlanSheet
+    plan: PlanSheet,
+    date: DateSheet,
+    template: TemplateSheet,
+    block: BlockSheet,
+    trackedit: TrackEditSheet,
+    import: ImportSheet
   };
 
   onMount(() => {
@@ -75,6 +87,20 @@
 
   const Page = $derived(PAGES[ui.route.name] ?? Today);
   const inApp = $derived(app.stage === 'ready' && app.onboarded);
+
+  // Le novità compaiono una volta sola per account dopo un aggiornamento (chi arriva ora non le vede:
+  // il primo avvio segna già la versione). Chi era sulla 0.1.0 non aveva nulla di salvato.
+  let dismissed = $state(false);
+  const fresh = $derived(inApp && app.meta ? unseen(app.meta.seenVersion ?? '0.1.0') : []);
+  const autoNews = $derived(!dismissed && fresh.length > 0 && !ui.live && !ui.sheets.length);
+
+  function closeNews() {
+    if (ui.news) ui.news = null;
+    else {
+      dismissed = true;
+      app.patchMeta({ seenVersion: VERSION });
+    }
+  }
 </script>
 
 {#if app.stage === 'boot' || app.stage === 'loading'}
@@ -98,6 +124,10 @@
 
 {#if inApp && ui.live}
   <Live />
+{/if}
+
+{#if inApp && (ui.news || autoNews)}
+  <WhatsNew entries={fresh} history={Boolean(ui.news?.history)} onclose={closeNews} />
 {/if}
 
 {#each ui.sheets as s (s.id)}

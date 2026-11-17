@@ -2,7 +2,8 @@
   // Progressi: livelli dei percorsi, cosa correggere, ritmo, e i compagni.
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { BLOCKS, CYCLE_BLOCKS, TRACKS, TRACK_IDS, levelOf } from '../data/program.js';
+  import { CYCLE_BLOCKS } from '../data/program.js';
+  import { BASE } from '../data/catalog.js';
   import { testsToClimb } from '../engine/levels.js';
   import { totals, weaknesses, weeklyActivity, weekStreak } from '../engine/stats.js';
   import { fmtDay, fmtRelative } from '../util/dates.js';
@@ -21,8 +22,28 @@
   function hint(t) {
     if (!t.started) return 'Da iniziare';
     if (t.completed) return 'Completato';
-    return testsToClimb(t) === 1 ? `Un test da ${app.rules.up} e sali` : levelOf(t.id, t.level).name;
+    return testsToClimb(t) === 1 ? `Un test da ${app.rules.up} e sali` : (app.catalog.level(t.id, t.level)?.name ?? '');
   }
+
+  // Prima i mesi del piano in corso (o quelli di base), poi i percorsi tuoi e gli altri già iniziati.
+  const groups = $derived.by(() => {
+    const months = [...new Set((app.plan?.weeks ?? CYCLE_BLOCKS).filter((k) => k !== 'P' && k !== 'R'))];
+    const out = [];
+    const seen = new Set();
+    for (const m of months) {
+      const b = app.catalog.block(m);
+      if (!b) continue;
+      const ids = b.tracks.filter((id) => !seen.has(id) && app.tracks[id]);
+      ids.forEach((id) => seen.add(id));
+      if (ids.length) out.push({ name: b.custom ? b.theme : `${b.label} · ${b.theme}`, ids });
+    }
+    const mine = app.catalog.activeTrackIds.filter((id) => !seen.has(id) && app.catalog.track(id).custom);
+    mine.forEach((id) => seen.add(id));
+    if (mine.length) out.push({ name: 'I tuoi percorsi', ids: mine });
+    const rest = app.catalog.trackIds.filter((id) => !seen.has(id) && app.tracks[id]?.started);
+    if (rest.length) out.push({ name: 'Altri percorsi', ids: rest });
+    return out;
+  });
 </script>
 
 <div class="page enter">
@@ -35,16 +56,16 @@
     <div><b class="mono">{streak}</b><span class="small muted">settimane di fila</span></div>
   </section>
 
-  {#each CYCLE_BLOCKS as b (b)}
+  {#each groups as g (g.name)}
     <section class="section">
-      <h2 class="heading">{BLOCKS[b].label} · {BLOCKS[b].theme}</h2>
+      <h2 class="heading">{g.name}</h2>
       <div class="tracks">
-        {#each BLOCKS[b].tracks as id (id)}
+        {#each g.ids as id (id)}
           {@const t = app.tracks[id]}
           <button class="card track" onclick={() => ui.open('track', { id })}>
             <div class="spread">
-              <strong>{TRACKS[id].short}</strong>
-              <Dots level={t.level} started={t.started} completed={t.completed} />
+              <strong>{app.catalog.track(id).short}</strong>
+              <Dots level={t.level} max={t.max} started={t.started} completed={t.completed} />
             </div>
             <p class="small muted">{hint(t)}</p>
             {#if t.history.some((h) => h.score != null)}
@@ -111,8 +132,8 @@
                 </span>
               </div>
               <div class="levels">
-                {#each TRACK_IDS.filter((id) => m.levels?.[id]) as id (id)}
-                  <span class="lv"><span class="small muted">{TRACKS[id].short}</span><Dots level={m.levels[id]} size={6} /></span>
+                {#each BASE.trackIds.filter((id) => m.levels?.[id]) as id (id)}
+                  <span class="lv"><span class="small muted">{BASE.track(id).short}</span><Dots level={m.levels[id]} size={6} /></span>
                 {/each}
               </div>
             </div>

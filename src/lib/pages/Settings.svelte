@@ -6,16 +6,24 @@
   import X from '@lucide/svelte/icons/x';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { KIND } from '../data/taxonomy.js';
-  import { TRACKS, exerciseLabel } from '../data/program.js';
+  import { exerciseLabel } from '../data/catalog.js';
+  import { eventTitle } from '../engine/events.js';
+  import { VERSION } from '../data/changelog.js';
   import { byTime } from '../engine/levels.js';
-  import { WEEKDAYS, fmtLong } from '../util/dates.js';
+  import { WEEKDAYS_SHORT, fmtLong } from '../util/dates.js';
   import PageHead from '../ui/PageHead.svelte';
   import Avatar from '../ui/Avatar.svelte';
   import Segmented from '../ui/Segmented.svelte';
   import Toggle from '../ui/Toggle.svelte';
 
   const s = $derived(app.settings);
+  const rhythm = $derived.by(() => {
+    const slots = app.plan?.slots ?? [];
+    const days = [...new Set(slots.filter((x) => x.kind === 'training').map((x) => WEEKDAYS_SHORT[x.day - 1]))];
+    const tests = slots.filter((x) => x.kind === 'test').length;
+    if (!slots.length) return 'Nessun appuntamento fisso';
+    return `${days.join(', ')}${tests ? ` · ${tests} test` : ''}`;
+  });
   let newEmail = $state('');
 
   function setRule(key, delta) {
@@ -61,8 +69,8 @@
     const rows = [['Data', 'Tipo', 'Minuti', 'Test', 'Servizi', 'Colpo da correggere', 'Errore', 'Esercizio', 'Note']];
     for (const e of [...app.events].sort(byTime)) {
       if (e.kind === 'livello') continue;
-      const tests = (e.tests ?? []).filter((t) => t.score != null).map((t) => `${TRACKS[t.track].short} L${t.level}: ${t.score}`).join('; ');
-      rows.push([e.date, KIND[e.kind]?.name ?? e.kind, e.minutes ?? '', tests, e.serve?.score ?? '', app.strokeName(e.focus?.stroke), app.errorName(e.focus?.error), e.focus?.exercise ? exerciseLabel(e.focus.exercise) : '', e.note ?? '']);
+      const tests = (e.tests ?? []).filter((t) => t.score != null).map((t) => `${app.catalog.track(t.track)?.short ?? t.track} L${t.level}: ${t.score}`).join('; ');
+      rows.push([e.date, eventTitle(e, app.catalog), e.minutes ?? '', tests, e.serve?.score ?? '', app.strokeName(e.focus?.stroke), app.errorName(e.focus?.error), e.focus?.exercise ? exerciseLabel(e.focus.exercise, app.catalog) : '', e.note ?? '']);
     }
     // Il BOM fa aprire bene gli accenti a Excel.
     download(`terza-palla-${app.today}.csv`, '﻿' + rows.map((r) => r.map(cell).join(';')).join('\n'), 'text/csv');
@@ -96,8 +104,8 @@
       <button class="item" onclick={() => ui.open('plan')}>
         <span class="grow">
           {#if app.plan}
-            <strong>A il {WEEKDAYS[app.plan.days.A - 1]}, B il {WEEKDAYS[app.plan.days.B - 1]}</strong>
-            <span class="small muted block">Iniziato {fmtLong(app.plan.start)} · giorni, pause, nuovo ciclo</span>
+            <strong>{rhythm}</strong>
+            <span class="small muted block">Iniziato {fmtLong(app.plan.start)} · ritmo, mesi, pause, nuovo ciclo</span>
           {:else}
             <strong>Crea il piano</strong>
           {/if}
@@ -203,6 +211,18 @@
       <button class="item" onclick={exportJson}><span class="grow">Copia completa<span class="small muted block">JSON con piano, sessioni e note</span></span><ChevronRight size={16} /></button>
       <button class="item danger" onclick={wipe}><span class="grow">Cancella tutti i miei dati</span></button>
     </div>
+  </section>
+
+  <section class="section">
+    <h2 class="heading">Informazioni</h2>
+    <div class="card flush list">
+      <button class="item" onclick={() => (ui.news = { history: true })}>
+        <span class="grow">Novità<span class="small muted block">Cosa è cambiato, versione per versione</span></span>
+        <span class="mono small muted">v{VERSION}</span>
+        <ChevronRight size={16} />
+      </button>
+    </div>
+    <p class="small faint after">Terza palla {VERSION}{app.cloud ? '' : ' · modalità locale'}</p>
   </section>
 
   <section class="section links">

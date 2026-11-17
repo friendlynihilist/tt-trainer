@@ -23,6 +23,18 @@
   --scrim: rgba(21, 23, 26, 0.36);
   --shadow: 0 1px 2px rgba(21, 23, 26, 0.04), 0 12px 32px -12px rgba(21, 23, 26, 0.18);
 
+  /* Un colore per tipo di voce nel calendario. Niente verde e niente rosso: sono di «sali» e «scendi». */
+  --c-blue: #2f6bd8;
+  --c-sky: #138cc4;
+  --c-violet: #7a4fd6;
+  --c-teal: #11848f;
+  --c-amber: #b98200;
+  --c-pink: #cf3d84;
+  --c-brown: #8d5f34;
+  --c-plum: #973b9a;
+  --c-slate: #687080;
+  --c-orange: var(--accent);
+
   --serif: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
   --sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -66,6 +78,15 @@
     --stay-soft: #33290f;
     --scrim: rgba(0, 0, 0, 0.6);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+    --c-blue: #6f9dff;
+    --c-sky: #5cc0ee;
+    --c-violet: #a98bff;
+    --c-teal: #4cc3cf;
+    --c-amber: #e8b13a;
+    --c-pink: #ff7ab8;
+    --c-brown: #c99766;
+    --c-plum: #d97fdb;
+    --c-slate: #9aa3b2;
     color-scheme: dark;
   }
 }
@@ -90,6 +111,15 @@
   --stay-soft: #33290f;
   --scrim: rgba(0, 0, 0, 0.6);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+  --c-blue: #6f9dff;
+  --c-sky: #5cc0ee;
+  --c-violet: #a98bff;
+  --c-teal: #4cc3cf;
+  --c-amber: #e8b13a;
+  --c-pink: #ff7ab8;
+  --c-brown: #c99766;
+  --c-plum: #d97fdb;
+  --c-slate: #9aa3b2;
   color-scheme: dark;
 }
 
@@ -458,6 +488,36 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* ── Colori dei tipi ────────────────────────────────────────────────────── */
+
+[data-color] { --c: var(--c-slate); }
+[data-color='blue'] { --c: var(--c-blue); }
+[data-color='sky'] { --c: var(--c-sky); }
+[data-color='violet'] { --c: var(--c-violet); }
+[data-color='teal'] { --c: var(--c-teal); }
+[data-color='amber'] { --c: var(--c-amber); }
+[data-color='pink'] { --c: var(--c-pink); }
+[data-color='brown'] { --c: var(--c-brown); }
+[data-color='plum'] { --c: var(--c-plum); }
+[data-color='orange'] { --c: var(--c-orange); }
+
+/* Pallino pieno = fatto, anello = previsto. */
+.pip {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c);
+}
+.pip.todo {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--c);
+}
+.pip.missed {
+  opacity: 0.4;
 }
 
 /* ── Campi ──────────────────────────────────────────────────────────────── */

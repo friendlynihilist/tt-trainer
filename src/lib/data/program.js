@@ -327,28 +327,3 @@ export const NEXT_CYCLE = [
 export function levelOf(trackId, n) {
   return TRACKS[trackId]?.levels[n - 1] ?? null;
 }
-
-/** Tutti gli esercizi selezionabili (per «esercizio per correggerlo» e le note tecniche). */
-export function exerciseOptions() {
-  const out = [];
-  for (const b of CYCLE_BLOCKS) {
-    for (const t of BLOCKS[b].tracks) {
-      for (const l of TRACKS[t].levels) {
-        out.push({ id: l.id, group: `Mese ${b} · ${TRACKS[t].short}`, label: `L${l.n} ${l.name}`, track: t, level: l.n });
-      }
-    }
-    out.push({ id: `${b}-S`, group: `Mese ${b} · Servizi`, label: 'Servizi e ricezione' });
-  }
-  out.push({ id: 'multiball', group: 'Altro', label: 'Multiball libero' });
-  out.push({ id: 'partita', group: 'Altro', label: 'Partita libera' });
-  out.push({ id: 'altro', group: 'Altro', label: 'Altro' });
-  return out;
-}
-
-const EXERCISE_INDEX = Object.fromEntries(exerciseOptions().map((e) => [e.id, e]));
-
-export function exerciseLabel(id) {
-  const e = EXERCISE_INDEX[id];
-  if (!e) return id ?? '';
-  return e.group === 'Altro' ? e.label : `${e.group} · ${e.label}`;
-}
