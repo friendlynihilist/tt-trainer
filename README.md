@@ -40,8 +40,13 @@ impediscono di leggere o scrivere quelli degli altri.
 
 ### Allenamenti, test e calendario
 
-- **Modelli** (`src/lib/data/templates.js`): la scaletta di un allenamento. Di base: Completo (il programma
-  del foglio), Breve, Servizi e terza palla. Ognuno può crearne di suoi dalla Libreria, anche con esercizi fissi.
+- **Allenamenti** (`src/lib/data/templates.js`): blocchi con durata ed esercizi della libreria (o «del mese»).
+  Di base: Completo, Breve, Servizi e terza palla. I modelli salvati prima della 0.4 (`steps`) si leggono
+  convertiti in blocchi, con le stesse durate.
+- **Pacchetti** (`src/lib/data/packages.js`): due per livello, da 90 e 60 minuti, dalla sezione 4 della
+  ricerca; la partitella ha la variante del livello (sezione 5). Le pause le aggiunge la composizione.
+- **Allenamenti personali**: in `meta.custom.templates`, creati da zero o da un pacchetto. Ogni esercizio si
+  cambia per una sola sessione, oppure si salva l'allenamento modificato come proprio.
 - **Percorsi**: una sequenza di esercizi. Il passo «esercizio del mese» propone il primo senza argento.
 - **Esercizi, percorsi e mesi personali**: in `meta.custom` (exercises, tracks, blocks, templates) di ciascun
   utente; il catalogo (`src/lib/data/catalog.js`) li unisce a quelli di base.
@@ -90,8 +95,8 @@ Nel repository: **Settings → Pages → Source: GitHub Actions**.
 
 Scritto e provato nel browser in modalità locale (`VITE_LOCAL=1 npm run dev` forza la modalità locale anche
 con Firebase configurato), anche a 390 px: wizard, Oggi, sessione dal vivo con obiettivi e medaglie, test,
-diario, progressi, libreria, livello, e il passaggio dei dati della prima versione e della 0.2. Il motore ha
-70 test.
+diario, progressi, libreria, livello, pacchetti, editor degli allenamenti, e il passaggio dei dati della
+prima versione, della 0.2 e dei modelli personali. Il motore ha 84 test.
 
 Non ancora provato: il backend cloud (`src/lib/store/cloud.js`) e le regole Firestore, che richiedono un
 progetto Firebase o gli emulatori (`VITE_EMULATOR=1 npm run dev` insieme a `npm run emulators`).
