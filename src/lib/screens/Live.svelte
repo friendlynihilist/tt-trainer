@@ -15,7 +15,7 @@
   import Repeat from '@lucide/svelte/icons/repeat-2';
   import Plus from '@lucide/svelte/icons/plus';
   import Save from '@lucide/svelte/icons/save';
-  import { app } from '../store/app.svelte.js';
+  import { app, newId } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
   import { loadLive, saveLive, clearLive } from '../store/live.js';
   import { weekFor } from '../engine/plan.js';
@@ -402,6 +402,9 @@
     if (draft.eventId) {
       ev.id = draft.eventId;
       ev.adhoc = true;
+    } else if (draft.newId) {
+      // Le note scritte alla chiusura puntano già a questa voce.
+      ev.id = draft.newId;
     }
     const won = summary?.won ?? [];
     app.saveEvent(ev);
@@ -413,6 +416,20 @@
   }
 
   const FEEL = ['Dura', 'Così così', 'Bene', 'Molto bene', 'Ottima'];
+
+  // ── Nota sul colpo ──────────────────────────────────────────────────────
+  /** L'ultimo esercizio fatto e il suo colpo principale, già pronti per la nota. */
+  const lastDone = $derived.by(() => {
+    const s = [...steps].reverse().find((x) => (x.kind === 'exercise' || x.kind === 'serve') && x.ex);
+    const ex = s && app.catalog.exercise(s.ex);
+    return ex ? { ex: ex.id, stroke: ex.strokes?.find((id) => app.stroke(id)) ?? null } : null;
+  });
+  const sessionNotes = $derived(draft?.newId ? app.notes.filter((n) => n.eventId === draft.newId).length : 0);
+
+  function addNote() {
+    draft.newId ??= draft.eventId ?? newId();
+    ui.open('note', { draft: { stroke: lastDone?.stroke ?? null, ex: lastDone?.ex ?? null, date: draft.date, eventId: draft.newId } });
+  }
 </script>
 
 {#if draft}
@@ -540,6 +557,14 @@
             {#if canSave}
               <button class="btn ghost self" onclick={saveMine}><Save size={16} /> Salva come mio</button>
             {/if}
+
+            <section class="stack g-12">
+              <h2 class="heading">Nota sul colpo</h2>
+              <button class="btn ghost self" onclick={addNote}>
+                <Plus size={16} /> {lastDone?.stroke ? app.strokeName(lastDone.stroke) : 'Aggiungi nota'}
+              </button>
+              {#if sessionNotes}<p class="small muted">{sessionNotes === 1 ? '1 nota salvata' : `${sessionNotes} note salvate`}</p>{/if}
+            </section>
 
             <section class="stack g-12">
               <h2 class="heading">Con chi ti sei allenato</h2>

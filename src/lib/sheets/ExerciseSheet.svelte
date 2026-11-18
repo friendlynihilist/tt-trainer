@@ -14,6 +14,8 @@
   import { fmtDay, fmtShort } from '../util/dates.js';
   import Sheet from '../ui/Sheet.svelte';
   import Medal from '../ui/Medal.svelte';
+  import NoteRow from '../ui/NoteRow.svelte';
+  import { notesForExercise } from '../engine/notes.js';
 
   let { id } = $props();
 
@@ -33,6 +35,7 @@
     return rows.sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 10);
   });
   const family = $derived(ex?.family ? FAMILY[ex.family] : null);
+  const notes = $derived(ex ? notesForExercise(app.notes, ex) : []);
   const imported = $derived(Boolean(ex?.custom && !ex.track && (app.meta?.custom?.exercises ?? []).some((e) => e.id === id)));
 
   function measureText(e) {
@@ -115,6 +118,15 @@
                 <span class="grow">{valueText(ex, d.value, d.tier)}{d.tier ? ` · ${TIER[d.tier].name.toLowerCase()}` : ''}</span>
               </button>
             {/each}
+          </div>
+        </section>
+      {/if}
+
+      {#if notes.length}
+        <section class="stack g-8">
+          <h3 class="heading">Note sui colpi</h3>
+          <div class="card flush list">
+            {#each notes as n (n.id)}<NoteRow note={n} showStroke onclick={() => ui.open('stroke', { id: n.stroke })} />{/each}
           </div>
         </section>
       {/if}

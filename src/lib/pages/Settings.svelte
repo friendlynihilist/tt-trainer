@@ -4,12 +4,9 @@
   import X from '@lucide/svelte/icons/x';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { exerciseLabel } from '../data/catalog.js';
-  import { eventTitle, byTime } from '../engine/events.js';
-  import { attemptsOf } from '../engine/attempts.js';
-  import { valueText, size } from '../engine/medals.js';
+  import { backup, diaryCsv } from '../engine/export.js';
   import { VERSION } from '../data/changelog.js';
-  import { PLAYER_LEVEL, TRIES_PER_DAY } from '../data/library.js';
+  import { PLAYER_LEVEL } from '../data/library.js';
   import { WEEKDAYS_SHORT, fmtLong } from '../util/dates.js';
   import PageHead from '../ui/PageHead.svelte';
   import Avatar from '../ui/Avatar.svelte';
@@ -46,27 +43,12 @@
   }
 
   function exportJson() {
-    download(`terza-palla-${app.today}.json`, JSON.stringify({ exportedAt: new Date().toISOString(), meta: app.meta, events: [...app.events].sort(byTime) }, null, 2), 'application/json');
+    download(`terza-palla-${app.today}.json`, JSON.stringify(backup({ meta: app.meta, events: app.events, notes: app.notes }), null, 2), 'application/json');
   }
 
   function exportCsv() {
-    const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [['Data', 'Tipo', 'Minuti', 'Compagno', 'Misure', 'Colpo da correggere', 'Errore', 'Esercizio', 'Note']];
-    for (const e of [...app.events].sort(byTime)) {
-      if (e.kind === 'livello') continue;
-      // Le misure, comprese quelle delle versioni di prima convertite: «esercizio: valore».
-      const measures = attemptsOf(e, app.catalog)
-        .map((a) => {
-          const ex = app.catalog.exercise(a.ex);
-          const best = a.tries.slice(0, TRIES_PER_DAY[a.fmt] ?? 1).reduce((b, v) => (size(v) > size(b) ? v : b), a.tries[0]);
-          return ex ? `${ex.name}: ${valueText(ex, best, a.tier)}` : '';
-        })
-        .filter(Boolean)
-        .join('; ');
-      rows.push([e.date, eventTitle(e, app.catalog), e.minutes ?? '', e.partner?.name ?? '', measures, app.strokeName(e.focus?.stroke), app.errorName(e.focus?.error), e.focus?.exercise ? exerciseLabel(e.focus.exercise, app.catalog) : '', e.note ?? '']);
-    }
-    // Il BOM fa aprire bene gli accenti a Excel.
-    download(`terza-palla-${app.today}.csv`, '﻿' + rows.map((r) => r.map(cell).join(';')).join('\n'), 'text/csv');
+    const names = { strokeName: (id) => app.strokeName(id), errorName: (id) => app.errorName(id) };
+    download(`terza-palla-${app.today}.csv`, diaryCsv({ events: app.events, notes: app.notes, catalog: app.catalog, names }), 'text/csv');
   }
 
   function wipe() {

@@ -10,6 +10,17 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.5.0',
+    date: '2026-11-19',
+    title: 'Note per colpo',
+    items: [
+      { icon: 'pencil', text: 'Per ogni colpo scrivi come lo senti e cosa vuoi migliorare, con una sensazione da 1 a 5.' },
+      { icon: 'gauge', text: 'Nella scheda del colpo trovi l’ultima sensazione e la media delle ultime cinque.' },
+      { icon: 'swords', text: 'A fine sessione aggiungi una nota al colpo dell’esercizio appena fatto.' },
+      { icon: 'users', text: 'Le note sono solo tue. Le trovi anche nel CSV e nella copia completa.' }
+    ]
+  },
+  {
     version: '0.4.0',
     date: '2026-11-19',
     title: 'Pacchetti e allenamenti tuoi',

@@ -37,6 +37,7 @@
   import ImportSheet from './lib/sheets/ImportSheet.svelte';
   import ExerciseSheet from './lib/sheets/ExerciseSheet.svelte';
   import LevelSheet from './lib/sheets/LevelSheet.svelte';
+  import NoteSheet from './lib/sheets/NoteSheet.svelte';
 
   const PAGES = { oggi: Today, calendario: Calendar, progressi: Progress, libreria: Library, guida: Guide, impostazioni: Settings };
   const SHEETS = {
@@ -54,7 +55,8 @@
     trackedit: TrackEditSheet,
     import: ImportSheet,
     exercise: ExerciseSheet,
-    level: LevelSheet
+    level: LevelSheet,
+    note: NoteSheet
   };
 
   onMount(() => {
