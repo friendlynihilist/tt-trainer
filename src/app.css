@@ -35,11 +35,12 @@
   --c-slate: #687080;
   --c-orange: var(--accent);
 
-  /* Medaglie */
+  /* Medaglie. --m-empty: quanto si vede l'anello di una medaglia ancora da prendere. */
   --m-bronze: #b0703a;
-  --m-silver: #8a96a6;
-  --m-gold: #c99a0e;
-  --m-plat: #4f8fa6;
+  --m-silver: #7f8b9c;
+  --m-gold: #c2920a;
+  --m-plat: #4a879d;
+  --m-empty: 95%;
 
   --serif: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
   --sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -97,6 +98,7 @@
     --m-silver: #b8c3d1;
     --m-gold: #f0c544;
     --m-plat: #8fd1e6;
+    --m-empty: 60%;
     color-scheme: dark;
   }
 }
@@ -134,6 +136,7 @@
   --m-silver: #b8c3d1;
   --m-gold: #f0c544;
   --m-plat: #8fd1e6;
+  --m-empty: 60%;
   color-scheme: dark;
 }
 

@@ -182,17 +182,17 @@
         <button class="btn ghost" onclick={logTraining}>Registra</button>
       </div>
     </section>
-  {:else if !draft && !testToday}
+  {:else if !draft}
     <section class="card stack g-12 rest">
       {#if todayInfo.done.length}
         <strong>Oggi hai già fatto</strong>
         <div class="card flush list inner">
           {#each todayInfo.done as e (e.id)}<EventRow event={e} showDate={false} />{/each}
         </div>
-      {:else}
+      {:else if !testToday}
         <p class="muted">{plan ? 'Oggi niente in calendario.' : 'Nessun piano: puoi allenarti lo stesso.'}</p>
       {/if}
-      {#if upcoming}
+      {#if upcoming && !testToday}
         <span class="small muted">Prossimo</span>
         <div class="card flush list inner"><PlannedRow item={upcoming} showDate /></div>
       {/if}

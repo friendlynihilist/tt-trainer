@@ -8,7 +8,7 @@
   import { FAMILIES } from '../data/taxonomy.js';
   import { totals, weaknesses, weeklyActivity, weekStreak, legacyTests } from '../engine/stats.js';
   import { levelProgress } from '../engine/player.js';
-  import { medalCount, nextGoal, goalText, valueText } from '../engine/medals.js';
+  import { medalCount, nextGoal, valueText } from '../engine/medals.js';
   import { fmtDay, fmtShort } from '../util/dates.js';
   import PageHead from '../ui/PageHead.svelte';
   import TestBars from '../ui/TestBars.svelte';
@@ -42,6 +42,14 @@
   const old = $derived(legacyTests(app.events, app.catalog));
 
   const pct = (have, need) => Math.min(100, need ? (have / need) * 100 : 100);
+
+  /** «Record 22 di fila · prossimo: oro, 20 di fila». */
+  function recentLine(ex, m, goal) {
+    const parts = [];
+    if (m.best != null) parts.push(`Record ${valueText(ex, m.best)}`);
+    if (goal) parts.push(`${parts.length ? 'prossimo' : 'Prossimo'}: ${TIER[goal.tier].name.toLowerCase()}, ${valueText(ex, goal.goal, goal.tier)}`);
+    return parts.join(' · ') || 'Tutte le medaglie prese';
+  }
 </script>
 
 <div class="page enter">
@@ -127,7 +135,7 @@
           <button class="item" onclick={() => ui.open('exercise', { id })}>
             <span class="grow">
               <strong>{ex.name}</strong>
-              <span class="small muted block">Record {valueText(ex, m.best)}{goal ? ` · prossimo: ${goalText(ex, goal).toLowerCase()}` : ''}</span>
+              <span class="small muted block">{recentLine(ex, m, goal)}</span>
             </span>
             <MedalRow exercise={ex} medals={m} />
           </button>

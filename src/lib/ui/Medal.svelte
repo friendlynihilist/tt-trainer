@@ -25,7 +25,7 @@
     width: var(--s);
     height: var(--s);
     border-radius: 50%;
-    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--m) 60%, transparent);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--m) var(--m-empty, 60%), transparent);
     transition:
       background 0.3s var(--ease),
       box-shadow 0.3s var(--ease);
