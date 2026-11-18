@@ -37,6 +37,7 @@
   import StepBody from '../ui/StepBody.svelte';
   import GoalPad, { startGoal, goalTries } from '../ui/GoalPad.svelte';
   import MedalRing from '../ui/MedalRing.svelte';
+  import MedalBadge from '../ui/MedalBadge.svelte';
   import Brick from '../ui/Brick.svelte';
   import { stepFamily, FAMILY_ICON } from '../ui/design.js';
   import { celebrateFinish } from '../util/celebrate.js';
@@ -540,7 +541,7 @@
               {:else}
                 {@const g = nextGoal(stepEx, app.medals[stepEx.id])}
                 <button class="goal-btn raise neutral" onclick={() => (v ? (v.closed = false) : openGoal(step))}>
-                  <MedalRing exercise={stepEx} medals={app.medals[stepEx.id]} size={52} />
+                  <MedalRing exercise={stepEx} medals={app.medals[stepEx.id]} size={60} />
                   <span class="grow">
                     <strong>{v ? 'Torna all’obiettivo' : 'Prova l’obiettivo'}</strong>
                     <span class="small muted block">{g ? `${TIER[g.tier].name} · ${valueText(stepEx, g.goal, g.tier)}` : 'Tutte le medaglie prese'}</span>
@@ -582,7 +583,7 @@
                 {#each summary.won as w, i (w.ex + w.tier + (w.half ? 'h' : ''))}
                   {@const ex = app.catalog.exercise(w.ex)}
                   <div class="won" data-medal={w.tier} style:animation-delay="{i * 90}ms">
-                    <span class="won-disc" class:half={w.half}></span>
+                    <span class="won-pop" style:animation-delay="{i * 90}ms"><MedalBadge tier={w.tier} half={w.half} size={64} label={false} /></span>
                     <strong>{w.half ? 'Metà oro' : TIER[w.tier].name}</strong>
                     <span class="small muted">{ex?.name}</span>
                   </div>
@@ -999,17 +1000,9 @@
     font-size: 17px;
     font-weight: 750;
   }
-  .won-disc {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 34% 30%, color-mix(in srgb, #fff 50%, var(--md)), var(--md) 64%);
-    box-shadow: 0 3px 0 color-mix(in srgb, #000 22%, var(--md));
+  .won-pop {
+    display: grid;
     animation: medal-in 0.75s var(--spring) both;
-    animation-delay: inherit;
-  }
-  .won-disc.half {
-    background: linear-gradient(90deg, var(--md) 50%, var(--medal-none) 50%);
   }
   .group {
     display: flex;

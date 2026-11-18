@@ -26,8 +26,8 @@
   import { medalsFor, dayValues, valueText, size } from '../engine/medals.js';
   import { chime } from '../util/device.js';
   import { celebrateMedal } from '../util/celebrate.js';
-  import Medal from './Medal.svelte';
   import MedalRing from './MedalRing.svelte';
+  import MedalBadge from './MedalBadge.svelte';
   import TestPad from './TestPad.svelte';
   import Counter from './Counter.svelte';
 
@@ -98,7 +98,7 @@
 <section class="card goal" data-medal={goal?.tier ?? 'P'}>
   <header>
     {#if goal}
-      <MedalRing {exercise} medals={after} size={48} />
+      <MedalRing {exercise} medals={after} size={56} />
       <div class="grow">
         <strong>Raggiungi {TIER[goal.tier].the}!</strong>
         <p class="small muted">{valueText(exercise, goal.goal, goal.tier)}{goal.half ? '. Ti manca un’altra seduta' : ''}</p>
@@ -160,13 +160,13 @@
     <div class="outcome">
       {#each gained as t (t)}
         <div class="won" data-tier={t} data-medal={t}>
-          <Medal tier={t} size={40} pop />
+          <MedalBadge tier={t} size={44} pop />
           <strong>{TIER[t].name}!</strong>
         </div>
       {/each}
       {#if halfNew}
         <div class="won" data-tier="O" data-medal="O">
-          <Medal tier="O" half size={40} pop />
+          <MedalBadge tier="O" half size={44} pop />
           <span><strong>Metà oro.</strong> Ti serve un’altra seduta, in un altro giorno.</span>
         </div>
       {/if}

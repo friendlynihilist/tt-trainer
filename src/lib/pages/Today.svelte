@@ -302,7 +302,7 @@
         {#each tiles as id (id)}
           {@const ex = app.catalog.exercise(id)}
           <button class="tile" onclick={() => ui.open('exercise', { id })}>
-            <MedalRing exercise={ex} medals={app.medals[id]} size={60} />
+            <MedalRing exercise={ex} medals={app.medals[id]} size={72} />
             <span class="tile-name">{ex.name}</span>
             <span class="tile-next" class:near={near.some((n) => n.ex === id)}>{nextShort(ex)}</span>
           </button>
@@ -341,7 +341,7 @@
                     {#if MIcon}<span><MIcon size={13} /> {measureLabel(ex)}</span>{/if}
                   </span>
                 </button>
-                {#if ex}<MedalRing exercise={ex} medals={app.medals[s.ex]} size={36} />{/if}
+                {#if ex}<MedalRing exercise={ex} medals={app.medals[s.ex]} size={42} />{/if}
                 {#if s.kind === 'exercise'}
                   <button class="round sm" onclick={() => change(s)} aria-label="Cambia esercizio: {s.name}"><Shuffle size={17} /></button>
                 {/if}

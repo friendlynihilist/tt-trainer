@@ -156,7 +156,7 @@ Un blocco della sessione. Tinta piena della famiglia, rilievo, arrotondamento 24
 Fondo tenue della famiglia, icona della famiglia, nome (18, peso 700), badge del livello, parametri con icona e unità (`timer 6 min`, `target su 10`, `link di fila`), anello della medaglia a destra.
 
 ### Medaglia con anello (`MedalRing`)
-Un cerchio con l'anello di avanzamento verso il gradino dopo (record ÷ soglia). Dentro, la medaglia più alta presa, colorata; grigia se non c'è ancora. Sotto, il gradino dopo in breve («oro · 20»). Animazione: l'anello si riempie con una molla, la medaglia nuova entra con un rimbalzo.
+Un cerchio con l'anello di avanzamento verso il gradino dopo (record ÷ soglia). Dentro, lo scudo della medaglia più alta presa, a colori; se non c'è ancora, lo scudo del gradino dopo in grigio; con la metà oro, uno scudo metà oro e metà grigio. Gli scudi sono disegni in `src/assets/medals/` (bronzo, argento, oro, platino), usati dal componente `MedalBadge`. Sotto, il gradino dopo in breve («oro · 20»). Animazione: l'anello si riempie con una molla, la medaglia nuova entra con un rimbalzo.
 
 ### Badge del livello (`LevelBadge`)
 Pillola con il colore del livello, cinque tacche (piene fino al livello) e il nome in maiuscolo. Si tocca per cambiare livello.
