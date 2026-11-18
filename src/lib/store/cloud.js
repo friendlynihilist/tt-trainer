@@ -145,7 +145,9 @@ export function createCloudBackend(config, { emulator = false } = {}) {
       const subs = [
         onSnapshot(userRef(uid), (snap) => h.meta(snap.exists() ? snap.data() : null), fail),
         onSnapshot(eventsRef(uid), (snap) => h.events(list(snap)), fail),
-        onSnapshot(notesRef(uid), (snap) => h.notes?.(list(snap)), fail),
+        // Le note hanno un errore tutto loro: se le regole sul server non sono ancora quelle della
+        // 0.5, il resto dell'app deve funzionare lo stesso (niente nuovo controllo dell'accesso).
+        onSnapshot(notesRef(uid), (snap) => h.notes?.(list(snap)), (err) => console.warn('Note non disponibili', err?.code ?? err)),
         onSnapshot(collection(db, 'profiles'), (snap) => h.profiles?.(list(snap)), fail),
         onSnapshot(accessRef, (snap) => h.access?.(snap.data() ?? null), fail)
       ];
