@@ -13,7 +13,7 @@
   import { loadLive, clearLive } from '../store/live.js';
   import { startItem, logItem, weekOf, proposalFor } from '../store/actions.js';
   import { weekAt, removeWeek } from '../engine/plan.js';
-  import { agenda } from '../engine/events.js';
+  import { agenda, byTime } from '../engine/events.js';
   import { composeSession, templateWithOverrides } from '../engine/compose.js';
   import { packagesOf } from '../data/packages.js';
   import { pickExercise, pickTemplate } from '../ui/pickers.js';
@@ -59,9 +59,16 @@
   const proposal = $derived(testToday ? proposalFor(app.today) : []);
   const near = $derived(nearGoals({ medals: app.medals, catalog: app.catalog }));
   const focus = $derived(lastFocus(app.events));
-  // Prima i pacchetti del tuo livello, poi i modelli; «Altri» apre tutto.
+  // I pacchetti del tuo livello e al massimo i 3 allenamenti usati più di recente; «Altri» apre tutto.
   const templates = $derived.by(() => {
-    const list = [...packagesOf(app.player.level), ...Object.values(app.catalog.templates)];
+    const list = [...packagesOf(app.player.level)];
+    const recent = [...app.events]
+      .filter((e) => e.kind === 'training' && e.template && e.template !== 'auto' && app.catalog.hasTemplate(e.template))
+      .sort((a, b) => byTime(b, a));
+    for (const e of recent) {
+      if (list.length >= packagesOf(app.player.level).length + 3) break;
+      if (!list.some((t) => t.id === e.template)) list.push(app.catalog.template(e.template));
+    }
     if (template && !list.some((t) => t.id === template.id)) list.unshift(template);
     return list;
   });
@@ -212,7 +219,7 @@
       <div class="top">
         <span class="small muted">{trainingToday ? 'In calendario oggi' : 'Allenamento di oggi'}</span>
         <h2 class="title">{template.name}</h2>
-        <p class="muted">{session.minutes} min · {session.exercises.length} esercizi</p>
+        <p class="muted">{session.minutes} min · {session.exercises.length} {session.exercises.length === 1 ? 'esercizio' : 'esercizi'}</p>
       </div>
       <div class="chips tpls" role="group" aria-label="Allenamento">
         {#each templates as t (t.id)}

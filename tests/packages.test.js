@@ -111,7 +111,7 @@ describe('sostituire un esercizio', () => {
     const mine = templateWithOverrides(p, { 'b2-1': 'top-r-random', 'b9-9': 'x', 'b1': 'srv-rovescio' });
     expect(mine.id).toBeUndefined();
     expect(mine.package).toBeUndefined();
-    expect(mine.pauses).toBe('extra');
+    expect(mine.pauses).toBeUndefined();
     expect(mine.blocks[2].items.map((it) => it.ex)).toEqual(['top-d-block', 'top-r-random', 'top-d-due-punti']);
     expect(templateMinutes(mine)).toBe(90);
     const cat = buildCatalog({ templates: [{ ...mine, id: 'cmio', name: 'Mio' }] });
@@ -138,16 +138,18 @@ describe('modelli personali di prima', () => {
 
   it('si leggono nel formato a blocchi senza perdere niente', () => {
     const t = normalizeTemplate(old);
-    expect(t).toMatchObject({ id: 'cvecchio', name: 'Rovescio 60′', color: 'pink', pauses: 'inside' });
+    expect(t).toMatchObject({ id: 'cvecchio', name: 'Rovescio 60′', color: 'pink' });
     expect(t.steps).toBeUndefined();
+    expect(t.pauses).toBeUndefined();
+    // Ogni blocco dopo il primo perde un minuto: la pausa ora si aggiunge.
     expect(t.blocks.map((b) => [b.role, b.minutes, b.items])).toEqual([
       ['warmup', 10, []],
-      ['serve', 10, []],
-      [null, 15, [{ focus: 2 }]],
-      [null, 10, [{ track: '3-2' }]],
-      [null, 5, [{ ex: 'ric-flip-r' }]],
-      [null, 5, [{ free: true, name: 'Multiball', text: 'Palle veloci' }]],
-      ['match', 5, []]
+      ['serve', 9, []],
+      [null, 14, [{ focus: 2 }]],
+      [null, 9, [{ track: '3-2' }]],
+      [null, 4, [{ ex: 'ric-flip-r' }]],
+      [null, 4, [{ free: true, name: 'Multiball', text: 'Palle veloci' }]],
+      ['match', 4, []]
     ]);
     expect(t.blocks[0].text).toBe('Solo rovescio');
     expect(t.blocks[6].text).toBe('Ai 7');
@@ -179,6 +181,14 @@ describe('modelli personali di prima', () => {
     expect(s.steps.at(-1).note).toBe('Ai 7');
     expect(s.steps[4]).toMatchObject({ track: '1-2' });
     expect(cat.template('cvecchio').custom).toBe(true);
+  });
+
+  it('anche quelli già a blocchi con la pausa tolta al blocco dopo', () => {
+    const t = normalizeTemplate({ id: 'cb', name: 'B', pauses: 'inside', blocks: [{ name: 'A', minutes: 20, items: [{ ex: 'ap-d' }] }, { name: 'B', minutes: 20, items: [{ ex: 'ap-r' }] }] });
+    expect(t.blocks.map((b) => b.minutes)).toEqual([20, 19]);
+    expect(templateMinutes(t)).toBe(40);
+    // Quelli nuovi non si toccano.
+    expect(normalizeTemplate({ blocks: [{ name: 'A', minutes: 20, items: [] }, { name: 'B', minutes: 20, items: [] }] }).blocks.map((b) => b.minutes)).toEqual([20, 20]);
   });
 
   it('i modelli di base hanno le durate di sempre', () => {

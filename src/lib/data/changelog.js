@@ -17,9 +17,10 @@ export const CHANGELOG = [
       { icon: 'library', text: 'Per ogni livello ci sono due pacchetti, da 90 e da 60 minuti. In Oggi trovi quelli del tuo livello.' },
       { icon: 'swap', text: 'Ogni esercizio si cambia con un tocco, prima di iniziare o durante la sessione.' },
       { icon: 'pencil', text: 'Crea i tuoi allenamenti a blocchi, da zero o da un pacchetto.' },
-      { icon: 'swords', text: 'La partitella ha la variante del tuo livello e gli schemi della libreria.' }
+      { icon: 'swords', text: 'La partitella ha la variante del tuo livello e gli schemi della libreria.' },
+      { icon: 'users', text: 'Negli esercizi l’app suona «Cambio» ogni 5 minuti, così vi alternate. Si spegne da Impostazioni.' }
     ],
-    note: 'I tuoi modelli di prima ci sono ancora, uguali.'
+    note: 'I tuoi modelli di prima ci sono ancora, con la stessa durata.'
   },
   {
     version: '0.3.0',

@@ -149,7 +149,7 @@ describe('composizione della sessione', () => {
     expect(t.steps.map((x) => x.minutes)).toEqual([20, 10, 10]); // il modello salvato non cambia
   });
 
-  it('Breve e Servizi tengono la loro durata: il minuto di pausa si toglie al blocco dopo', () => {
+  it('Breve e Servizi tengono la loro durata: le pause si aggiungono ai blocchi', () => {
     const breve = composeSession({ week: weekAt(plan, 0), template: TEMPLATES.breve });
     expect(breve.steps.map((x) => x.minutes)).toEqual([10, 1, 19, 1, 19, 1, 9]);
     expect(breve.minutes).toBe(templateMinutes(TEMPLATES.breve));
@@ -162,8 +162,8 @@ describe('composizione della sessione', () => {
       ['free', 14]
     ]);
     expect(servizi.minutes).toBe(40);
-    // I modelli di base restano quelli di prima.
-    expect(TEMPLATES.completo.blocks.map((x) => x.minutes)).toEqual([10, 15, 25, 25, 15]);
+    // Le pause si aggiungono: i blocchi dopo il primo hanno un minuto in meno, il totale resta 90.
+    expect(TEMPLATES.completo.blocks.map((x) => x.minutes)).toEqual([10, 14, 24, 24, 14]);
   });
 
   it('le pause non contano come esercizi né come percorsi allenati', () => {
@@ -175,16 +175,17 @@ describe('composizione della sessione', () => {
     expect(s.trained).toEqual(['1-1', '1-2']);
   });
 
-  it('niente pausa prima di un blocco da un minuto, né prima del primo', () => {
+  it('niente pausa prima del primo blocco; un blocco da un minuto resta da un minuto', () => {
     const t = { id: 'c2', steps: [{ type: 'free', name: 'A', minutes: 5 }, { type: 'free', name: 'B', minutes: 1 }, { type: 'match', minutes: 6 }] };
     const s = composeSession({ week: weekAt(plan, 0), template: t });
     expect(s.steps.map((x) => [x.kind, x.minutes])).toEqual([
       ['free', 5],
+      ['pause', 1],
       ['free', 1],
       ['pause', 1],
       ['match', 5]
     ]);
-    expect(s.minutes).toBe(12);
+    expect(s.minutes).toBe(13); // l'unico caso in cui la durata cresce: un blocco da un minuto non si accorcia
     expect(composeSession({ week: weekAt(plan, 0), template: t, pauses: false }).steps).toHaveLength(3);
   });
 

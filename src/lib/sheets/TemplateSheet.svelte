@@ -35,7 +35,7 @@
   );
 
   const month = $derived(weekOf(app.today)?.focusBlock ?? app.catalog.block('1'));
-  const total = $derived(templateMinutes({ pauses: source?.pauses ?? 'extra', blocks }));
+  const total = $derived(templateMinutes({ blocks }));
   const usedBy = $derived(id ? (app.plan?.slots ?? []).filter((s) => s.template === id).length : 0);
   const hasMatch = $derived(blocks.some((b) => b.role === 'match'));
 
@@ -121,7 +121,6 @@
       id: source?.custom ? source.id : undefined,
       name: name.trim(),
       color,
-      pauses: source?.pauses ?? 'extra',
       blocks: clean()
     });
     ui.close();
@@ -130,7 +129,7 @@
 
   function duplicate() {
     ui.close();
-    ui.open('template', { draft: { name: `${source.name} (mio)`, color: source.color === 'blue' ? 'violet' : source.color, pauses: source.pauses, blocks: source.blocks } });
+    ui.open('template', { draft: { name: `${source.name} (mio)`, color: source.color === 'blue' ? 'violet' : source.color, blocks: source.blocks } });
   }
 
   function remove() {

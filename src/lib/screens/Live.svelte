@@ -172,6 +172,38 @@
       bell([988], 200);
       ui.toast(`Ultimi ${step.maint.minutes} minuti: mantenimento`);
     }
+    if (step.kind === 'exercise' && app.settings.turns) checkTurn(sec);
+  }
+
+  // ── Turni ─────────────────────────────────────────────────────────────────
+  // In un blocco di esercizi i due giocatori si alternano ogni 5 minuti. Conta il tempo passato nel
+  // blocco intero (tutti i suoi esercizi), non solo nell'esercizio in corso.
+
+  const TURN = 5 * 60;
+  let flash = $state(false);
+  let flashTimer = null;
+
+  function timerSec(id) {
+    const t = draft.timers[id];
+    return t ? t.acc + (t.since ? (Date.now() - t.since) / 1000 : 0) : 0;
+  }
+
+  function checkTurn(sec) {
+    const same = step.block ? steps.filter((x) => x.kind === 'exercise' && x.block?.index === step.block.index) : [step];
+    const key = step.block ? `b${step.block.index}` : step.id;
+    const before = same.slice(0, same.indexOf(step)).reduce((n, x) => n + timerSec(x.id), 0);
+    const inBlock = before + sec;
+    const total = same.reduce((n, x) => n + x.minutes, 0) * 60;
+    const turns = Math.floor(inBlock / TURN);
+    draft.turns ??= {};
+    if (turns <= (draft.turns[key] ?? 0)) return;
+    draft.turns[key] = turns;
+    // Allo scadere del blocco suona già la fine: niente cambio negli ultimi secondi.
+    if (inBlock >= total - 30) return;
+    bell([988, 784], [120, 80, 120]);
+    flash = true;
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => (flash = false), 4000);
   }
 
   onMount(() => {
@@ -404,6 +436,9 @@
       {#key draft.step}
         <div class="content" in:fly={{ x: 32 * dir, duration: 400, easing: cubicOut }}>
           {#if !closing}
+            {#if flash}
+              <div class="turn" in:fly={{ y: -12, duration: 300 }} out:fade={{ duration: 300 }}>Cambio</div>
+            {/if}
             <div class="clock">
               <button class="time mono" class:over={remaining < 0} class:idle={!running} onclick={toggle} aria-label={running ? 'Pausa' : 'Avvia'}>
                 {remaining < 0 ? '+' : ''}{fmtClock(Math.abs(remaining))}
@@ -676,6 +711,16 @@
     gap: 22px;
   }
 
+  .turn {
+    align-self: center;
+    padding: 6px 18px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #15171a;
+    font-weight: 650;
+    font-size: 18px;
+    margin-bottom: -8px;
+  }
   .clock {
     display: flex;
     align-items: center;

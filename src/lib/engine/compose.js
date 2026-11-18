@@ -3,8 +3,7 @@
 // argento); è solo una proposta, e ogni esercizio si cambia con qualsiasi altro della libreria.
 //
 // Un blocco con più esercizi diventa una fila di passi, uno per esercizio, con il tempo diviso in
-// parti uguali. Fra un blocco e l'altro c'è un minuto di pausa: con `pauses: 'inside'` si toglie al
-// blocco dopo (la durata non cambia, come nella 0.2), con 'extra' si aggiunge (i pacchetti: 85 + 5).
+// parti uguali. Fra un blocco e l'altro c'è un minuto di pausa, aggiunto (i pacchetti: 85 + 5 = 90).
 
 import { WARMUP_TEXT, PAUSE_MINUTES, SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
 import { BASE, serveExercise } from '../data/catalog.js';
@@ -107,7 +106,7 @@ export function composeSession({ week, template, catalog = BASE, medals = {}, pa
     if (changed.length) groups.push(changed);
   });
 
-  const all = pauses ? withPauses(groups, t?.pauses) : groups.flat();
+  const all = pauses ? withPauses(groups) : groups.flat();
   return {
     block: month,
     template: t ? { id: t.id, name: t.name, color: t.color } : null,
@@ -118,23 +117,12 @@ export function composeSession({ week, template, catalog = BASE, medals = {}, pa
   };
 }
 
-/**
- * Un minuto di pausa prima di ogni blocco tranne il primo. 'inside': tolto al blocco stesso (niente
- * pausa prima di un blocco da un minuto); 'extra': aggiunto. Accetta anche passi singoli.
- */
-export function withPauses(groups, mode = 'inside') {
+/** Un minuto di pausa prima di ogni blocco tranne il primo, aggiunto. Accetta anche passi singoli. */
+export function withPauses(groups) {
   const list = groups.map((g) => (Array.isArray(g) ? g : [g]));
   const out = [];
   list.forEach((g, i) => {
-    const first = g[0];
-    if (i > 0 && first) {
-      const pause = { id: `pause-${first.id}`, kind: 'pause', name: 'Pausa', minutes: PAUSE_MINUTES };
-      if (mode === 'extra') out.push(pause);
-      else if (first.minutes > PAUSE_MINUTES) {
-        out.push(pause);
-        first.minutes -= PAUSE_MINUTES;
-      }
-    }
+    if (i > 0 && g[0]) out.push({ id: `pause-${g[0].id}`, kind: 'pause', name: 'Pausa', minutes: PAUSE_MINUTES });
     out.push(...g);
   });
   return out;

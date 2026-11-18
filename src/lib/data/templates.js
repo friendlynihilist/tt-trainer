@@ -10,12 +10,13 @@
 //   · schemes (solo partitella): gli schemi della partitella a schema; vuoto = quelli del mese.
 //   · level (solo partitella): la variante per livello (packages.js, MATCH_VARIANTS).
 //
-// Un allenamento: { id, name, color, blocks, pauses }. `pauses` dice come entra il minuto di pausa
-// fra un blocco e l'altro: 'inside' lo toglie al blocco dopo (la durata resta quella dei blocchi,
-// come nella 0.2), 'extra' lo aggiunge (90 minuti = 85 di blocchi + 5 pause, come nella ricerca).
+// Un allenamento: { id, name, color, blocks }. Fra un blocco e l'altro c'è sempre un minuto di
+// pausa, che si aggiunge alla durata dei blocchi (90 minuti = 85 di blocchi + 5 pause).
 //
-// I modelli salvati prima della 0.4 hanno `steps`: si leggono convertiti (normalizeTemplate), con
-// le stesse durate, senza riscriverli. Si salvano nel formato nuovo solo quando li modifichi.
+// Prima della 0.4 la pausa si toglieva al blocco dopo. I modelli salvati così (`steps`, oppure
+// blocchi con `pauses: 'inside'`) si leggono convertiti (normalizeTemplate): ogni blocco dopo il
+// primo perde un minuto, quindi la durata totale resta la stessa. Non si riscrivono: si salvano nel
+// formato nuovo solo quando li modifichi.
 
 export const COLORS = ['blue', 'sky', 'violet', 'teal', 'amber', 'pink', 'brown', 'plum', 'slate', 'orange'];
 
@@ -41,28 +42,25 @@ export const TEMPLATES = {
     id: 'completo',
     name: 'Completo',
     color: 'blue',
-    pauses: 'inside',
     about: 'La sessione del piano, con i due esercizi del mese.',
-    blocks: [warmup(10), serve(15), focus(25, 1), focus(25, 2), match(15)]
+    blocks: [warmup(10), serve(14), focus(24, 1), focus(24, 2), match(14)]
   },
   breve: {
     id: 'breve',
     name: 'Breve',
     color: 'sky',
-    pauses: 'inside',
     about: 'Un’ora, senza il blocco servizi.',
-    blocks: [warmup(10), focus(20, 1), focus(20, 2), match(10)]
+    blocks: [warmup(10), focus(19, 1), focus(19, 2), match(9)]
   },
   servizi: {
     id: 'servizi',
     name: 'Servizi e terza palla',
     color: 'amber',
-    pauses: 'inside',
     about: 'Quaranta minuti sull’inizio del punto.',
     blocks: [
       warmup(5),
-      serve(20),
-      block('Terza palla', 15, [
+      serve(19),
+      block('Terza palla', 14, [
         { free: true, name: 'Terza palla', text: 'Servi con la variante del mese, il compagno risponde come vuole: attacchi la terza palla e si gioca il punto.' }
       ])
     ]
@@ -70,7 +68,7 @@ export const TEMPLATES = {
 };
 
 /** Le sessioni «Su misura» della 0.2: nel diario si leggono ancora così, ma non si creano più. */
-export const AUTO_TEMPLATE = { id: 'auto', name: 'Su misura', color: 'plum', hidden: true, pauses: 'inside', blocks: [] };
+export const AUTO_TEMPLATE = { id: 'auto', name: 'Su misura', color: 'plum', hidden: true, blocks: [] };
 
 export const DEFAULT_TEMPLATE = 'completo';
 
@@ -101,25 +99,32 @@ export function stepToBlock(s) {
   }
 }
 
+/**
+ * Pausa tolta al blocco dopo → pausa aggiunta: ogni blocco dopo il primo perde un minuto, così la
+ * durata totale non cambia (un blocco da un minuto resta da un minuto).
+ */
+function pausesOutside(blocks) {
+  return blocks.map((b, i) => (i > 0 && b.minutes > 1 ? { ...b, minutes: b.minutes - 1 } : b));
+}
+
 /** Un allenamento come è salvato → come lo usa l'app. Non modifica l'originale. */
 export function normalizeTemplate(t) {
   if (!t) return null;
+  const { steps, pauses, ...rest } = t;
+  let blocks;
   if (Array.isArray(t.blocks)) {
-    return {
-      ...t,
-      pauses: t.pauses === 'inside' ? 'inside' : 'extra',
-      blocks: t.blocks.map((b) => ({ ...b, role: b.role ?? null, items: b.items ?? [] }))
-    };
+    blocks = t.blocks.map((b) => ({ ...b, role: b.role ?? null, items: b.items ?? [] }));
+    if (pauses === 'inside') blocks = pausesOutside(blocks);
+  } else {
+    // Formato di prima (0.1-0.3): passi in fila, pause tolte al blocco dopo.
+    blocks = pausesOutside((steps ?? []).map(stepToBlock).filter(Boolean));
   }
-  // Formato di prima (0.1-0.3): passi in fila, pause tolte al blocco dopo.
-  const { steps, ...rest } = t;
-  return { ...rest, pauses: 'inside', blocks: (steps ?? []).map(stepToBlock).filter(Boolean) };
+  return { ...rest, blocks };
 }
 
-/** La durata di un allenamento, pause comprese. */
+/** La durata di un allenamento, pause comprese: i blocchi più un minuto fra l'uno e l'altro. */
 export function templateMinutes(t) {
   const n = normalizeTemplate(t);
   if (!n) return 0;
-  const sum = n.blocks.reduce((m, b) => m + (Number(b.minutes) || 0), 0);
-  return n.pauses === 'extra' ? sum + Math.max(0, n.blocks.length - 1) : sum;
+  return n.blocks.reduce((m, b) => m + (Number(b.minutes) || 0), 0) + Math.max(0, n.blocks.length - 1);
 }

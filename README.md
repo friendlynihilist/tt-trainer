@@ -42,7 +42,7 @@ impediscono di leggere o scrivere quelli degli altri.
 
 - **Allenamenti** (`src/lib/data/templates.js`): blocchi con durata ed esercizi della libreria (o «del mese»).
   Di base: Completo, Breve, Servizi e terza palla. I modelli salvati prima della 0.4 (`steps`) si leggono
-  convertiti in blocchi, con le stesse durate.
+  convertiti in blocchi, con la stessa durata totale (la pausa ora si aggiunge sempre fra i blocchi).
 - **Pacchetti** (`src/lib/data/packages.js`): due per livello, da 90 e 60 minuti, dalla sezione 4 della
   ricerca; la partitella ha la variante del livello (sezione 5). Le pause le aggiunge la composizione.
 - **Allenamenti personali**: in `meta.custom.templates`, creati da zero o da un pacchetto. Ogni esercizio si

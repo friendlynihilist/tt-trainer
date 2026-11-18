@@ -1,7 +1,7 @@
 // I pacchetti per livello: due allenamenti per ogni livello, da 90 e da 60 minuti, presi dalle tabelle
 // della sezione 4 di docs/ricerca-livelli-esercizi.md. Ogni blocco ha la sua durata e gli esercizi
-// della libreria (library.js). Le pause non stanno qui: le aggiunge la composizione (pauses 'extra':
-// 85 minuti di blocchi + 5 pause = 90; 56 + 4 = 60).
+// della libreria (library.js). Le pause non stanno qui: le aggiunge la composizione (85 minuti di
+// blocchi + 5 pause = 90; 56 + 4 = 60).
 //
 // Dove la tabella scrive «X o Y» il blocco usa la prima voce: le altre si scelgono sostituendo
 // l'esercizio. I pacchetti sono una proposta: si sceglie quello di qualsiasi livello.
@@ -135,7 +135,6 @@ export const PACKAGES = Object.fromEntries(
         package: true,
         level,
         minutes,
-        pauses: 'extra',
         blocks: BLOCKS[level][minutes]
       }
     ])
