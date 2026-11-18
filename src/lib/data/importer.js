@@ -3,6 +3,7 @@
 // prima e dopo il JSON. Reimportare lo stesso «id» aggiorna invece di duplicare.
 
 import { MAX_LEVELS, SERVES } from './catalog.js';
+import { SCHEMES, DEFAULT_SCHEME } from './program.js';
 import { COLORS, STEP_TYPES } from './templates.js';
 
 export const IMPORT_EXAMPLE = {
@@ -28,7 +29,7 @@ export const IMPORT_EXAMPLE = {
       ]
     }
   ],
-  mesi: [{ id: 'mese-flip', tema: 'Gioco corto', percorsi: ['flip-dritto', '3-2'], mantenimento: '2-2', servizi: '1-S', regola: 'Punto doppio se lo apri con un flip.' }],
+  mesi: [{ id: 'mese-flip', tema: 'Gioco corto', percorsi: ['flip-dritto', '3-2'], mantenimento: '2-2', servizi: '1-S', schema: 'ric-corta' }],
   allenamenti: [
     {
       id: 'corto-60',
@@ -174,7 +175,7 @@ export function parseImport(text, catalog) {
       tracks,
       maint: trackRef(pick(raw, 'mantenimento', 'maint'), `Mese «${theme}»`),
       serve: SERVES[serve] ? serve : '1-S',
-      rule: str(pick(raw, 'regola', 'rule'), 200) || 'Set normali.'
+      scheme: SCHEMES[str(pick(raw, 'schema', 'scheme'), 20)] ? str(pick(raw, 'schema', 'scheme'), 20) : DEFAULT_SCHEME
     });
   }
 
@@ -228,7 +229,7 @@ Regole:
 - «percorsi»: un esercizio che progredisce per livelli (da 1 a ${MAX_LEVELS}, di solito 5), dal più guidato al punto giocato. Ogni livello ha nome, esercizio (cosa si fa), test (10 tentativi: cosa si conta) e obiettivo (come deve venire la palla).
 - Si sale di livello con due test di fila da almeno 8 su 10 e si scende con 4 o meno: il test deve essere misurabile su 10.
 - «lato»: "D" dritto, "R" rovescio, oppure null.
-- «mesi»: un tema con 1–3 percorsi (per id o per nome; i percorsi di base sono "1-1" top di dritto, "1-2" apertura di dritto, "2-1" top di rovescio, "2-2" apertura di rovescio, "3-1" servizio e apertura, "3-2" ricezione tagliata), un percorso di mantenimento facoltativo, il lavoro sui servizi ("1-S", "2-S" o "3-S") e la regola della partitella.
+- «mesi»: un tema con 1–3 percorsi (per id o per nome; i percorsi di base sono "1-1" top di dritto, "1-2" apertura di dritto, "2-1" top di rovescio, "2-2" apertura di rovescio, "3-1" servizio e apertura, "3-2" ricezione tagliata), un percorso di mantenimento facoltativo, il lavoro sui servizi ("1-S", "2-S" o "3-S") e lo schema della partitella a schema (${Object.values(SCHEMES).map((x) => `"${x.id}" ${x.name.toLowerCase()}`).join(', ')}).
 - «allenamenti»: una scaletta di passi. Tipi: "riscaldamento", "servizi", "mese" (con "quale": 1, 2 o 3 = il percorso del mese in corso), "percorso" (con "percorso": id o nome), "libero" (con "nome" e "testo"), "partitella". Ogni passo ha "minuti".
 - Colori possibili: ${COLORS.join(', ')}.
 - Gli "id" sono facoltativi ma utili: reimportando lo stesso id si aggiorna invece di duplicare.`;

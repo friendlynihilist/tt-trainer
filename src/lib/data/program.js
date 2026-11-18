@@ -5,14 +5,42 @@
 export const LEVELS = 5;
 export const TEST_ATTEMPTS = 10;
 
-/** Fasi della sessione da 90 minuti. */
+/** Fasi della sessione da 90 minuti, con il minuto di pausa preso dalla fase dopo. */
 export const PHASES = [
   { id: 'warmup', name: 'Riscaldamento', minutes: 10 },
-  { id: 'serve', name: 'Servizi e ricezione', minutes: 15 },
-  { id: 'ex1', name: 'Esercizio 1', minutes: 25 },
-  { id: 'ex2', name: 'Esercizio 2', minutes: 25 },
-  { id: 'match', name: 'Partitella', minutes: 15 }
+  { id: 'serve', name: 'Servizi e ricezione', minutes: 14 },
+  { id: 'ex1', name: 'Esercizio 1', minutes: 24 },
+  { id: 'ex2', name: 'Esercizio 2', minutes: 24 },
+  { id: 'match', name: 'Partitella', minutes: 14 }
 ];
+
+/** La pausa fra un blocco e l'altro della sessione. */
+export const PAUSE_MINUTES = 1;
+
+/** I due tipi di partitella: metà tempo ciascuno, a metà suona il cambio. */
+export const MATCH_TYPES = {
+  risk: {
+    name: 'Partitella rischiosa',
+    text: 'Ogni set parte da 9-10. A ogni set si cambia chi è avanti.',
+    why: 'Allena i punti decisivi.'
+  },
+  scheme: {
+    name: 'Partitella a schema',
+    text: 'Chi esegue bene lo schema fa il punto. Se lo schema salta, si gioca il punto normalmente.',
+    why: 'Allena i colpi del mese dentro il punto.'
+  }
+};
+
+/** Gli schemi della partitella a schema. `block` è il mese a cui sono legati. */
+export const SCHEMES = {
+  'ap-d': { id: 'ap-d', block: '1', name: 'Apertura di dritto', text: 'Servizio corto tagliato, risposta tagliata lunga sul dritto, apertura in top di dritto.' },
+  'top-d': { id: 'top-d', block: '1', name: 'Top di dritto', text: 'Servizio lungo senza taglio sul dritto, top di dritto.' },
+  'ap-r': { id: 'ap-r', block: '2', name: 'Apertura di rovescio', text: 'Servizio corto tagliato, risposta tagliata lunga sul rovescio, apertura in top di rovescio.' },
+  'top-r': { id: 'top-r', block: '2', name: 'Top di rovescio', text: 'Servizio lungo senza taglio sul rovescio, top di rovescio.' },
+  terza: { id: 'terza', block: '3', name: 'Terza palla', text: 'Servizio corto tagliato, risposta tagliata lunga dove vuole il compagno, apertura in top dal lato giusto.' },
+  'ric-corta': { id: 'ric-corta', block: '3', name: 'Ricezione corta', text: 'Servizio corto tagliato, risposta tagliata corta con doppio rimbalzo.' }
+};
+export const DEFAULT_SCHEME = 'ap-d';
 
 export const WARMUP_TEXT = 'Dritto e rovescio in diagonale, top su block da tutti e due i lati.';
 export const VALID_ATTEMPT =
@@ -252,7 +280,7 @@ export const BLOCKS = {
     theme: 'Dritto',
     tracks: ['1-1', '1-2'],
     maint: null,
-    rule: 'Punto doppio se nasce da una tua apertura di dritto.',
+    schemes: ['ap-d', 'top-d'],
     serve: {
       id: '1-S',
       server: 'Servizio corto tagliato e basso. Quando riesce, stesso movimento senza taglio.',
@@ -267,7 +295,7 @@ export const BLOCKS = {
     theme: 'Rovescio',
     tracks: ['2-1', '2-2'],
     maint: '1-2',
-    rule: "Punto doppio se nasce da un taglio corto o da un'apertura di rovescio.",
+    schemes: ['ap-r', 'top-r'],
     serve: {
       id: '2-S',
       server: "Servizio lungo veloce sull'angolo del rovescio e al gomito, alternato al corto.",
@@ -282,7 +310,7 @@ export const BLOCKS = {
     theme: 'Primi colpi',
     tracks: ['3-1', '3-2'],
     maint: '2-2',
-    rule: 'Si giocano solo i primi 3 colpi, poi set normali.',
+    schemes: ['terza', 'ric-corta'],
     serve: {
       id: '3-S',
       server: 'Prima di servire decidi il servizio e la terza palla che ti aspetti.',
@@ -297,7 +325,7 @@ export const BLOCKS = {
     theme: 'Aperture',
     tracks: ['1-2', '2-2'],
     maint: null,
-    rule: "Punto doppio se nasce da un'apertura su palla tagliata.",
+    schemes: ['ap-d', 'ap-r'],
     serve: {
       id: '2-S',
       server: "Servizio lungo veloce sull'angolo del rovescio e al gomito, alternato al corto.",

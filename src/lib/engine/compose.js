@@ -1,7 +1,10 @@
 // Compone la sessione: un modello di allenamento riempito con il mese in corso e con il livello
 // reale di ogni percorso. Lo stesso per un test: una scaletta di soli test.
+//
+// Fra un blocco e l'altro di un allenamento c'è un minuto di pausa, preso dal blocco dopo: la
+// durata del modello non cambia. I modelli salvati restano come sono, le pause si aggiungono qui.
 
-import { WARMUP_TEXT } from '../data/program.js';
+import { WARMUP_TEXT, PAUSE_MINUTES, SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
 import { BASE } from '../data/catalog.js';
 import { STEP_TYPES } from '../data/templates.js';
 
@@ -32,10 +35,12 @@ function exerciseStep(id, trackId, minutes, tracks, catalog, test, extra = {}) {
  * @param week      settimana del piano (weekAt) o null
  * @param template  il modello ({ steps }) già risolto
  * @param tracks    stato dei percorsi (computeTracks)
- * @param test      oggi si fanno i test (c'è un test in calendario o l'hai chiesto)
+ * @param test      oggi si fanno i test (c'è un test in calendario o l'hai chiesto). Vale per gli
+ *                  esercizi e il mantenimento: i servizi si misurano solo se lo chiedi durante la sessione.
+ * @param pauses    un minuto di pausa fra un blocco e l'altro
  * @returns { block, template, minutes, steps[], trained[] }
  */
-export function composeSession({ week, template, tracks, catalog = BASE, test = false }) {
+export function composeSession({ week, template, tracks, catalog = BASE, test = false, pauses = true }) {
   const block = week?.focusBlock ?? week?.block ?? catalog.block('1');
   const steps = [];
 
@@ -60,7 +65,7 @@ export function composeSession({ week, template, tracks, catalog = BASE, test = 
       }
       steps.push({ id, kind: 'warmup', name: STEP_TYPES.warmup.name, minutes, text: s.text || WARMUP_TEXT, maint });
     } else if (s.type === 'serve') {
-      steps.push({ id, kind: 'serve', name: STEP_TYPES.serve.name, minutes, serve: block.serve, test: Boolean(test) });
+      steps.push({ id, kind: 'serve', name: STEP_TYPES.serve.name, minutes, serve: block.serve, test: false });
     } else if (s.type === 'focus') {
       const trackId = block.tracks[(s.slot ?? 1) - 1];
       const step = trackId ? exerciseStep(id, trackId, minutes, tracks, catalog, test) : null;
@@ -71,17 +76,39 @@ export function composeSession({ week, template, tracks, catalog = BASE, test = 
     } else if (s.type === 'free') {
       steps.push({ id, kind: 'free', name: s.name || STEP_TYPES.free.name, minutes, text: s.text ?? '' });
     } else if (s.type === 'match') {
-      steps.push({ id, kind: 'match', name: STEP_TYPES.match.name, minutes, rule: s.text || block.rule });
+      const schemes = (block.schemes ?? []).filter((x) => SCHEMES[x]);
+      if (!schemes.length) schemes.push(DEFAULT_SCHEME);
+      steps.push({ id, kind: 'match', name: STEP_TYPES.match.name, minutes, schemes, scheme: SCHEMES[schemes[0]], note: s.text ?? '' });
     }
   });
 
+  const all = pauses ? withPauses(steps) : steps;
   return {
     block,
     template: template ? { id: template.id, name: template.name, color: template.color } : null,
-    minutes: steps.reduce((n, s) => n + s.minutes, 0),
-    steps,
-    trained: trainedTracks(steps)
+    minutes: all.reduce((n, s) => n + s.minutes, 0),
+    steps: all,
+    trained: trainedTracks(all)
   };
+}
+
+/** Un minuto di pausa prima di ogni blocco tranne il primo, tolto al blocco stesso. */
+export function withPauses(steps) {
+  const out = [];
+  steps.forEach((s, i) => {
+    if (i > 0 && s.minutes > PAUSE_MINUTES) {
+      out.push({ id: `pause-${s.id}`, kind: 'pause', name: 'Pausa', minutes: PAUSE_MINUTES });
+      s.minutes -= PAUSE_MINUTES;
+    }
+    out.push(s);
+  });
+  return out;
+}
+
+/** I minuti della partitella: la prima metà rischiosa, la seconda a schema. */
+export function matchHalves(minutes) {
+  const first = Math.ceil(minutes / 2);
+  return [first, minutes - first];
 }
 
 /**

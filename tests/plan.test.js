@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createPlan, normalizePlan, weekAt, weekIndex, insertWeek, removeWeek, weekOccurrences, gateStatus, gatePending, planPhase, defaultSlots } from '../src/lib/engine/plan.js';
-import { composeSession, composeTest, countTests } from '../src/lib/engine/compose.js';
+import { composeSession, composeTest, countTests, matchHalves } from '../src/lib/engine/compose.js';
 import { computeTracks } from '../src/lib/engine/levels.js';
 import { drillsFor, weaknesses, publicSummary } from '../src/lib/engine/stats.js';
 import { BASE, buildCatalog, exerciseLabel, parseExercise } from '../src/lib/data/catalog.js';
-import { TEMPLATES } from '../src/lib/data/templates.js';
+import { TEMPLATES, templateMinutes } from '../src/lib/data/templates.js';
+import { BLOCKS, SCHEMES, CYCLE_BLOCKS } from '../src/lib/data/program.js';
 
 // 16 novembre 2026 è un lunedì.
 const plan = { ...createPlan({ start: '2026-11-18', days: [5, 2] }), id: 'p1' };
@@ -124,10 +125,11 @@ describe('composizione della sessione', () => {
     }
   ]);
 
-  it('il modello completo dura 90 minuti in cinque fasi', () => {
+  it('il modello completo dura 90 minuti in cinque fasi, con un minuto di pausa fra l’una e l’altra', () => {
     const s = composeSession({ week: weekAt(plan, 0), template: completo, tracks });
     expect(s.minutes).toBe(90);
-    expect(s.steps.map((x) => x.kind)).toEqual(['warmup', 'serve', 'exercise', 'exercise', 'match']);
+    expect(s.steps.map((x) => x.kind)).toEqual(['warmup', 'pause', 'serve', 'pause', 'exercise', 'pause', 'exercise', 'pause', 'match']);
+    expect(s.steps.map((x) => x.minutes)).toEqual([10, 1, 14, 1, 24, 1, 24, 1, 14]);
     expect(countTests(s)).toBe(0);
     expect(s.trained).toEqual(['1-1', '1-2']);
   });
@@ -139,7 +141,9 @@ describe('composizione della sessione', () => {
     expect(ex2.exercise.name).toBe('Multiball');
     expect(ex1.test && ex2.test).toBe(true);
     expect(s.steps[0].maint).toBeNull(); // mese 1: niente mantenimento
-    expect(countTests(s)).toBe(3); // servizi + due esercizi
+    // I servizi non si misurano da soli, nemmeno nel giorno del test.
+    expect(s.steps.find((x) => x.kind === 'serve').test).toBe(false);
+    expect(countTests(s)).toBe(2);
   });
 
   it('chiede il test di partenza per i percorsi mai iniziati', () => {
@@ -159,9 +163,70 @@ describe('composizione della sessione', () => {
   it('un modello personale: percorso fisso ed esercizio libero', () => {
     const t = { id: 'c1', steps: [{ type: 'track', track: '3-2', minutes: 20 }, { type: 'free', name: 'Multiball', text: 'Palle veloci', minutes: 10 }] };
     const s = composeSession({ week: weekAt(plan, 0), template: t, tracks });
-    expect(s.steps.map((x) => x.kind)).toEqual(['exercise', 'free']);
+    expect(s.steps.map((x) => x.kind)).toEqual(['exercise', 'pause', 'free']);
+    expect(s.steps.map((x) => x.minutes)).toEqual([20, 1, 9]);
     expect(s.steps[0].placement).toBe(true);
     expect(s.minutes).toBe(30);
+    expect(t.steps.map((x) => x.minutes)).toEqual([20, 10]); // il modello salvato non cambia
+  });
+
+  it('Breve e Servizi tengono la loro durata: il minuto di pausa si toglie al blocco dopo', () => {
+    const breve = composeSession({ week: weekAt(plan, 0), template: TEMPLATES.breve, tracks });
+    expect(breve.steps.map((x) => x.minutes)).toEqual([10, 1, 19, 1, 19, 1, 9]);
+    expect(breve.minutes).toBe(templateMinutes(TEMPLATES.breve));
+    const servizi = composeSession({ week: weekAt(plan, 0), template: TEMPLATES.servizi, tracks });
+    expect(servizi.steps.map((x) => [x.kind, x.minutes])).toEqual([
+      ['warmup', 5],
+      ['pause', 1],
+      ['serve', 19],
+      ['pause', 1],
+      ['free', 14]
+    ]);
+    expect(servizi.minutes).toBe(40);
+    // I modelli di base restano quelli di prima.
+    expect(TEMPLATES.completo.steps.map((x) => x.minutes)).toEqual([10, 15, 25, 25, 15]);
+  });
+
+  it('le pause non contano come test né come percorsi allenati', () => {
+    const s = composeSession({ week: weekAt(plan, 1), template: completo, tracks, test: true });
+    const pauses = s.steps.filter((x) => x.kind === 'pause');
+    expect(pauses).toHaveLength(4);
+    expect(pauses.every((x) => !x.test && !x.track && x.minutes === 1)).toBe(true);
+    expect(new Set(s.steps.map((x) => x.id)).size).toBe(s.steps.length);
+    expect(s.trained).toEqual(['1-1', '1-2']);
+  });
+
+  it('niente pausa prima di un blocco da un minuto, né prima del primo', () => {
+    const t = { id: 'c2', steps: [{ type: 'free', name: 'A', minutes: 5 }, { type: 'free', name: 'B', minutes: 1 }, { type: 'match', minutes: 6 }] };
+    const s = composeSession({ week: weekAt(plan, 0), template: t, tracks });
+    expect(s.steps.map((x) => [x.kind, x.minutes])).toEqual([
+      ['free', 5],
+      ['free', 1],
+      ['pause', 1],
+      ['match', 5]
+    ]);
+    expect(s.minutes).toBe(12);
+    expect(composeSession({ week: weekAt(plan, 0), template: t, tracks, pauses: false }).steps).toHaveLength(3);
+  });
+
+  it('la partitella: metà rischiosa, metà a schema, con gli schemi del mese', () => {
+    const match = (w) => composeSession({ week: weekAt(plan, w), template: completo, tracks }).steps.find((x) => x.kind === 'match');
+    expect(match(0)).toMatchObject({ schemes: ['ap-d', 'top-d'], scheme: SCHEMES['ap-d'] });
+    expect(match(4).schemes).toEqual(['ap-r', 'top-r']);
+    expect(match(8).schemes).toEqual(['terza', 'ric-corta']);
+    expect(match(0).rule).toBeUndefined();
+    expect(matchHalves(14)).toEqual([7, 7]);
+    expect(matchHalves(9)).toEqual([5, 4]);
+  });
+
+  it('niente più «punto doppio»: almeno quattro schemi, per ogni mese', () => {
+    expect(Object.keys(SCHEMES).length).toBeGreaterThanOrEqual(4);
+    for (const b of [...CYCLE_BLOCKS, 'R']) {
+      expect(BLOCKS[b].rule).toBeUndefined();
+      expect(BLOCKS[b].schemes.every((x) => SCHEMES[x])).toBe(true);
+    }
+    for (const b of CYCLE_BLOCKS) expect(BLOCKS[b].schemes.every((x) => SCHEMES[x].block === b)).toBe(true);
+    expect(JSON.stringify({ BLOCKS, SCHEMES })).not.toMatch(/doppio se/i);
   });
 
   it('un test da solo: un passo per percorso', () => {
@@ -176,7 +241,10 @@ describe('composizione della sessione', () => {
 describe('catalogo personale', () => {
   const catalog = buildCatalog({
     tracks: [{ id: 'cflip', name: 'Flip di dritto', short: 'Flip', strokes: ['flip-d'], levels: [{ name: 'Fermo' }, { name: 'Lato' }, { name: 'Gioco' }] }],
-    blocks: [{ id: 'cm', theme: 'Flip', tracks: ['cflip', '1-1', 'sparito'], serve: '2-S', rule: 'Punto doppio col flip.' }],
+    blocks: [
+      { id: 'cm', theme: 'Flip', tracks: ['cflip', '1-1', 'sparito'], serve: '2-S', rule: 'Punto doppio col flip.' },
+      { id: 'cn', theme: 'Ricezione', tracks: ['3-2'], scheme: 'ric-corta' }
+    ],
     templates: [{ id: 'ct', name: 'Corto', color: 'pink', steps: [{ type: 'focus', slot: 1, minutes: 30 }] }]
   });
 
@@ -186,6 +254,9 @@ describe('catalogo personale', () => {
     expect(catalog.maxLevel('1-1')).toBe(5);
     expect(catalog.block('cm').tracks).toEqual(['cflip', '1-1']); // i percorsi sconosciuti si scartano
     expect(catalog.block('cm').serve.test).toContain('servizi lunghi');
+    // La vecchia regola resta nei dati ma non si usa: vale lo schema di base.
+    expect(catalog.block('cm').schemes).toEqual(['ap-d']);
+    expect(catalog.block('cn').schemes).toEqual(['ric-corta']);
     expect(catalog.template('sparito').id).toBe('completo');
   });
 
@@ -266,11 +337,13 @@ describe('importazione', () => {
     expect(r.errors).toEqual([]);
     expect(r.tracks[0]).toMatchObject({ id: 'cflipdritto', side: 'D' });
     expect(r.tracks[0].levels).toHaveLength(2);
-    expect(r.blocks[0]).toMatchObject({ id: 'cmeseflip', tracks: ['cflipdritto', '3-2'], maint: '2-2', serve: '1-S' });
+    expect(r.blocks[0]).toMatchObject({ id: 'cmeseflip', tracks: ['cflipdritto', '3-2'], maint: '2-2', serve: '1-S', scheme: 'ric-corta' });
+    expect(r.blocks[0].rule).toBeUndefined();
     expect(r.templates[0].steps.map((s) => s.type)).toEqual(['warmup', 'focus', 'track', 'free', 'match']);
     expect(r.templates[0].color).toBe('pink');
     const cat = buildCatalog({ tracks: r.tracks, blocks: r.blocks, templates: r.templates });
     expect(cat.maxLevel('cflipdritto')).toBe(2);
+    expect(cat.block('cmeseflip').schemes).toEqual(['ric-corta']);
     expect(customId('Già fatto!')).toBe('cgiafatto');
   });
 
@@ -289,7 +362,8 @@ describe('versioni', () => {
     expect(compareVersions('0.10.0', '0.9.0')).toBe(1);
     expect(compareVersions('0.2.0', '0.2.0')).toBe(0);
     expect(CHANGELOG[0].version).toBe(VERSION); // ogni versione ha la sua voce
-    expect(unseen('0.1.0').map((c) => c.version)).toEqual([VERSION]);
+    expect(unseen('0.2.0').map((c) => c.version)).toEqual([VERSION]);
+    expect(unseen('0.1.0').map((c) => c.version)).toEqual(['0.2.1', '0.2.0']); // la più recente prima
     expect(unseen(VERSION)).toEqual([]);
   });
 });

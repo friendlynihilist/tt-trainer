@@ -14,6 +14,7 @@
   import { composeSession } from '../engine/compose.js';
   import { computeTracks } from '../engine/levels.js';
   import { testPlan } from '../engine/suggest.js';
+  import { serveScore } from '../engine/events.js';
   import { exerciseLabel } from '../data/catalog.js';
   import { templateMinutes } from '../data/templates.js';
   import { KINDS, KIND, BALL, POINT_PHASE, zoneLabel } from '../data/taxonomy.js';
@@ -40,7 +41,9 @@
   let feel = $state(base.feel ?? null);
   let focus = $state(base.focus ?? null);
   let obs = $state(base.obs ?? []);
-  let serve = $state(base.serve?.score ?? null);
+  let serve = $state(serveScore(base));
+  // In un allenamento i servizi si misurano solo se lo chiedi; nei test fanno parte del test.
+  let askServe = $state(serveScore(base) != null);
   let minutesTouched = $state(Boolean(original));
 
   function defaultMinutes(k, t) {
@@ -285,12 +288,26 @@
 
         <button class="btn ghost small add" onclick={addRow}><Plus size={16} /> {rows.length ? 'Un altro percorso' : 'Aggiungi un test'}</button>
 
-        {#if kind === 'test' || rows.length || serve != null}
+        {#if kind === 'test' || askServe}
           <div class="trow">
-            <strong>Servizi del mese</strong>
+            <div class="spread">
+              <strong class="grow">Servizi del mese</strong>
+              {#if kind !== 'test'}
+                <button
+                  class="icon-btn"
+                  onclick={() => {
+                    serve = null;
+                    askServe = false;
+                  }}
+                  aria-label="Togli i servizi"><X size={16} /></button
+                >
+              {/if}
+            </div>
             {#if week?.focusBlock?.serve?.test}<p class="small muted">{week.focusBlock.serve.test}</p>{/if}
             <Score value={serve} up={app.rules.up} down={-1} onchange={(n) => (serve = n)} />
           </div>
+        {:else}
+          <button class="btn ghost small add" onclick={() => (askServe = true)}><Plus size={16} /> Misura i servizi</button>
         {/if}
       </section>
     {:else if dropping}

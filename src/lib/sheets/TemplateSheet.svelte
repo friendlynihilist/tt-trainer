@@ -165,7 +165,7 @@
               <input class="field" placeholder="Nome dell’esercizio" value={s.name ?? ''} oninput={(e) => update(s.key, { name: e.currentTarget.value })} />
               <textarea class="field" placeholder="Cosa si fa" value={s.text ?? ''} oninput={(e) => update(s.key, { text: e.currentTarget.value })}></textarea>
             {:else if s.type === 'match'}
-              <input class="field" placeholder="Regola (vuoto = quella del mese)" value={s.text ?? ''} oninput={(e) => update(s.key, { text: e.currentTarget.value })} />
+              <input class="field" placeholder="Nota per la partitella (facoltativa)" value={s.text ?? ''} oninput={(e) => update(s.key, { text: e.currentTarget.value })} />
             {/if}
           </div>
         {/each}

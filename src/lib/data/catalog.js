@@ -2,7 +2,7 @@
 // lettura, nel codice) con quello che ciascuno crea per sé (in meta.custom, nel proprio spazio).
 // Un id personale comincia sempre con «c» e non collide mai con quelli di base.
 
-import { TRACKS, BLOCKS, LEVELS } from './program.js';
+import { TRACKS, BLOCKS, LEVELS, SCHEMES, DEFAULT_SCHEME } from './program.js';
 import { TEMPLATES, DEFAULT_TEMPLATE, AUTO_TEMPLATE } from './templates.js';
 
 export const MAX_LEVELS = 8;
@@ -38,7 +38,8 @@ function customBlock(b, tracks) {
     theme: b.theme || 'Mese',
     tracks: (b.tracks ?? []).filter((id) => tracks[id]).slice(0, 3),
     maint: b.maint && tracks[b.maint] ? b.maint : null,
-    rule: b.rule || 'Set normali.',
+    // Lo schema della partitella. La vecchia «regola» (b.rule) non si usa più: resta nei dati.
+    schemes: [SCHEMES[b.scheme] ? b.scheme : DEFAULT_SCHEME],
     serve: serve ?? SERVES['1-S'],
     serveId: typeof b.serve === 'string' ? b.serve : null
   };

@@ -287,6 +287,9 @@
       <section class="section">
         <ol class="plan">
           {#each shown.steps as step (step.id)}
+            {#if step.kind === 'pause'}
+              <li class="pause"><span class="mono min">{step.minutes}′</span><span class="small faint">Pausa</span></li>
+            {:else}
             <li>
               <span class="mono min">{step.minutes}′</span>
               <div class="what">
@@ -306,6 +309,7 @@
                 <StepBody {step} partner={app.partner} />
               </div>
             </li>
+            {/if}
           {/each}
         </ol>
       </section>
@@ -455,6 +459,11 @@
     grid-template-columns: 32px 1fr;
     gap: 16px;
     padding-bottom: 26px;
+  }
+  .plan li.pause {
+    align-items: center;
+    padding-bottom: 18px;
+    margin-top: -8px;
   }
   .min {
     align-self: start;

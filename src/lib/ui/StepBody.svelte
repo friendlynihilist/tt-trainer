@@ -3,10 +3,13 @@
   import Target from '@lucide/svelte/icons/target';
   import { partnerExercise } from '../engine/stats.js';
   import { app } from '../store/app.svelte.js';
-  import { VALID_ATTEMPT } from '../data/program.js';
+  import { VALID_ATTEMPT, MATCH_TYPES, SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
+  import { matchHalves } from '../engine/compose.js';
   import Avatar from './Avatar.svelte';
 
-  let { step, partner = null, big = false, showTest = true } = $props();
+  // part: la metà della partitella in corso (1 o 2), solo nella sessione dal vivo.
+  // onscheme, onmore: per cambiare lo schema della partitella, solo nella sessione dal vivo.
+  let { step, partner = null, big = false, showTest = true, part = null, onscheme = null, onmore = null } = $props();
 
   const mate = $derived(step.kind === 'exercise' && partner ? partnerExercise(partner, step.track, app.catalog) : null);
 </script>
@@ -58,7 +61,26 @@
       </p>
     {/if}
   {:else if step.kind === 'match'}
-    <p>{step.rule}</p>
+    {@const [first, second] = matchHalves(step.minutes)}
+    {@const scheme = step.scheme ?? SCHEMES[DEFAULT_SCHEME]}
+    {#if step.note}<p>{step.note}</p>{/if}
+    <div class="half" class:now={part === 1} class:done={part === 2}>
+      <span class="tag line">Prima metà · {first}′</span>
+      <p><strong>{MATCH_TYPES.risk.name}.</strong> {MATCH_TYPES.risk.text} {MATCH_TYPES.risk.why}</p>
+    </div>
+    <div class="half" class:now={part === 2}>
+      <span class="tag line">Seconda metà · {second}′</span>
+      <p><strong>{MATCH_TYPES.scheme.name}.</strong> {MATCH_TYPES.scheme.text}</p>
+      <p class="scheme"><strong>Schema: {scheme.name.toLowerCase()}.</strong> {scheme.text}</p>
+      {#if onscheme}
+        <div class="chips" role="group" aria-label="Schema">
+          {#each step.schemes ?? [] as id (id)}
+            <button class="chip" aria-pressed={scheme.id === id} onclick={() => onscheme(id)}>{SCHEMES[id].name}</button>
+          {/each}
+          {#if onmore}<button class="chip" aria-pressed={!(step.schemes ?? []).includes(scheme.id)} onclick={onmore}>Altri</button>{/if}
+        </div>
+      {/if}
+    </div>
   {:else if step.kind === 'free'}
     {#if step.text}<p>{step.text}</p>{/if}
   {/if}
@@ -128,6 +150,38 @@
     align-items: flex-start;
     gap: 6px;
     padding-top: 2px;
+  }
+  .half {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .big .half {
+    padding: 12px 14px;
+    border-radius: var(--r-s);
+    border: 1px solid var(--line);
+    transition:
+      border-color 0.3s var(--ease),
+      opacity 0.3s var(--ease);
+  }
+  .big .half.now {
+    border-color: var(--accent);
+  }
+  .big .half.done {
+    opacity: 0.55;
+  }
+  .scheme {
+    color: var(--ink);
+  }
+  .half .chips {
+    margin-top: 4px;
+    gap: 6px;
+  }
+  .half .chip {
+    min-height: 34px;
+    padding: 4px 12px;
+    font-size: 14px;
   }
   .mate {
     display: flex;

@@ -15,7 +15,8 @@
   import { ui, buzz } from '../store/ui.svelte.js';
   import { loadLive, saveLive, clearLive } from '../store/live.js';
   import { weekFor } from '../engine/plan.js';
-  import { composeSession, composeTest, trainedTracks } from '../engine/compose.js';
+  import { composeSession, composeTest, trainedTracks, matchHalves } from '../engine/compose.js';
+  import { SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
   import { judge, placementResult } from '../engine/levels.js';
   import { fmtClock } from '../util/dates.js';
   import { chime, keepAwake, unlockAudio } from '../util/device.js';
@@ -67,6 +68,18 @@
     // Sessione lasciata a metà con la prima versione (A o B): si riprende uguale.
     if (saved.slot && !saved.mode) {
       Object.assign(saved, { mode: 'training', template: 'completo', title: `Sessione ${saved.slot}`, color: 'blue', legacy: saved.slot });
+    }
+    for (const s of saved.session?.steps ?? []) {
+      // Sessione cominciata prima della 0.2.1: i servizi si misurano solo se lo chiedi.
+      if (saved.mode === 'training' && s.kind === 'serve' && s.test && !s.asked && saved.tests?.serve?.score == null) s.test = false;
+      // La vecchia regola della partitella diventa lo schema del mese.
+      if (s.kind === 'match' && !s.scheme) {
+        const block = saved.session.block;
+        s.schemes = (block?.schemes ?? app.catalog.block(block?.id)?.schemes ?? []).filter((x) => SCHEMES[x]);
+        if (!s.schemes.length) s.schemes = [DEFAULT_SCHEME];
+        s.scheme = SCHEMES[s.schemes[0]];
+        delete s.rule;
+      }
     }
     // I timer rimasti accesi si fermano all'ultimo momento in cui l'app era viva.
     for (const t of Object.values(saved.timers)) {
@@ -124,7 +137,7 @@
     const t = draft.timers[step.id];
     if (!t?.since) return;
     const sec = t.acc + (Date.now() - t.since) / 1000;
-    if (!t.rang && sec >= step.minutes * 60) {
+    if (!t.rang && step.kind !== 'pause' && sec >= step.minutes * 60) {
       t.rang = true;
       bell([880, 1318, 1760], [200, 100, 200]);
     }
@@ -133,6 +146,13 @@
       bell([988], 200);
       ui.toast('Cambio: ora serve l’altro');
     }
+    if (step.kind === 'match' && !t.half && sec >= matchHalves(step.minutes)[0] * 60) {
+      t.half = true;
+      bell([988], 200);
+      ui.toast('Cambio: ora partitella a schema');
+    }
+    // Finita la pausa si passa da soli al blocco dopo.
+    if (step.kind === 'pause' && sec >= step.minutes * 60) goTo(draft.step + 1);
     if (step.maint && !t.maint && sec >= (step.minutes - step.maint.minutes) * 60) {
       t.maint = true;
       bell([988], 200);
@@ -256,12 +276,46 @@
     return { ...step, level, exercise: levelOf(step.track, level) };
   });
 
-  /** Un esercizio senza test può diventare un test in qualsiasi momento. */
+  /** Un esercizio senza test può diventare un test in qualsiasi momento. I servizi solo se lo chiedi. */
   function enableTest(index) {
     const s = draft.session.steps[index];
     if (s.kind === 'exercise' && !s.placement) s.test = true;
-    if (s.kind === 'serve') s.test = true;
+    if (s.kind === 'serve') {
+      s.test = true;
+      s.asked = true;
+    }
     buzz();
+  }
+  function disableServe(index) {
+    const s = draft.session.steps[index];
+    s.test = false;
+    s.asked = false;
+    delete draft.tests.serve;
+    buzz();
+  }
+
+  function pickScheme(index, id) {
+    const s = draft.session.steps[index];
+    if (!SCHEMES[id]) return;
+    s.scheme = SCHEMES[id];
+    buzz();
+  }
+  function moreSchemes(index) {
+    const s = draft.session.steps[index];
+    ui.open('pick', {
+      title: 'Schema della partitella',
+      value: s.scheme?.id,
+      groups: [{ options: Object.values(SCHEMES).map((x) => ({ id: x.id, label: x.name, hint: x.text })) }],
+      onpick: (id) => id && pickScheme(index, id)
+    });
+  }
+
+  /** La metà della partitella in corso: 1 rischiosa, 2 a schema. */
+  const matchPart = $derived(step?.kind === 'match' ? (elapsed >= matchHalves(step.minutes)[0] * 60 ? 2 : 1) : null);
+  /** Il blocco dopo, saltando la pausa. */
+  function nextBlock(index) {
+    const n = steps[index + 1];
+    return n?.kind === 'pause' ? steps[index + 2] : n;
   }
 
   // ── Chiusura ─────────────────────────────────────────────────────────────
@@ -273,8 +327,9 @@
         const t = draft.tests.maint;
         out.push({ id: 'maint', name: `Mantenimento · ${s.maint.name}`, max: s.maint.max, score: t?.score ?? null, before: s.maint.level, ...(verdict(s.maint.track, s.maint.level, t?.score ?? null) ?? {}) });
       }
-      if (s.kind === 'serve' && s.test) {
-        out.push({ id: 'serve', name: 'Servizi', score: draft.tests.serve?.score ?? null });
+      // I servizi compaiono solo se sono stati misurati davvero.
+      if (s.kind === 'serve' && s.test && draft.tests.serve?.score != null) {
+        out.push({ id: 'serve', name: 'Servizi', score: draft.tests.serve.score });
       }
       if (s.kind === 'exercise' && s.placement) {
         const p = placementView(s.track);
@@ -307,7 +362,8 @@
         tests.push({ track: s.track, type: s.maintTest ? 'maint' : 'test', level: s.level, score: t.score, marks: (t.marks ?? []).join('') });
       }
     }
-    const serve = draft.tests.serve?.score != null ? { id: draft.session.block.serve?.id ?? null, score: draft.tests.serve.score } : null;
+    const served = steps.some((s) => s.kind === 'serve' && s.test);
+    const serve = served && draft.tests.serve?.score != null ? { id: draft.session.block.serve?.id ?? null, score: draft.tests.serve.score } : null;
     const seconds = Object.values(draft.timers).reduce((n, t) => n + t.acc + (t.since ? (Date.now() - t.since) / 1000 : 0), 0);
     // Se i timer non sono stati usati, vale la durata prevista.
     const minutes = seconds >= 600 ? Math.round(seconds / 60) : draft.session.minutes;
@@ -355,7 +411,9 @@
       <button class="icon-btn" onclick={leave} aria-label="Metti in pausa e chiudi"><X size={22} /></button>
       <div class="steps" role="tablist" aria-label="Fasi">
         {#each steps as s, i (s.id)}
-          <button class:on={i === draft.step} class:past={i < draft.step} onclick={() => goTo(i)} aria-label={s.name} role="tab" aria-selected={i === draft.step}></button>
+          {#if s.kind !== 'pause'}
+            <button class:on={i === draft.step} class:past={i < draft.step} onclick={() => goTo(i)} aria-label={s.name} role="tab" aria-selected={i === draft.step}></button>
+          {/if}
         {/each}
         <button class="end" class:on={closing} onclick={() => goTo(steps.length)} aria-label="Chiusura" role="tab" aria-selected={closing}>
           <Check size={11} strokeWidth={3} />
@@ -408,8 +466,11 @@
             {#if step.kind === 'serve' && step.test}
               {@const t = draft.tests.serve ?? { marks: [], score: null }}
               <section class="card test">
-                <p class="small"><span class="tag accent">Test</span> <span class="muted">{step.serve.test}</span></p>
+                <p class="small"><span class="tag accent">Servizi</span> <span class="muted">{step.serve.test}</span></p>
                 <TestPad marks={t.marks} score={t.score} up={app.rules.up} down={-1} onchange={(v) => setTest('serve', v)} />
+                {#if draft.mode === 'training'}
+                  <button class="link self" onclick={() => disableServe(draft.step)}>Non misurare</button>
+                {/if}
               </section>
             {/if}
 
@@ -467,11 +528,32 @@
               </section>
             {/if}
 
-            {#if (step.kind === 'exercise' && !step.test && !step.placement) || (step.kind === 'serve' && !step.test)}
+            {#if step.kind === 'exercise' && !step.test && !step.placement}
               <button class="link self" onclick={() => enableTest(draft.step)}>Fai il test qui</button>
+            {:else if step.kind === 'serve' && !step.test}
+              <button class="link self" onclick={() => enableTest(draft.step)}>Misura i servizi</button>
             {/if}
 
-            <StepBody step={view} partner={app.partner} big showTest={false} />
+            {#if step.kind === 'pause'}
+              {@const after = steps[draft.step + 1]}
+              <p class="lead muted">Bevi e riposa. Allo zero si passa da soli al blocco dopo.</p>
+              {#if after}
+                <section class="card stack g-8">
+                  <span class="small muted">Dopo la pausa · {after.minutes}′</span>
+                  <strong>{after.name}</strong>
+                </section>
+              {/if}
+            {:else}
+              <StepBody
+                step={view}
+                partner={app.partner}
+                big
+                showTest={false}
+                part={matchPart}
+                onscheme={step.kind === 'match' ? (id) => pickScheme(draft.step, id) : null}
+                onmore={step.kind === 'match' ? () => moreSchemes(draft.step) : null}
+              />
+            {/if}
           {:else}
             <div class="head">
               <h1 class="display">Com’è andata?</h1>
@@ -542,15 +624,17 @@
 
     <footer>
       {#if draft.step > 0}
-        <button class="icon-btn back" onclick={() => goTo(draft.step - 1)} aria-label="Fase precedente"><ArrowLeft size={20} /></button>
+        <button class="icon-btn back" onclick={() => goTo(steps[draft.step - 1]?.kind === 'pause' ? draft.step - 2 : draft.step - 1)} aria-label="Fase precedente"><ArrowLeft size={20} /></button>
       {/if}
       {#if closing}
         <button class="btn accent grow" onclick={finish}><Check size={18} strokeWidth={2.4} /> Salva nel diario</button>
       {:else if draft.step === steps.length - 1}
         <button class="btn primary grow" onclick={() => goTo(steps.length)}>Chiudi la sessione <ArrowRight size={18} /></button>
+      {:else if step.kind === 'pause'}
+        <button class="btn primary grow" onclick={() => goTo(draft.step + 1)}>Salta la pausa <ArrowRight size={18} /></button>
       {:else}
         <button class="btn primary grow" onclick={() => goTo(draft.step + 1)}>
-          <span class="next">{steps[draft.step + 1].name}</span>
+          <span class="next">{nextBlock(draft.step)?.name}</span>
           <ArrowRight size={18} />
         </button>
       {/if}

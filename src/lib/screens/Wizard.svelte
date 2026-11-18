@@ -107,7 +107,7 @@
           </ul>
         {:else if step === 'sessione'}
           <h1 class="display">Novanta minuti, cinque fasi.</h1>
-          <p class="lead muted">Stessa struttura ogni volta. Cambia il contenuto, che segue il mese e il tuo livello.</p>
+          <p class="lead muted">Stessa struttura ogni volta. Cambia il contenuto, che segue il mese e il tuo livello. Fra una fase e l’altra, 1 minuto di pausa.</p>
 
           <div class="bar" role="img" aria-label="Le cinque fasi della sessione">
             {#each PHASES as p, n (p.id)}

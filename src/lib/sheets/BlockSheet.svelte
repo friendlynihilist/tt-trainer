@@ -8,6 +8,7 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { SERVES } from '../data/catalog.js';
+  import { SCHEMES, DEFAULT_SCHEME, MATCH_TYPES } from '../data/program.js';
   import { pickTrack } from '../ui/pickers.js';
   import Sheet from '../ui/Sheet.svelte';
 
@@ -21,7 +22,7 @@
   let tracks = $state([...(source?.tracks ?? [])]);
   let maint = $state(source?.maint ?? null);
   let serve = $state(raw?.serve ?? draft?.serve ?? source?.serveId ?? (source?.serve?.id && SERVES[source.serve.id] ? source.serve.id : '1-S'));
-  let rule = $state(source?.rule ?? '');
+  let scheme = $state(SCHEMES[draft?.scheme] ? draft.scheme : (source?.schemes?.[0] ?? DEFAULT_SCHEME));
 
   const inPlan = $derived(id ? (app.plan?.weeks ?? []).includes(id) : false);
   const valid = $derived(theme.trim() && tracks.length);
@@ -41,15 +42,24 @@
     });
   }
 
+  function chooseScheme() {
+    ui.open('pick', {
+      title: 'Schema della partitella',
+      value: scheme,
+      groups: [{ options: Object.values(SCHEMES).map((x) => ({ id: x.id, label: x.name, hint: x.text })) }],
+      onpick: (v) => v && (scheme = v)
+    });
+  }
+
   function save() {
-    app.saveCustom('blocks', { id: source?.custom ? source.id : undefined, theme: theme.trim(), tracks, maint, serve, rule: rule.trim() || 'Set normali.' });
+    app.saveCustom('blocks', { id: source?.custom ? source.id : undefined, theme: theme.trim(), tracks, maint, serve, scheme });
     ui.close();
     ui.toast(source?.custom ? 'Mese aggiornato' : 'Mese creato: lo trovi quando crei un ciclo');
   }
 
   function duplicate() {
     ui.close();
-    ui.open('block', { draft: { theme: `${source.theme} (mio)`, tracks: source.tracks, maint: source.maint, serve: source.serve?.id ?? '1-S', rule: source.rule } });
+    ui.open('block', { draft: { theme: `${source.theme} (mio)`, tracks: source.tracks, maint: source.maint, serve: source.serve?.id ?? '1-S', scheme: source.schemes?.[0] } });
   }
 
   function remove() {
@@ -117,10 +127,16 @@
 
     <section class="stack g-8">
       <h3 class="heading">Partitella</h3>
+      <p class="small muted">Metà tempo {MATCH_TYPES.risk.name.toLowerCase()}, metà {MATCH_TYPES.scheme.name.toLowerCase()}.</p>
       {#if readonly}
-        <p>{rule}</p>
+        {#each source.schemes as x (x)}
+          <p><strong>{SCHEMES[x].name}.</strong> <span class="muted">{SCHEMES[x].text}</span></p>
+        {/each}
       {:else}
-        <textarea class="field" placeholder="Regola (es. punto doppio se nasce da un flip)" bind:value={rule}></textarea>
+        <button class="select" onclick={chooseScheme}>
+          <span class="grow">{SCHEMES[scheme]?.name}</span>
+        </button>
+        <p class="small muted">{SCHEMES[scheme]?.text}</p>
       {/if}
     </section>
 

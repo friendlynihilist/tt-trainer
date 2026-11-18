@@ -1,7 +1,7 @@
 <script>
   // Guida: il metodo in una pagina. È il foglio «Come si usa», riscritto per l'app.
   import { app } from '../store/app.svelte.js';
-  import { BLOCKS, CYCLE_BLOCKS, PHASES, TRACKS, GATE, VALID_ATTEMPT, NEXT_CYCLE } from '../data/program.js';
+  import { BLOCKS, CYCLE_BLOCKS, PHASES, TRACKS, GATE, VALID_ATTEMPT, NEXT_CYCLE, MATCH_TYPES, SCHEMES, PAUSE_MINUTES } from '../data/program.js';
   import PageHead from '../ui/PageHead.svelte';
   import LevelDemo from '../ui/LevelDemo.svelte';
 
@@ -48,11 +48,12 @@
     </div>
     <div class="card flush list phases">
       <div class="item"><span class="mono min">10′</span><span class="grow"><strong>Riscaldamento</strong><span class="small muted block">Dritto e rovescio in diagonale, top su block. Dal mese 2 gli ultimi 5 minuti sono il mantenimento del mese prima.</span></span></div>
-      <div class="item"><span class="mono min">15′</span><span class="grow"><strong>Servizi e ricezione</strong><span class="small muted block">Metà tempo serve uno, metà l’altro: a metà suona il cambio. Chi non serve allena la ricezione del mese.</span></span></div>
-      <div class="item"><span class="mono min">25′</span><span class="grow"><strong>Esercizio 1</strong><span class="small muted block">Il primo percorso del mese, al livello raggiunto. Nel giorno del test comincia con il test.</span></span></div>
-      <div class="item"><span class="mono min">25′</span><span class="grow"><strong>Esercizio 2</strong><span class="small muted block">Il secondo percorso del mese, come sopra.</span></span></div>
-      <div class="item"><span class="mono min">15′</span><span class="grow"><strong>Partitella</strong><span class="small muted block">Set giocati con la regola del mese.</span></span></div>
+      <div class="item"><span class="mono min">14′</span><span class="grow"><strong>Servizi e ricezione</strong><span class="small muted block">Metà tempo serve uno, metà l’altro: a metà suona il cambio. Chi non serve allena la ricezione del mese. Il punteggio non si segna, a meno che tu non tocchi «Misura i servizi».</span></span></div>
+      <div class="item"><span class="mono min">24′</span><span class="grow"><strong>Esercizio 1</strong><span class="small muted block">Il primo percorso del mese, al livello raggiunto. Nel giorno del test comincia con il test.</span></span></div>
+      <div class="item"><span class="mono min">24′</span><span class="grow"><strong>Esercizio 2</strong><span class="small muted block">Il secondo percorso del mese, come sopra.</span></span></div>
+      <div class="item"><span class="mono min">14′</span><span class="grow"><strong>Partitella</strong><span class="small muted block">Metà tempo per tipo, a metà suona il cambio.</span><span class="small muted block"><strong>{MATCH_TYPES.risk.name}.</strong> {MATCH_TYPES.risk.text} {MATCH_TYPES.risk.why}</span><span class="small muted block"><strong>{MATCH_TYPES.scheme.name}.</strong> Si sceglie uno schema. {MATCH_TYPES.scheme.text}</span></span></div>
     </div>
+    <p class="small muted note">Fra una fase e l’altra c’è {PAUSE_MINUTES} minuto di pausa, con il conto alla rovescia. Si può saltare. Il minuto si toglie alla fase dopo: il totale resta 90. Vale per tutti i modelli, anche i tuoi.</p>
   </section>
 
   <section class="section">
@@ -65,7 +66,7 @@
           <div class="stack g-4">
             <strong>{block.theme}</strong>
             <p class="small muted">{block.tracks.map((t) => TRACKS[t].name).join(' · ')}</p>
-            <p class="small">Partitella: {block.rule}</p>
+            <p class="small">Schemi della partitella: {block.schemes.map((x) => SCHEMES[x].name.toLowerCase()).join(', ')}</p>
           </div>
         </div>
       {/each}
@@ -81,7 +82,7 @@
     <div class="card flush list">
       <div class="item"><span class="grow"><strong>Modelli</strong><span class="small muted block">La scaletta di un allenamento: riscaldamento, servizi, esercizi del mese o fissi, esercizi liberi, partitella. Ne crei quanti vuoi, ognuno col suo colore.</span></span></div>
       <div class="item"><span class="grow"><strong>Percorsi</strong><span class="small muted block">Un esercizio con i suoi livelli (fino a 8) e il suo test su 10. Il livello si calcola come per quelli di base.</span></span></div>
-      <div class="item"><span class="grow"><strong>Mesi</strong><span class="small muted block">Un tema con fino a tre percorsi, il mantenimento, i servizi e la regola della partitella. Li metti in fila quando crei un ciclo.</span></span></div>
+      <div class="item"><span class="grow"><strong>Mesi</strong><span class="small muted block">Un tema con fino a tre percorsi, il mantenimento, i servizi e lo schema della partitella. Li metti in fila quando crei un ciclo.</span></span></div>
       <div class="item"><span class="grow"><strong>Su misura</strong><span class="small muted block">Il suggeritore compone una sessione dal tuo livello, dal mese, e da quello che segni da correggere; e ti dice quali percorsi è ora di misurare.</span></span></div>
     </div>
     <p class="small muted note">Tutto dalla Libreria. Si può anche importare un file preparato da un assistente.</p>

@@ -30,6 +30,17 @@ export function realTests(e) {
   return (e?.tests ?? []).filter((t) => t.type !== 'set');
 }
 
+/**
+ * Il punteggio dei servizi salvato in una voce, o null. Le voci salvate finora hanno
+ * `serve: { id, score }` oppure `serve: null`; si legge anche un numero da solo.
+ */
+export function serveScore(e) {
+  const v = e?.serve;
+  if (v == null) return null;
+  const n = typeof v === 'object' ? v.score : v;
+  return Number.isFinite(n) ? n : null;
+}
+
 /** Questa voce vale come «test fatto» per un test in calendario? */
 export function fulfillsTest(e) {
   if (!e || e.planned) return false;

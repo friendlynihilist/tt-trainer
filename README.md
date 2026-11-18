@@ -76,7 +76,7 @@ Nel repository: **Settings → Pages → Source: GitHub Actions**.
 
 Scritto e provato nel browser in modalità locale (`VITE_LOCAL=1 npm run dev` forza la modalità locale anche
 con Firebase configurato): wizard, Oggi, sessione dal vivo, diario, progressi, libreria, editor di modelli,
-importazione, piano, e il passaggio dei dati del primo modello. Il motore ha 52 test, incluso il confronto con
+importazione, piano, e il passaggio dei dati del primo modello. Il motore ha 59 test, incluso il confronto con
 le formule dell'Excel.
 
 Non ancora provato: il backend cloud (`src/lib/store/cloud.js`) e le regole Firestore, che richiedono un

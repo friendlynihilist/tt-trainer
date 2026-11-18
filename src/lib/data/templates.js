@@ -10,7 +10,7 @@ export const STEP_TYPES = {
   focus: { name: 'Esercizio del mese', minutes: 25, hint: 'Un percorso del mese in corso, al tuo livello.' },
   track: { name: 'Percorso fisso', minutes: 20, hint: 'Sempre lo stesso percorso, al tuo livello.' },
   free: { name: 'Esercizio libero', minutes: 15, hint: 'Un esercizio scritto da te, senza livelli.' },
-  match: { name: 'Partitella', minutes: 15, hint: 'Set giocati con la regola del mese.' }
+  match: { name: 'Partitella', minutes: 15, hint: 'Metà tempo rischiosa, metà a schema.' }
 };
 
 const step = (type, minutes, extra = {}) => ({ type, minutes, ...extra });

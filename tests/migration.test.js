@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { normalizePlan, weekAt } from '../src/lib/engine/plan.js';
-import { normalizeEvent, occurrencesBetween, agenda, fulfillsTest, eventTitle, eventColor } from '../src/lib/engine/events.js';
+import { normalizeEvent, occurrencesBetween, agenda, fulfillsTest, eventTitle, eventColor, serveScore } from '../src/lib/engine/events.js';
 import { computeTracks } from '../src/lib/engine/levels.js';
 import { testsDue, testPlan, suggestSession } from '../src/lib/engine/suggest.js';
 import { publicSummary } from '../src/lib/engine/stats.js';
@@ -48,6 +48,21 @@ describe('passaggio dal primo modello', () => {
     expect(fulfillsTest(b1)).toBe(true);
     expect(eventTitle(b1)).toBe('Completo');
     expect(eventColor(b1)).toBe('blue');
+  });
+
+  it('le voci salvate con i servizi si leggono ancora', () => {
+    const b1 = events.find((e) => e.id === 'b1');
+    expect(serveScore(b1)).toBe(7);
+    expect(serveScore(legacyEvents[2])).toBe(7);
+    expect(serveScore(events.find((e) => e.id === 'a1'))).toBeNull(); // serve: null
+    expect(serveScore(events.find((e) => e.id === 'a2'))).toBeNull(); // campo assente
+    expect(serveScore({ serve: 6 })).toBe(6);
+    expect(serveScore({ serve: { id: '1-S' } })).toBeNull();
+    expect(serveScore(null)).toBeNull();
+    // Un allenamento con i soli servizi conta ancora come «con test».
+    const onlyServe = normalizeEvent({ id: 's1', kind: 'training', template: 'completo', date: '2026-11-18', tests: [], serve: { id: '1-S', score: 8 }, withTest: true });
+    expect(fulfillsTest(onlyServe)).toBe(true);
+    expect(serveScore(onlyServe)).toBe(8);
   });
 
   it('i livelli calcolati sono gli stessi di prima', () => {
