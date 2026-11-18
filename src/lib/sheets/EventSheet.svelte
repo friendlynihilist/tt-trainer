@@ -204,7 +204,12 @@
 
   const FEEL = ['Dura', 'Così così', 'Bene', 'Molto bene', 'Ottima'];
   const title = $derived(isLevel ? 'Livello impostato' : kind === 'training' ? app.catalog.template(template).name : (KIND[kind]?.name ?? 'Attività'));
-  const templates = $derived(Object.values(app.catalog.templates));
+  // I modelli, più l'allenamento della voce se è un pacchetto.
+  const templates = $derived.by(() => {
+    const list = Object.values(app.catalog.templates);
+    const cur = app.catalog.template(template);
+    return list.some((t) => t.id === cur.id) || cur.id === 'auto' ? list : [cur, ...list];
+  });
 </script>
 
 <Sheet {title} onclose={() => ui.close()} tall>

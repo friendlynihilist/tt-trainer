@@ -3,7 +3,7 @@
   import Target from '@lucide/svelte/icons/target';
   import { app } from '../store/app.svelte.js';
   import { MATCH_TYPES, SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
-  import { matchHalves } from '../engine/compose.js';
+  import { matchHalves, schemeOf } from '../engine/compose.js';
   import { nextGoal, goalText } from '../engine/medals.js';
   import Medal from './Medal.svelte';
 
@@ -57,15 +57,17 @@
     <div class="half" class:now={part === 1} class:done={part === 2}>
       <span class="tag line">Prima metà · {first}′</span>
       <p><strong>{MATCH_TYPES.risk.name}.</strong> {MATCH_TYPES.risk.text} {MATCH_TYPES.risk.why}</p>
+      {#if step.variant?.risk}<p class="variant">{step.variant.risk}</p>{/if}
     </div>
     <div class="half" class:now={part === 2}>
       <span class="tag line">Seconda metà · {second}′</span>
       <p><strong>{MATCH_TYPES.scheme.name}.</strong> {MATCH_TYPES.scheme.text}</p>
       <p class="scheme"><strong>Schema: {scheme.name.toLowerCase()}.</strong> {scheme.text}</p>
+      {#if step.variant?.scheme}<p class="variant">{step.variant.scheme}</p>{/if}
       {#if onscheme}
         <div class="chips" role="group" aria-label="Schema">
           {#each step.schemes ?? [] as id (id)}
-            <button class="chip" aria-pressed={scheme.id === id} onclick={() => onscheme(id)}>{SCHEMES[id].name}</button>
+            <button class="chip" aria-pressed={scheme.id === id} onclick={() => onscheme(id)}>{schemeOf(id, app.catalog)?.name ?? id}</button>
           {/each}
           {#if onmore}<button class="chip" aria-pressed={!(step.schemes ?? []).includes(scheme.id)} onclick={onmore}>Altri</button>{/if}
         </div>
@@ -158,6 +160,11 @@
     opacity: 0.55;
   }
   .scheme {
+    color: var(--ink);
+  }
+  .variant {
+    padding-left: 10px;
+    border-left: 2px solid var(--accent);
     color: var(--ink);
   }
   .half .chips {

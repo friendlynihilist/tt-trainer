@@ -26,14 +26,14 @@ export function proposalFor(date = app.today) {
  * Apre la sessione dal vivo per un appuntamento (oggi). Un test si compone dalle proposte (o dagli
  * esercizi indicati); un allenamento dal suo modello. Il test resta separato dall'allenamento.
  */
-export function startItem(item, { template = null, exercises = null } = {}) {
+export function startItem(item, { template = null, exercises = null, overrides = null } = {}) {
   const date = app.today;
   const link = { occ: item?.source === 'plan' ? item.key : null, eventId: item?.source === 'event' ? item.eventId : null };
   if (item?.kind === 'test') {
     ui.live = { mode: 'test', date, exercises: exercises ?? proposalFor(date).map((p) => p.ex), ...link };
     return;
   }
-  ui.live = { mode: 'training', date, template: template?.id ?? item?.template ?? 'completo', ...link };
+  ui.live = { mode: 'training', date, template: template?.id ?? item?.template ?? 'completo', overrides: overrides ?? {}, ...link };
 }
 
 /** Registra a posteriori quello che era previsto. */

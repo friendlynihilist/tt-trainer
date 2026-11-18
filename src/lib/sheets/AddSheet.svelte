@@ -6,6 +6,7 @@
   import { ui } from '../store/ui.svelte.js';
   import { FREE_KINDS, KIND } from '../data/taxonomy.js';
   import { templateMinutes } from '../data/templates.js';
+  import { packagesOf } from '../data/packages.js';
   import { startItem, planOn } from '../store/actions.js';
   import { fmtLong } from '../util/dates.js';
   import Sheet from '../ui/Sheet.svelte';
@@ -18,7 +19,8 @@
   const future = day > app.today;
   let mode = $state(future ? 'plan' : isToday ? 'live' : 'log');
 
-  const templates = $derived(Object.values(app.catalog.templates));
+  // Prima i pacchetti del tuo livello, poi i modelli.
+  const templates = $derived([...packagesOf(app.player.level), ...Object.values(app.catalog.templates)]);
 
   function pickTraining(t) {
     ui.close();

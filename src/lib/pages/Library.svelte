@@ -8,7 +8,8 @@
   import { fly } from 'svelte/transition';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { STEP_TYPES, templateMinutes } from '../data/templates.js';
+  import { normalizeTemplate, templateMinutes } from '../data/templates.js';
+  import { packagesOf } from '../data/packages.js';
   import { FAMILIES, BALLS, POINT_PHASES, ERROR_GROUPS } from '../data/taxonomy.js';
   import { PLAYER_LEVELS, PLAYER_LEVEL, LEVEL_IDS, MODES, MODE } from '../data/library.js';
   import { weaknesses } from '../engine/stats.js';
@@ -52,9 +53,7 @@
   const archived = $derived(app.catalog.trackIds.filter((id) => app.catalog.track(id).archived));
 
   function summary(t) {
-    return t.steps
-      .map((s) => (s.type === 'free' ? s.name : s.type === 'track' ? (app.catalog.track(s.track)?.short ?? '?') : s.type === 'exercise' ? (app.catalog.exercise(s.ex)?.name ?? '?') : STEP_TYPES[s.type].name))
-      .join(' · ');
+    return normalizeTemplate(t).blocks.map((b) => b.name).join(' · ');
   }
 
   function addStroke() {
@@ -99,6 +98,22 @@
                 </span>
                 <ChevronRight size={16} />
               </button>
+            {/each}
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="heading head">Pacchetti</h2>
+          <div class="card flush list">
+            {#each PLAYER_LEVELS as l (l.id)}
+              <div class="item pk">
+                <span class="grow">
+                  <strong>{l.name}</strong>{#if l.id === app.player.level}<i class="me" aria-label="il tuo livello"></i>{/if}
+                </span>
+                {#each packagesOf(l.id) as t (t.id)}
+                  <button class="chip mini" data-color={t.color} onclick={() => ui.open('template', { id: t.id })}>{t.minutes}′</button>
+                {/each}
+              </div>
             {/each}
           </div>
         </section>
@@ -280,6 +295,14 @@
     padding: 4px 12px;
     font-size: 13px;
     gap: 6px;
+  }
+  .pk {
+    gap: 8px;
+  }
+  .pk .me {
+    display: inline-block;
+    margin-left: 8px;
+    vertical-align: middle;
   }
   .me {
     width: 6px;

@@ -1,20 +1,24 @@
 <script>
   // Scelta da un elenco, con gruppi, ricerca e (se serve) aggiunta di una voce propria.
+  // `filters`: righe di filtri facoltativi, [{ key, options: [{ id, label }] }]; ogni opzione
+  // dell'elenco porta i suoi valori in `tags` (es. { family, level, modes: [] }). Di base sono spenti.
   import Check from '@lucide/svelte/icons/check';
   import Search from '@lucide/svelte/icons/search';
   import Plus from '@lucide/svelte/icons/plus';
   import { ui } from '../store/ui.svelte.js';
   import Sheet from '../ui/Sheet.svelte';
 
-  let { title = 'Scegli', groups = [], value = null, onpick, onadd = null, clearable = false } = $props();
+  let { title = 'Scegli', groups = [], value = null, onpick, onadd = null, clearable = false, filters = [] } = $props();
 
   let query = $state('');
+  let active = $state({});
+  const passes = (o) =>
+    Object.entries(active).every(([k, v]) => v == null || (Array.isArray(o.tags?.[k]) ? o.tags[k].includes(v) : o.tags?.[k] === v));
   const count = $derived(groups.reduce((n, g) => n + g.options.length, 0));
   const shown = $derived.by(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return groups;
     return groups
-      .map((g) => ({ ...g, options: g.options.filter((o) => `${o.label} ${o.hint ?? ''}`.toLowerCase().includes(q)) }))
+      .map((g) => ({ ...g, options: g.options.filter((o) => passes(o) && (!q || `${o.label} ${o.hint ?? ''}`.toLowerCase().includes(q))) }))
       .filter((g) => g.options.length);
   });
   const exact = $derived(groups.some((g) => g.options.some((o) => o.label.toLowerCase() === query.trim().toLowerCase())));
@@ -39,6 +43,14 @@
       <input placeholder={onadd ? 'Cerca o aggiungi' : 'Cerca'} bind:value={query} />
     </label>
   {/if}
+
+  {#each filters as f (f.key)}
+    <div class="filter" role="group" aria-label={f.label}>
+      {#each f.options as o (o.id)}
+        <button class="chip mini" aria-pressed={active[f.key] === o.id} onclick={() => (active = { ...active, [f.key]: active[f.key] === o.id ? null : o.id })}>{o.label}</button>
+      {/each}
+    </div>
+  {/each}
 
   {#if clearable && value != null && !query}
     <button class="row-btn clear" onclick={() => pick(null)}>Togli la scelta</button>
@@ -89,6 +101,23 @@
   }
   .group {
     margin: 18px 0 4px;
+  }
+  .filter {
+    display: flex;
+    gap: 6px;
+    margin: 0 -20px 8px;
+    padding: 0 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter::-webkit-scrollbar {
+    display: none;
+  }
+  .filter .chip {
+    flex: none;
+    min-height: 30px;
+    padding: 4px 12px;
+    font-size: 13px;
   }
   .row-btn {
     display: flex;

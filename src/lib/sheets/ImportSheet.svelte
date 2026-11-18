@@ -5,6 +5,7 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { parseImport, importPrompt } from '../data/importer.js';
+  import { templateMinutes } from '../data/templates.js';
   import Sheet from '../ui/Sheet.svelte';
 
   let text = $state('');
@@ -58,7 +59,7 @@
               <div class="item"><span class="tag line">mese</span><span class="grow">{b.theme}</span></div>
             {/each}
             {#each result.templates as t (t.id)}
-              <div class="item" data-color={t.color}><span class="tag line">modello</span><span class="grow">{t.name}<span class="small muted block">{t.steps.reduce((n, s) => n + s.minutes, 0)} min</span></span><i class="pip"></i></div>
+              <div class="item" data-color={t.color}><span class="tag line">modello</span><span class="grow">{t.name}<span class="small muted block">{templateMinutes(t)} min</span></span><i class="pip"></i></div>
             {/each}
           </div>
           {#if existing}<p class="small muted">{existing} già presenti: verranno aggiornati.</p>{/if}

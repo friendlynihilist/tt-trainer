@@ -10,6 +10,18 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.4.0',
+    date: '2026-11-19',
+    title: 'Pacchetti e allenamenti tuoi',
+    items: [
+      { icon: 'library', text: 'Per ogni livello ci sono due pacchetti, da 90 e da 60 minuti. In Oggi trovi quelli del tuo livello.' },
+      { icon: 'swap', text: 'Ogni esercizio si cambia con un tocco, prima di iniziare o durante la sessione.' },
+      { icon: 'pencil', text: 'Crea i tuoi allenamenti a blocchi, da zero o da un pacchetto.' },
+      { icon: 'swords', text: 'La partitella ha la variante del tuo livello e gli schemi della libreria.' }
+    ],
+    note: 'I tuoi modelli di prima ci sono ancora, uguali.'
+  },
+  {
     version: '0.3.0',
     date: '2026-11-18',
     title: 'Medaglie e livelli',

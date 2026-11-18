@@ -14,11 +14,12 @@
   import Check from '@lucide/svelte/icons/check';
   import Repeat from '@lucide/svelte/icons/repeat-2';
   import Plus from '@lucide/svelte/icons/plus';
+  import Save from '@lucide/svelte/icons/save';
   import { app } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
   import { loadLive, saveLive, clearLive } from '../store/live.js';
   import { weekFor } from '../engine/plan.js';
-  import { composeSession, composeTest, exerciseStep, sessionExercises, trainedTracks, matchHalves, TEST_MINUTES } from '../engine/compose.js';
+  import { composeSession, composeTest, exerciseStep, sessionExercises, trainedTracks, matchHalves, TEST_MINUTES, replaceStepExercise, schemeOf, templateWithOverrides } from '../engine/compose.js';
   import { upgradeDraft, makeAttempt, allAttempts } from '../engine/attempts.js';
   import { allMedals, newMedals, valueText, size } from '../engine/medals.js';
   import { SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
@@ -42,7 +43,7 @@
     const template = test ? null : app.catalog.template(live.template);
     const session = test
       ? composeTest({ exerciseIds: live.exercises ?? [], catalog: app.catalog })
-      : composeSession({ week, template, catalog: app.catalog, medals: app.medals });
+      : composeSession({ week, template, catalog: app.catalog, medals: app.medals, overrides: live.overrides });
     const attempts = {};
     // Nel test l'obiettivo di ogni esercizio è già aperto.
     if (test) for (const s of session.steps) attempts[s.id] = startGoal(app.catalog.exercise(s.ex), app.medals[s.ex]);
@@ -60,6 +61,8 @@
       step: 0,
       timers: {},
       attempts,
+      // Gli esercizi cambiati (prima o durante): servono a salvare l'allenamento come tuo.
+      changes: { ...(live.overrides ?? {}) },
       focus: null,
       // Con chi ti alleni: si propone l'ultimo compagno, e si cambia alla chiusura.
       partner: lastPartner(),
@@ -237,13 +240,12 @@
       title: 'Cambia esercizio',
       value: s.ex,
       family: current?.family,
+      variantsOf: s.ex,
       onpick: (id) => {
         const ex = id && app.catalog.exercise(id);
         if (!ex || id === s.ex) return;
-        s.ex = ex.id;
-        if (s.kind === 'exercise') s.name = ex.name;
-        // Un esercizio fuori dalla sequenza del percorso non allena quel percorso.
-        if (s.track && !app.catalog.sequence(s.track).includes(ex.id)) delete s.track;
+        draft.session.steps[index] = replaceStepExercise($state.snapshot(s), ex.id, app.catalog);
+        if (draft.mode === 'training') draft.changes = { ...(draft.changes ?? {}), [s.id]: ex.id };
         if (draft.attempts[s.id]) draft.attempts[s.id] = startGoal(ex, app.medals[ex.id]);
         buzz();
       }
@@ -267,19 +269,42 @@
 
   function pickScheme(index, id) {
     const s = draft.session.steps[index];
-    if (!SCHEMES[id]) return;
-    s.scheme = SCHEMES[id];
+    const scheme = schemeOf(id, app.catalog);
+    if (!scheme) return;
+    s.scheme = scheme;
     buzz();
   }
+  /** Gli schemi della libreria (famiglia schemi) e quelli dei mesi. */
   function moreSchemes(index) {
     const s = draft.session.steps[index];
+    const lib = app.catalog.activeExerciseIds.map((id) => app.catalog.exercise(id)).filter((e) => e.family === 'schemi');
     ui.open('pick', {
       title: 'Schema della partitella',
       value: s.scheme?.id,
-      groups: [{ options: Object.values(SCHEMES).map((x) => ({ id: x.id, label: x.name, hint: x.text })) }],
+      groups: [
+        { name: 'Schemi', options: lib.map((e) => ({ id: e.id, label: e.name })) },
+        { name: 'Dei mesi', options: Object.values(SCHEMES).map((x) => ({ id: x.id, label: x.name })) }
+      ],
       onpick: (id) => id && pickScheme(index, id)
     });
   }
+
+  /** Sopra il nome dell'esercizio: il percorso, oppure il blocco (con «2/3» se ha più esercizi). */
+  function eyebrow(s) {
+    const b = s.block;
+    const label = s.track ? app.catalog.track(s.track)?.short : b && b.name !== s.name ? b.name : null;
+    return [label, b?.of > 1 ? `${b.n}/${b.of}` : null].filter(Boolean).join(' · ');
+  }
+
+  /** L'allenamento con gli esercizi cambiati, salvato fra i tuoi. */
+  function saveMine() {
+    const base = app.catalog.template(draft.template);
+    const t = app.saveCustom('templates', { ...templateWithOverrides(base, draft.changes), name: `${base.name} (mio)` });
+    draft.savedAs = t.id;
+    buzz();
+    ui.toast(`«${t.name}» è tra i tuoi allenamenti`);
+  }
+  const canSave = $derived(draft?.mode === 'training' && !draft.savedAs && Object.keys(draft.changes ?? {}).some((k) => /^b\d/.test(k)));
 
   /** La metà della partitella in corso: 1 rischiosa, 2 a schema. */
   const matchPart = $derived(step?.kind === 'match' ? (elapsed >= matchHalves(step.minutes)[0] * 60 ? 2 : 1) : null);
@@ -362,7 +387,7 @@
   <div class="live" in:fly={{ y: 40, duration: 420, easing: cubicOut }} out:fade={{ duration: 180 }}>
     <header>
       <button class="icon-btn" onclick={leave} aria-label="Metti in pausa e chiudi"><X size={22} /></button>
-      <div class="steps" role="tablist" aria-label="Fasi">
+      <div class="steps" class:dense={steps.filter((x) => x.kind !== 'pause').length > 8} role="tablist" aria-label="Fasi">
         {#each steps as s, i (s.id)}
           {#if s.kind !== 'pause'}
             <button class:on={i === draft.step} class:past={i < draft.step} onclick={() => goTo(i)} aria-label={s.name} role="tab" aria-selected={i === draft.step}></button>
@@ -390,8 +415,8 @@
             <div class="bar" class:over={remaining < 0}><i style:width="{Math.min(100, (elapsed / total) * 100)}%"></i></div>
 
             <div class="head">
-              {#if step.kind === 'exercise' && step.track}
-                <span class="small muted">{app.catalog.track(step.track)?.short ?? ''}</span>
+              {#if step.kind === 'exercise' && eyebrow(step)}
+                <span class="small muted">{eyebrow(step)}</span>
               {/if}
               <h1 class="display">{step.name}</h1>
               {#if stepEx && (step.kind === 'exercise' || step.kind === 'serve')}
@@ -475,6 +500,10 @@
 
             {#if draft.mode === 'test'}
               <button class="btn ghost self" onclick={addExercise}><Plus size={16} /> Aggiungi un esercizio</button>
+            {/if}
+
+            {#if canSave}
+              <button class="btn ghost self" onclick={saveMine}><Save size={16} /> Salva come mio</button>
             {/if}
 
             <section class="stack g-12">
@@ -592,6 +621,25 @@
   .steps button.on::before {
     width: 22px;
     background: var(--accent);
+  }
+  /* Con tanti esercizi (i pacchetti) i pallini si stringono e vanno a capo, senza uscire dallo schermo. */
+  .steps {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .steps.dense {
+    gap: 0;
+  }
+  .steps.dense button {
+    width: 12px;
+    height: 18px;
+  }
+  .steps.dense button::before {
+    width: 6px;
+    height: 6px;
+  }
+  .steps.dense button.on::before {
+    width: 10px;
   }
   .steps .end::before {
     display: none;

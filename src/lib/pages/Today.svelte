@@ -6,13 +6,17 @@
   import Coffee from '@lucide/svelte/icons/coffee';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import TrendingUp from '@lucide/svelte/icons/trending-up';
+  import Repeat from '@lucide/svelte/icons/repeat-2';
+  import Save from '@lucide/svelte/icons/save';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { loadLive, clearLive } from '../store/live.js';
   import { startItem, logItem, weekOf, proposalFor } from '../store/actions.js';
   import { weekAt, removeWeek } from '../engine/plan.js';
   import { agenda } from '../engine/events.js';
-  import { composeSession } from '../engine/compose.js';
+  import { composeSession, templateWithOverrides } from '../engine/compose.js';
+  import { packagesOf } from '../data/packages.js';
+  import { pickExercise, pickTemplate } from '../ui/pickers.js';
   import { nearGoals } from '../engine/player.js';
   import { goalText } from '../engine/medals.js';
   import { lastFocus } from '../engine/stats.js';
@@ -45,14 +49,22 @@
 
   // Il modello si può cambiare al volo; senza niente in calendario si sceglie qui.
   let chosen = $state(null);
+  // Gli esercizi cambiati prima di iniziare: valgono solo per questa sessione.
+  let overrides = $state({});
   const weekToday = $derived(weekOf(app.today));
   const templateId = $derived(chosen ?? trainingToday?.template ?? null);
   const template = $derived(templateId ? app.catalog.template(templateId) : null);
-  const session = $derived(template ? composeSession({ week: weekToday, template, catalog: app.catalog, medals: app.medals }) : null);
+  const session = $derived(template ? composeSession({ week: weekToday, template, catalog: app.catalog, medals: app.medals, overrides }) : null);
+  const changed = $derived(Object.keys(overrides).length > 0);
   const proposal = $derived(testToday ? proposalFor(app.today) : []);
   const near = $derived(nearGoals({ medals: app.medals, catalog: app.catalog }));
   const focus = $derived(lastFocus(app.events));
-  const templates = $derived(Object.values(app.catalog.templates));
+  // Prima i pacchetti del tuo livello, poi i modelli; «Altri» apre tutto.
+  const templates = $derived.by(() => {
+    const list = [...packagesOf(app.player.level), ...Object.values(app.catalog.templates)];
+    if (template && !list.some((t) => t.id === template.id)) list.unshift(template);
+    return list;
+  });
   const offer = $derived(app.levelOffer);
 
   let draft = $state(null);
@@ -70,8 +82,38 @@
     return { title: `Settimana ${week.number}`, sub: week.block?.custom ? week.block.theme : `${week.block?.label} · ${week.block?.theme}` };
   });
 
+  function choose(id) {
+    if (id === templateId) return;
+    chosen = id;
+    overrides = {};
+  }
+  function moreTemplates() {
+    pickTemplate({ value: templateId, onpick: (id) => id && choose(id) });
+  }
+  function change(step) {
+    pickExercise({
+      title: 'Cambia esercizio',
+      value: step.ex,
+      family: app.catalog.exercise(step.ex)?.family,
+      variantsOf: step.ex,
+      onpick: (id) => id && id !== step.ex && (overrides = { ...overrides, [step.id]: id })
+    });
+  }
+  function saveMine() {
+    const t = app.saveCustom('templates', { ...templateWithOverrides(template, overrides), name: `${template.name} (mio)` });
+    chosen = t.id;
+    overrides = {};
+    ui.toast(`«${t.name}» è tra i tuoi allenamenti`);
+  }
+  /** Sopra il nome dell'esercizio: il percorso, oppure il blocco (con «2/3» se ha più esercizi). */
+  function eyebrow(step) {
+    const b = step.block;
+    const label = step.track ? app.catalog.track(step.track)?.short : b && b.name !== step.name ? b.name : null;
+    return [label, b?.of > 1 ? `${b.n}/${b.of}` : null].filter(Boolean).join(' · ');
+  }
+
   function startTraining() {
-    startItem(trainingToday ?? null, { template });
+    startItem(trainingToday ?? null, { template, overrides });
   }
   function logTraining() {
     if (trainingToday) logItem({ ...trainingToday, template: templateId ?? trainingToday.template });
@@ -172,15 +214,19 @@
         <h2 class="title">{template.name}</h2>
         <p class="muted">{session.minutes} min · {session.exercises.length} esercizi</p>
       </div>
-      <div class="chips tpls" role="group" aria-label="Modello">
+      <div class="chips tpls" role="group" aria-label="Allenamento">
         {#each templates as t (t.id)}
-          <button class="chip tpl" data-color={t.color} aria-pressed={templateId === t.id} onclick={() => (chosen = t.id)}>{t.name}</button>
+          <button class="chip tpl" data-color={t.color} aria-pressed={templateId === t.id} onclick={() => choose(t.id)}>{t.name}</button>
         {/each}
+        <button class="chip tpl more" onclick={moreTemplates}>Altri</button>
       </div>
       <div class="actions">
         <button class="btn accent grow" onclick={startTraining}><Play size={18} fill="currentColor" /> Inizia</button>
         <button class="btn ghost" onclick={logTraining}>Registra</button>
       </div>
+      {#if changed}
+        <button class="btn plain small save" onclick={saveMine}><Save size={15} /> Salva come mio</button>
+      {/if}
     </section>
   {:else if !draft}
     <section class="card stack g-12 rest">
@@ -199,8 +245,9 @@
       <span class="small muted">Se ti va di allenarti</span>
       <div class="chips tpls" role="group" aria-label="Modello">
         {#each templates as t (t.id)}
-          <button class="chip tpl" data-color={t.color} aria-pressed="false" onclick={() => (chosen = t.id)}>{t.name}</button>
+          <button class="chip tpl" data-color={t.color} aria-pressed="false" onclick={() => choose(t.id)}>{t.name}</button>
         {/each}
+        <button class="chip tpl more" onclick={moreTemplates}>Altri</button>
       </div>
       {#if !plan}
         <button class="btn ghost" onclick={() => ui.open('plan', { fresh: true })}>Crea un piano</button>
@@ -260,17 +307,19 @@
               <div class="what">
                 {#if step.kind === 'exercise'}
                   {@const ex = app.catalog.exercise(step.ex)}
-                  <button class="name" onclick={() => ui.open('exercise', { id: step.ex })}>
-                    <span class="grow">
-                      {#if step.track}<span class="small muted lvl">{app.catalog.track(step.track)?.short}</span>{/if}
-                      <strong>{step.name}</strong>
-                    </span>
+                  {@const label = eyebrow(step)}
+                  <div class="name">
+                    <button class="grow open" onclick={() => ui.open('exercise', { id: step.ex })}>
+                      {#if label}<span class="small muted lvl">{label}</span>{/if}
+                      <strong class:changed={overrides[step.id]}>{step.name}</strong>
+                    </button>
                     <MedalRow exercise={ex} medals={app.medals[step.ex]} />
-                  </button>
+                    <button class="icon-btn swap" onclick={() => change(step)} aria-label="Cambia esercizio"><Repeat size={16} /></button>
+                  </div>
                 {:else}
                   <strong class="name">{step.name}</strong>
                 {/if}
-                <StepBody {step} />
+                {#if step.kind !== 'exercise' || !step.block || step.block.of === 1}<StepBody {step} />{/if}
               </div>
             </li>
           {/if}
@@ -310,6 +359,29 @@
     min-height: 32px;
     padding: 4px 12px;
     font-size: 13px;
+  }
+  .chip.tpl.more {
+    color: var(--ink-2);
+  }
+  .save {
+    align-self: flex-start;
+    margin-top: -6px;
+  }
+  .open {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    min-width: 0;
+  }
+  .swap {
+    width: 34px;
+    height: 34px;
+    flex: none;
+    color: var(--ink-3);
+  }
+  .changed {
+    color: var(--accent-ink);
   }
   .chip.tpl[aria-pressed='true'] {
     background: var(--c);
