@@ -7,12 +7,14 @@
   import Palette from '@lucide/svelte/icons/palette';
   import LibraryBig from '@lucide/svelte/icons/library-big';
   import Sparkles from '@lucide/svelte/icons/sparkles';
+  import Coffee from '@lucide/svelte/icons/coffee';
+  import Swords from '@lucide/svelte/icons/swords';
   import { CHANGELOG, VERSION } from '../data/changelog.js';
   import { fmtLong } from '../util/dates.js';
 
   let { entries = CHANGELOG.slice(0, 1), history = false, onclose } = $props();
 
-  const ICONS = { calendar: CalendarDays, gauge: Gauge, palette: Palette, library: LibraryBig, sparkles: Sparkles };
+  const ICONS = { calendar: CalendarDays, gauge: Gauge, palette: Palette, library: LibraryBig, sparkles: Sparkles, coffee: Coffee, swords: Swords };
   const list = $derived(history ? CHANGELOG : entries);
 
   /** Sale e si assesta: un po' di scala, un po' di spostamento. */

@@ -10,6 +10,17 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.2.1',
+    date: '2026-11-18',
+    title: 'Correzioni',
+    items: [
+      { icon: 'gauge', text: 'In allenamento l’app non chiede più quanti servizi sono riusciti. Se vuoi segnarli, tocca «Misura i servizi».' },
+      { icon: 'swords', text: 'Due nuove partitelle. Rischiosa: ogni set parte da 9-10. A schema: chi esegue bene lo schema fa il punto.' },
+      { icon: 'coffee', text: 'Fra un blocco e l’altro c’è 1 minuto di pausa, che puoi saltare. La durata totale non cambia.' }
+    ],
+    note: 'I servizi che avevi già segnato restano nel diario.'
+  },
+  {
     version: '0.2.0',
     date: '2026-11-17',
     title: 'Allenati come vuoi',
