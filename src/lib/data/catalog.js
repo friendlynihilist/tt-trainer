@@ -8,7 +8,8 @@
 // Esercizi e colpi (taxonomy.js) restano collezioni separate anche quando un id coincide.
 
 import { TRACKS, BLOCKS, SCHEMES, DEFAULT_SCHEME } from './program.js';
-import { TEMPLATES, DEFAULT_TEMPLATE, AUTO_TEMPLATE } from './templates.js';
+import { TEMPLATES, DEFAULT_TEMPLATE, AUTO_TEMPLATE, normalizeTemplate } from './templates.js';
+import { PACKAGES } from './packages.js';
 import { LIBRARY, LIBRARY_BY_ID, SEQUENCES, LEGACY_LEVELS, SERVE_EXERCISE, LEVEL_IDS, MODES } from './library.js';
 import { FAMILY } from './taxonomy.js';
 
@@ -131,8 +132,9 @@ export function buildCatalog(custom = {}) {
   const blocks = { ...BLOCKS };
   for (const b of custom?.blocks ?? []) if (b?.id) blocks[b.id] = customBlock(b, tracks);
   const templates = { ...TEMPLATES };
-  for (const t of custom?.templates ?? []) if (t?.id) templates[t.id] = { ...t, custom: true, steps: t.steps ?? [] };
-  const all = { ...templates, auto: AUTO_TEMPLATE };
+  // I modelli personali salvati prima della 0.4 si leggono nel formato a blocchi, senza riscriverli.
+  for (const t of custom?.templates ?? []) if (t?.id) templates[t.id] = { ...normalizeTemplate(t), custom: true };
+  const all = { ...templates, ...PACKAGES, auto: AUTO_TEMPLATE };
 
   const trackIds = Object.keys(tracks);
   const exerciseIds = Object.keys(exercises);
@@ -140,8 +142,10 @@ export function buildCatalog(custom = {}) {
     tracks,
     blocks,
     exercises,
-    /** I modelli da scegliere. «Su misura» (auto) resta solo per leggere le voci di prima. */
+    /** I modelli da scegliere (di base e tuoi). «Su misura» (auto) resta solo per leggere le voci di prima. */
     templates,
+    /** I pacchetti per livello. */
+    packages: PACKAGES,
     trackIds,
     /** Percorsi da proporre nelle scelte (gli archiviati restano solo per la storia). */
     activeTrackIds: trackIds.filter((id) => !tracks[id].archived),
@@ -152,7 +156,7 @@ export function buildCatalog(custom = {}) {
     block: (id) => blocks[id] ?? null,
     exercise: (id) => exercises[id] ?? null,
     sequence: (id) => tracks[id]?.sequence ?? [],
-    template: (id) => all[id] ?? templates[DEFAULT_TEMPLATE],
+    template: (id) => normalizeTemplate(all[id] ?? templates[DEFAULT_TEMPLATE]),
     hasTemplate: (id) => Boolean(all[id]),
     /** Un livello di un percorso, come era nelle versioni di prima (per lo storico). */
     level: (id, n) => tracks[id]?.levels?.[n - 1] ?? null
