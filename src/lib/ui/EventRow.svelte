@@ -38,8 +38,11 @@
       {:else if event.minutes && event.kind !== 'test'}
         {fmtDuration(event.minutes)}
       {/if}
+      {#if event.partner?.name}
+        {scores.length || (event.minutes && event.kind !== 'test') ? ' · ' : ''}con {event.partner.name}
+      {/if}
       {#if event.focus?.stroke}
-        {scores.length || event.minutes ? ' · ' : ''}da correggere: {app.strokeName(event.focus.stroke, true)}
+        {scores.length || event.minutes || event.partner?.name ? ' · ' : ''}da correggere: {app.strokeName(event.focus.stroke, true)}
       {/if}
     </span>
     {#if event.note}<span class="small note">{event.note}</span>{/if}

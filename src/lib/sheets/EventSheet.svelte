@@ -24,6 +24,7 @@
   import Sheet from '../ui/Sheet.svelte';
   import Counter from '../ui/Counter.svelte';
   import FocusEditor from '../ui/FocusEditor.svelte';
+  import PartnerField from '../ui/PartnerField.svelte';
 
   let { id = null, draft = null } = $props();
 
@@ -42,6 +43,7 @@
   let feel = $state(base.feel ?? null);
   let focus = $state(base.focus ?? null);
   let obs = $state(base.obs ?? []);
+  let partner = $state(base.partner ?? null);
   let minutesTouched = $state(Boolean(original));
 
   function defaultMinutes(k, t) {
@@ -119,6 +121,8 @@
       out.adhoc = true;
     }
     if (draft?.occ && !out.occ) out.occ = draft.occ;
+    if (partner?.name) out.partner = { id: partner.id ?? null, name: partner.name };
+    else delete out.partner;
 
     if (measured) {
       const attempts = filled.map((r) => {
@@ -309,6 +313,11 @@
             >
           {/each}
         </div>
+      </section>
+
+      <section class="stack g-8">
+        <h3 class="heading">Con chi ti sei allenato</h3>
+        <PartnerField value={partner} onchange={(p) => (partner = p)} />
       </section>
 
       <section class="stack g-12">

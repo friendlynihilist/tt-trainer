@@ -30,6 +30,7 @@
   import GoalPad, { startGoal, goalTries } from '../ui/GoalPad.svelte';
   import Medal from '../ui/Medal.svelte';
   import FocusEditor from '../ui/FocusEditor.svelte';
+  import PartnerField, { lastPartner } from '../ui/PartnerField.svelte';
 
   const uid = app.user.uid;
 
@@ -60,6 +61,8 @@
       timers: {},
       attempts,
       focus: null,
+      // Con chi ti alleni: si propone l'ultimo compagno, e si cambia alla chiusura.
+      partner: lastPartner(),
       note: '',
       feel: null,
       beat: Date.now(),
@@ -328,6 +331,7 @@
       note: draft.note.trim(),
       feel: draft.feel
     };
+    if (draft.partner?.name) ev.partner = { id: draft.partner.id ?? null, name: draft.partner.name };
     // I test contati in una sessione cominciata con la 0.2 si salvano come allora.
     if (draft.legacyTests?.tests?.length) ev.tests = draft.legacyTests.tests;
     if (draft.legacyTests?.serve) ev.serve = draft.legacyTests.serve;
@@ -472,6 +476,11 @@
             {#if draft.mode === 'test'}
               <button class="btn ghost self" onclick={addExercise}><Plus size={16} /> Aggiungi un esercizio</button>
             {/if}
+
+            <section class="stack g-12">
+              <h2 class="heading">Con chi ti sei allenato</h2>
+              <PartnerField value={draft.partner ?? null} onchange={(p) => (draft.partner = p)} />
+            </section>
 
             <section class="stack g-12">
               <h2 class="heading">Sensazione</h2>

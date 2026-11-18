@@ -18,7 +18,7 @@ export const CHANGELOG = [
       { icon: 'library', text: 'La libreria ha 82 esercizi in otto famiglie. Per ognuno trovi il livello suggerito, il formato, la qualità da cercare e gli errori più comuni.' },
       { icon: 'gauge', text: 'In allenamento tocchi «Prova l’obiettivo» e l’app ti mostra il prossimo gradino. Il test resta un appuntamento a parte.' },
       { icon: 'trending', text: 'Il tuo livello lo scegli tu. Quando sei pronto per quello dopo, te lo propone l’app.' },
-      { icon: 'users', text: 'Medaglie e livello sono solo tuoi: il gruppo vede soltanto il nome.' }
+      { icon: 'users', text: 'Medaglie e livello sono solo tuoi: il gruppo vede soltanto il nome. A fine sessione segni con chi ti sei allenato.' }
     ],
     note: 'I test fatti finora contano per le medaglie degli esercizi corrispondenti. Il test di partenza e «Su misura» non ci sono più.'
   },

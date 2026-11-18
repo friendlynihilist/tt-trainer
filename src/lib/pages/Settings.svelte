@@ -51,7 +51,7 @@
 
   function exportCsv() {
     const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [['Data', 'Tipo', 'Minuti', 'Misure', 'Colpo da correggere', 'Errore', 'Esercizio', 'Note']];
+    const rows = [['Data', 'Tipo', 'Minuti', 'Compagno', 'Misure', 'Colpo da correggere', 'Errore', 'Esercizio', 'Note']];
     for (const e of [...app.events].sort(byTime)) {
       if (e.kind === 'livello') continue;
       // Le misure, comprese quelle delle versioni di prima convertite: «esercizio: valore».
@@ -63,7 +63,7 @@
         })
         .filter(Boolean)
         .join('; ');
-      rows.push([e.date, eventTitle(e, app.catalog), e.minutes ?? '', measures, app.strokeName(e.focus?.stroke), app.errorName(e.focus?.error), e.focus?.exercise ? exerciseLabel(e.focus.exercise, app.catalog) : '', e.note ?? '']);
+      rows.push([e.date, eventTitle(e, app.catalog), e.minutes ?? '', e.partner?.name ?? '', measures, app.strokeName(e.focus?.stroke), app.errorName(e.focus?.error), e.focus?.exercise ? exerciseLabel(e.focus.exercise, app.catalog) : '', e.note ?? '']);
     }
     // Il BOM fa aprire bene gli accenti a Excel.
     download(`terza-palla-${app.today}.csv`, '﻿' + rows.map((r) => r.map(cell).join(';')).join('\n'), 'text/csv');
