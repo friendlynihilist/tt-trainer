@@ -1,14 +1,18 @@
 // Tassonomia: colpi, palla in arrivo, zone, fasi del punto, errori, tipi di attività.
 // Gli id sono stabili: nei dati degli utenti si salvano gli id, non le etichette.
 
+// Le famiglie valgono per i colpi e per gli esercizi della libreria. Ognuna ha il suo colore.
 export const FAMILIES = [
-  { id: 'servizio', name: 'Servizio' },
-  { id: 'ricezione', name: 'Ricezione' },
-  { id: 'attacco', name: 'Attacco' },
-  { id: 'controllo', name: 'Block e controtop' },
-  { id: 'taglio', name: 'Gioco tagliato' },
-  { id: 'gambe', name: 'Gambe' }
+  { id: 'servizio', name: 'Servizio', color: 'amber' },
+  { id: 'ricezione', name: 'Ricezione', color: 'teal' },
+  { id: 'palleggio', name: 'Palleggio', color: 'sky' },
+  { id: 'attacco', name: 'Attacco', color: 'blue' },
+  { id: 'controllo', name: 'Block e controtop', color: 'violet' },
+  { id: 'taglio', name: 'Gioco tagliato', color: 'brown' },
+  { id: 'gambe', name: 'Gambe', color: 'pink' },
+  { id: 'schemi', name: 'Schemi', color: 'plum' }
 ];
+export const FAMILY = Object.fromEntries(FAMILIES.map((f) => [f.id, f]));
 
 function s(id, family, name, short, side, phases, about) {
   return { id, family, name, short, side, phases, about };
@@ -27,6 +31,10 @@ export const STROKES = [
     'Servizio di dritto con il polso che oscilla come un pendolo: effetto laterale, da mescolare con taglio o top.'),
   s('srv-rovescio', 'servizio', 'Servizio di rovescio', 'Di rovescio', 'R', ['servizio'],
     'Servizio giocato dal lato del rovescio: l’effetto laterale gira al contrario del pendolo.'),
+  s('srv-pendolo-inverso', 'servizio', 'Servizio a pendolo inverso', 'Pendolo inverso', 'D', ['servizio'],
+    'Pendolo con l’effetto laterale opposto a quello normale.'),
+  s('srv-mezzo-lungo', 'servizio', 'Servizio mezzo lungo', 'Mezzo lungo', null, ['servizio'],
+    'Servizio che esce appena dal tavolo: chi riceve fatica a decidere se attaccare.'),
 
   s('ric-taglio-corto', 'ricezione', 'Ricezione: taglio corto', 'Taglio corto', null, ['risposta'],
     'Risposta tagliata che resta corta: il secondo rimbalzo cade sul tavolo.'),
@@ -36,8 +44,17 @@ export const STROKES = [
     'Attacco in top sul servizio che esce dal tavolo.'),
   s('ric-flip-d', 'ricezione', 'Ricezione: flip di dritto', 'Flip di dritto', 'D', ['risposta'],
     'Attacco sopra il tavolo su palla corta, giocato con avambraccio e polso.'),
-  s('ric-flip-r', 'ricezione', 'Ricezione: flip di rovescio (Chiquita)', 'Chiquita', 'R', ['risposta'],
+  s('ric-flip-r-base', 'ricezione', 'Ricezione: flip di rovescio semplice', 'Flip di rovescio', 'R', ['risposta'],
+    'Flip di rovescio con poca rotazione, su palla corta senza taglio o poco tagliata.'),
+  s('ric-flip-r', 'ricezione', 'Ricezione: Chiquita', 'Chiquita', 'R', ['risposta'],
     'Flip di rovescio con molto polso: rotazione in avanti e laterale su palla corta.'),
+  s('ric-mezzo-lungo', 'ricezione', 'Ricezione: taglio mezzo lungo', 'Mezzo lungo', null, ['risposta'],
+    'Risposta tagliata che esce appena dal tavolo.'),
+
+  s('palleggio-d', 'palleggio', 'Palleggio di dritto', 'Palleggio di dritto', 'D', ['scambio'],
+    'Il colpo base di dritto, senza taglio e con poca rotazione.'),
+  s('palleggio-r', 'palleggio', 'Palleggio di rovescio', 'Palleggio di rovescio', 'R', ['scambio'],
+    'Il colpo base di rovescio, senza taglio e con poca rotazione.'),
 
   s('top-d', 'attacco', 'Top di dritto su palla senza taglio', 'Top di dritto', 'D', ['scambio'],
     'Colpo d’attacco con rotazione in avanti su palla senza taglio o in top.'),
@@ -62,7 +79,13 @@ export const STROKES = [
     'Top giocato sul top avversario.'),
   s('ctop-r', 'controllo', 'Controtop di rovescio', 'Controtop di rovescio', 'R', ['scambio'],
     'Top giocato sul top avversario.'),
+  s('difesa', 'controllo', 'Difesa da lontano', 'Difesa', null, ['scambio'],
+    'Pallonetto o top lontano dal tavolo, sulle chiusure avversarie.'),
 
+  s('taglio-d', 'taglio', 'Taglio di dritto', 'Taglio di dritto', 'D', ['scambio'],
+    'Palla tagliata di dritto, bassa sulla rete.'),
+  s('taglio-r', 'taglio', 'Taglio di rovescio', 'Taglio di rovescio', 'R', ['scambio'],
+    'Palla tagliata di rovescio, bassa sulla rete.'),
   s('taglio-corto', 'taglio', 'Taglio corto in palleggio', 'Taglio corto', null, ['scambio'],
     'Palla tagliata che resta corta durante il palleggio tagliato.'),
   s('taglio-lungo', 'taglio', 'Taglio lungo in palleggio', 'Taglio lungo', null, ['scambio'],
@@ -111,19 +134,21 @@ export const ERRORS = [
   { id: 'lunga', name: 'Lunga', group: 'palla' },
   { id: 'larga', name: 'Larga', group: 'palla' },
   { id: 'alta', name: 'Troppo alta', group: 'palla' },
+  { id: 'corta', name: 'Troppo corta', group: 'palla' },
   { id: 'ritardo', name: 'In ritardo', group: 'causa' },
   { id: 'piedi', name: 'Piedi fuori posizione', group: 'causa' },
   { id: 'lettura', name: 'Effetto letto male', group: 'causa' },
   { id: 'scelta', name: 'Scelta sbagliata', group: 'causa' },
   { id: 'forzato', name: 'Colpo troppo forzato', group: 'causa' },
-  { id: 'posizione', name: 'Non tornato in posizione', group: 'causa' }
+  { id: 'posizione', name: 'Non tornato in posizione', group: 'causa' },
+  { id: 'effetto', name: 'Poco effetto', group: 'causa' },
+  { id: 'irregolare', name: 'Servizio non regolamentare', group: 'causa' }
 ];
 export const ERROR_GROUPS = [
   { id: 'palla', name: 'Dove è finita' },
   { id: 'causa', name: 'Perché' }
 ];
 
-/** Tipi di attività. A e B sono le sessioni del ciclo; le altre vanno nel diario. */
 /**
  * Tipi di voce del diario. Ognuno ha il suo colore nel calendario; gli allenamenti prendono
  * il colore del proprio modello. Le vecchie «Sessione A/B» vengono lette come allenamenti
@@ -143,33 +168,6 @@ export const KINDS = [
 export const FREE_KINDS = KINDS.filter((k) => k.id !== 'training' && k.id !== 'test');
 
 export const KIND = Object.fromEntries(KINDS.map((k) => [k.id, k]));
-
-/**
- * Colpo da correggere → esercizi che lo allenano. `min` è il livello minimo del percorso
- * in cui quel colpo compare davvero (es. il secondo top entra dal livello 3 dell'apertura).
- */
-export const STROKE_DRILLS = {
-  'srv-corto-tagliato': [{ serve: '1' }, { track: '3-1' }],
-  'srv-corto-liscio': [{ serve: '1' }],
-  'srv-lungo-veloce': [{ serve: '2' }],
-  'ric-taglio-corto': [{ track: '3-2', level: 1 }, { serve: '2' }],
-  'ric-taglio-lungo': [{ track: '3-2', level: 2 }, { serve: '1' }],
-  'ric-top': [{ track: '3-2', level: 4 }, { serve: '2' }],
-  'top-d': [{ track: '1-1' }],
-  'top-r': [{ track: '2-1' }],
-  'ap-d': [{ track: '1-2' }, { track: '3-1', level: 1 }],
-  'ap-r': [{ track: '2-2' }, { track: '3-1', level: 2 }],
-  'top2-d': [{ track: '1-2', min: 3 }, { track: '3-1', level: 1 }],
-  'top2-r': [{ track: '2-2', min: 3 }, { track: '3-1', level: 2 }],
-  // Il block si allena facendo da compagno nei percorsi del top.
-  'block-d': [{ track: '1-1', min: 2 }],
-  'block-r': [{ track: '2-1', min: 2 }],
-  'taglio-corto': [{ track: '3-2', level: 1 }],
-  'taglio-lungo': [{ track: '1-2', level: 2 }, { track: '2-2', level: 2 }],
-  pivot: [{ track: '1-2', level: 5 }],
-  laterale: [{ track: '1-1', min: 3 }, { track: '2-1', min: 3 }],
-  ritorno: [{ track: '1-1', min: 3 }]
-};
 
 const byId = (list) => Object.fromEntries(list.map((x) => [x.id, x]));
 export const STROKE = byId(STROKES);

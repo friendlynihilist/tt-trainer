@@ -9,7 +9,7 @@ Riferimento: `docs/ricerca-livelli-esercizi.md` (qui sotto «la ricerca»). Le s
 ## 0. In breve
 
 1. Spariscono i cancelli: niente più «due test di fila da 8 per salire», niente test di partenza, niente mese 3 bloccato. La regola vecchia si toglie del tutto.
-2. Arriva la libreria degli esercizi: le 69 voci della sezione 3, più 6 voci che vengono dal programma attuale (2.1.4). Ogni voce ha famiglia, livello suggerito, descrizione, criterio di qualità e obiettivi a gradini.
+2. Arriva la libreria degli esercizi: le 69 voci della sezione 3, più 6 voci che vengono dal programma attuale (2.1.4) e 7 voci nuove (2.1.6). Ogni voce ha famiglia, livello suggerito, formato (da solo, con compagno, multiball, robot), descrizione, criterio di qualità, errori comuni e obiettivi a gradini.
 3. Ogni misura diventa un **tentativo** su un esercizio. Le **medaglie** si calcolano dai tentativi con le regole della sezione 6.2 e non si perdono.
 4. Il **livello del giocatore** (principiante, intermedio, avanzato, esperto, pro) lo sceglie lui: nel primo avvio, oppure al primo accesso dopo l'aggiornamento. Se non sceglie, è principiante. Si cambia sempre da Impostazioni.
 5. L'app propone il livello dopo con la regola della sezione 6.3. Se il giocatore rifiuta, la proposta torna dopo 21 giorni oppure dopo 3 nuovi ori, quello che arriva prima.
@@ -61,8 +61,10 @@ Gli esercizi e i colpi della tassonomia sono **due collezioni separate**: alcuni
   name: 'Top di dritto contro block',
   text: 'Diagonale dritto, ritmo medio.',
   quality: 'Rimbalzo sempre nello stesso punto.',   // criterio di qualità
-  format: { type: 'fila', unit: 'colpi' },          // come si misura
+  modes: ['compagno', 'robot'],                     // formato: solo, compagno, multiball, robot
+  measure: { type: 'fila', unit: 'colpi' },         // come si misura
   goals: { B: 5, A: 10, O: 20, P: 40 },             // soglie dei gradini
+  errors: ['rete', 'ritardo', 'posizione'],         // errori comuni (id della lista Errori)
   strokes: ['top-d'],                               // colpi allenati (sezione 3.3)
   source: 'SwissPing Bronze (fino a 10 top); PingSkills (intermedio). B, O, P: proposta.'
 }
@@ -74,7 +76,7 @@ Gli esercizi e i colpi della tassonomia sono **due collezioni separate**: alcuni
 - `strokes`: il collegamento con i colpi di `taxonomy.js` della sezione 3.3. Sostituisce `STROKE_DRILLS`. Si aggiungono i colpi nuovi della 3.3, compreso `ric-flip-r-base` (flip di rovescio semplice); `ric-flip-r` resta la Chiquita.
 - Ogni famiglia ha un colore (servizio ambra, ricezione verde acqua, palleggio azzurro, attacco blu, controllo viola, taglio marrone, gambe rosa, schemi prugna). Si usa già in Libreria e servirà ai grafici della fase 5.
 
-#### 2.1.2 Formati di misura
+#### 2.1.2 Come si misura
 
 Quattro tipi, che coprono tutte le voci:
 
@@ -85,7 +87,7 @@ Quattro tipi, che coprono tutte le voci:
 | `tempo` (30 s) | `palleggio-30s`, `random-dr` | colpi in 30 secondi | la migliore dei primi 3 tentativi (regola 4) |
 | `conta` | `multiball-intervalli` | serie riuscite nella seduta | il primo valore registrato |
 
-«Di fila» conta solo i tuoi colpi; dove la ricerca scrive «scambi totali» si contano i colpi di tutti e due. La differenza resta voce per voce, nell'unità del formato.
+«Di fila» conta solo i tuoi colpi; dove la ricerca scrive «scambi totali» si contano i colpi di tutti e due. La differenza resta voce per voce, nell'unità della misura.
 
 Casi particolari, già previsti dal modello:
 
@@ -117,7 +119,7 @@ Una famiglia è soddisfatta quando almeno un posto che contiene una sua voce ha 
 | `ric-dichiarata` | ricezione | intermedio | 3-2 livello 3 «Risposta dichiarata» | su 10 risposte come dichiarato: B 5, A 7, O 9 |
 | `ric-punto` | ricezione | avanzato | 3-2 livello 5 «Punto giocato» | su 10 risposte non attaccate: B 4, A 6, O 8 |
 
-Queste voci non entrano negli esercizi chiave. Totale della libreria: 75 voci.
+Queste voci non entrano negli esercizi chiave.
 
 #### 2.1.5 I percorsi diventano sequenze di esercizi
 
@@ -135,6 +137,27 @@ I mesi del piano continuano a indicare due o tre percorsi (`block.tracks`). Un p
 Il lavoro sui servizi di ogni mese punta a una voce: 1-S `srv-corto-tagliato`, 2-S `srv-lungo-veloce`, 3-S `ric-lettura`.
 
 Il passo «esercizio del mese» propone il primo esercizio della sequenza che non ha ancora l'argento. È solo una proposta: nella sessione lo cambi con un altro qualsiasi della libreria.
+
+#### 2.1.6 Formato, errori comuni e sette voci nuove
+
+Due campi in più per ogni voce, compilati per tutte:
+
+- **Formato** (`modes`): uno o più fra «da solo» (`solo`), «con compagno» (`compagno`), «multiball» (`multiball`), «robot» (`robot`). In Libreria si può filtrare per formato.
+- **Errori comuni** (`errors`): 2 o 3 errori tipici dell'esercizio, con gli id della lista Errori di `taxonomy.js`. Dove la lista non basta si aggiungono tre errori nuovi: «Troppo corta» (`corta`), «Poco effetto» (`effetto`), «Servizio non regolamentare» (`irregolare`). Si vedono nella scheda dell'esercizio e si possono scegliere anche nelle note.
+
+Sette voci nuove (obiettivi: proposta, stesse regole delle altre). Non entrano negli esercizi chiave.
+
+| id | Famiglia | Livello | Formato | Cosa si fa | Misura e soglie |
+|---|---|---|---|---|---|
+| `gomito-decisione` | gambe | avanzato | con compagno | Il compagno alterna palle sugli angoli e al gomito; sulla palla al gomito decidi presto e ti sposti per giocare di dritto o di rovescio. | su 10 palle al gomito in campo: B 5, A 7, O 9 |
+| `due-uno` | gambe | intermedio | con compagno | Dritto dal centro, dritto dal lato dritto, rovescio, in serie. | sequenze di fila senza errori: B 3, A 6, O 10 |
+| `rovescio-poi-dritto` | gambe | avanzato | con compagno | Uno o due rovesci, poi il compagno sceglie quando mandare sul dritto. | su 10 palle sul dritto in campo: B 5, A 7, O 9 |
+| `srv-scala-lunghezze` | servizio | intermedio | da solo | Stesso movimento tagliato: corto, mezzo lungo, lungo, in sequenza. | su 10 sequenze con tutte e tre le lunghezze giuste: B 4, A 6, O 8 |
+| `sch-mancino` | schemi | avanzato | con compagno | Servizio e terza palla preparati contro un compagno mancino. | su 10 schemi riusciti: B 4, A 6, O 8 |
+| `difesa-lontano` | controllo | esperto | con compagno | Difesa da lontano (pallonetto o top) sulle chiusure del compagno, poi rientro e contrattacco. | palle di fila in difesa: B 5, A 8, O 12 |
+| `ombra-gambe` | gambe | principiante | da solo | Spostamenti senza palla (laterale, pivot, dentro e fuori) in serie da 30 secondi. | nessuna: è un esercizio di riscaldamento, senza medaglie |
+
+Totale della libreria: 82 voci (69 + 6 + 7). Una voce senza obiettivi, come `ombra-gambe`, si fa come le altre: semplicemente non propone medaglie.
 
 ### 2.2 Dati in Firestore
 
@@ -174,7 +197,7 @@ attempts: [
 ```
 
 - `ex`: id della libreria, oppure di un esercizio personale.
-- `fmt`: il formato al momento della misura.
+- `fmt`: il tipo di misura al momento del tentativo.
 - `tries`: i valori, nell'ordine in cui li hai fatti. Per `su` e `conta` conta il primo.
 - `marks`, `q` (voto di qualità da 0 a 5, regola 9), `tier`: facoltativi.
 
@@ -227,10 +250,10 @@ Una **seduta** è un giorno: due voci nello stesso giorno contano come una sedut
 
 ### 3.4 Test
 
-- Medaglie per ogni formato, l'oro su due giorni, le medaglie che non spariscono, il prossimo obiettivo, «da ripassare».
+- Medaglie per ogni tipo di misura, l'oro su due giorni, le medaglie che non spariscono, il prossimo obiettivo, «da ripassare».
 - Livello: ogni condizione da sola non basta; posti «X o Y»; famiglia mancante; costanza a 13 e 14 giorni; rifiuto con 21 giorni e con 3 nuovi ori; nessuna proposta da pro.
 - Migrazione: i dati della prima versione (sessioni A/B) e della 0.2.x convertiti in tentativi; nessuna voce modificata.
-- Libreria: id unici, famiglie e livelli validi, soglie crescenti, esercizi chiave e colpi esistenti, 75 voci.
+- Libreria: id unici, famiglie e livelli validi, soglie crescenti, esercizi chiave, colpi ed errori esistenti, formato compilato, 82 voci.
 - Nessun blocco: tutte le voci si possono comporre in una sessione e in un test, a qualsiasi livello.
 
 ---
@@ -294,7 +317,7 @@ Nello storico i test vecchi si vedono così: «Top di dritto · livello 2 · 9 s
 
 ### Sessione dal vivo
 - Niente più test di partenza, mantenimento misurato, «Sali» o «Scendi».
-- Su ogni esercizio: «Prova l'obiettivo». Si apre «Raggiungi l'argento!» con la soglia e il conteggio adatto al formato (10 tocchi, quante di fila fino a tre tentativi, 30 secondi, un numero).
+- Su ogni esercizio: «Prova l'obiettivo». Si apre «Raggiungi l'argento!» con la soglia e il conteggio adatto alla misura (10 tocchi, quante di fila fino a tre tentativi, 30 secondi, un numero).
 - Voto di qualità da 0 a 5, facoltativo.
 - Quando arriva una medaglia: un'animazione breve. Per l'oro alla prima seduta: «Metà oro: serve un'altra seduta in un altro giorno».
 - «Cambia esercizio»: tutta la libreria, con prima la stessa famiglia e il tuo livello.
@@ -322,7 +345,7 @@ Nello storico i test vecchi si vedono così: «Top di dritto · livello 2 · 9 s
 ### Altre parti
 - Primo avvio: la schermata sui livelli dei percorsi diventa «Il tuo livello».
 - Diario: le righe dei test diventano tentativi; i test vecchi in sola lettura, si possono togliere.
-- Guida, importazione (anche «esercizi» con famiglia, livello, formato e gradini), novità 0.3.0.
+- Guida, importazione (anche «esercizi» con famiglia, livello, formato, misura, errori e gradini), novità 0.3.0.
 
 ---
 
@@ -346,7 +369,7 @@ Nello storico i test vecchi si vedono così: «Top di dritto · livello 2 · 9 s
 
 **Fase 4, note per colpo.** Ogni esercizio elenca i colpi che allena, ogni tentativo l'esercizio, e note ed errori segnano già il colpo: una nota per colpo potrà raccogliere tutto senza cambiare i dati.
 
-**Fase 5, grafici.** Ogni tentativo ha data, esercizio, formato e valore: è già una serie per esercizio. Le famiglie hanno già il loro colore.
+**Fase 5, grafici.** Ogni tentativo ha data, esercizio, tipo di misura e valore: è già una serie per esercizio. Le famiglie hanno già il loro colore.
 
 ---
 

@@ -2,6 +2,8 @@
 //
 // Una voce è un'attività fatta ({ kind, date, … }) oppure prevista ({ …, planned: true }).
 // Tipi: 'training' (con il modello in `template`), 'test', le attività libere, 'livello'.
+// Dalla 0.3 le misure sono tentativi sugli esercizi (`attempts`, vedi attempts.js); le voci di
+// prima tengono i loro test sui percorsi (`tests`) e si leggono così come sono.
 //
 // Le prime versioni salvavano «Sessione A» e «Sessione B» (kind 'A' | 'B'). Non si riscrivono:
 // normalizeEvent le legge come allenamenti completi; quelle B avevano il test dentro.
@@ -11,7 +13,12 @@ import { KIND } from '../data/taxonomy.js';
 import { BASE } from '../data/catalog.js';
 import { LEGACY_TEMPLATE } from '../data/templates.js';
 import { weekAt, weekIndex, weekOccurrences } from './plan.js';
-import { byTime } from './levels.js';
+
+/** Ordine cronologico stabile: data, poi momento di creazione. */
+export function byTime(a, b) {
+  if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+  return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+}
 
 export function normalizeEvent(e) {
   if (!e || (e.kind !== 'A' && e.kind !== 'B')) return e;
@@ -41,7 +48,10 @@ export function serveScore(e) {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Questa voce vale come «test fatto» per un test in calendario? */
+/**
+ * Questa voce vale come «test fatto» per un test in calendario? Dalla 0.3 solo un test; le voci di
+ * prima con il test dentro l'allenamento (`withTest`) valgono ancora, così il passato non cambia.
+ */
 export function fulfillsTest(e) {
   if (!e || e.planned) return false;
   if (e.kind === 'test') return true;

@@ -1,8 +1,9 @@
-// Il "file principale": programma, percorsi ed esercizi. È contenuto condiviso e di
-// sola lettura, distribuito con l'app. I dati di ciascun utente vivono altrove
-// (Firestore, sotto users/{uid}) e non possono toccarlo.
+// Il programma: mesi, percorsi, partitelle. È contenuto condiviso e di sola lettura, distribuito
+// con l'app. I dati di ciascun utente vivono altrove (Firestore, sotto users/{uid}).
+//
+// Dalla 0.3 un percorso è una sequenza di esercizi della libreria (library.js, SEQUENCES). I suoi
+// cinque livelli restano qui solo per leggere i test salvati con le versioni di prima.
 
-export const LEVELS = 5;
 export const TEST_ATTEMPTS = 10;
 
 /** Fasi della sessione da 90 minuti, con il minuto di pausa preso dalla fase dopo. */
@@ -338,20 +339,3 @@ export const BLOCKS = {
 
 export const CYCLE_BLOCKS = ['1', '2', '3'];
 export const WEEKS_PER_BLOCK = 4;
-
-/** Il mese 3 si comincia solo con le due aperture su taglio almeno a questo livello. */
-export const GATE = { block: '3', tracks: ['1-2', '2-2'], minLevel: 3 };
-
-export const NEXT_CYCLE = [
-  'Flip di dritto',
-  'Flip di rovescio (Chiquita)',
-  'Servizio a pendolo con effetto laterale',
-  'Servizio di rovescio',
-  'Quarta palla',
-  'Controtop',
-  'Gioco contro puntinati e antitop'
-];
-
-export function levelOf(trackId, n) {
-  return TRACKS[trackId]?.levels[n - 1] ?? null;
-}

@@ -1,15 +1,16 @@
 // Modelli di allenamento: la scaletta di una sessione. I passi «del mese» prendono il percorso
-// dal mese in corso del piano, al livello raggiunto; gli altri sono fissi. I test non stanno nel
-// modello: si decidono il giorno stesso (c'è un test in calendario, oppure lo attivi a mano).
+// dal mese in corso del piano e l'app propone l'esercizio della sua sequenza; gli altri sono
+// fissi. Gli obiettivi non stanno nel modello: durante la sessione li provi quando vuoi.
 
 export const COLORS = ['blue', 'sky', 'violet', 'teal', 'amber', 'pink', 'brown', 'plum', 'slate', 'orange'];
 
 export const STEP_TYPES = {
   warmup: { name: 'Riscaldamento', minutes: 10, hint: 'Diagonali e top su block. Dal mese 2 chiude con il mantenimento.' },
   serve: { name: 'Servizi e ricezione', minutes: 15, hint: 'Il lavoro di servizio del mese. A metà si cambia.' },
-  focus: { name: 'Esercizio del mese', minutes: 25, hint: 'Un percorso del mese in corso, al tuo livello.' },
-  track: { name: 'Percorso fisso', minutes: 20, hint: 'Sempre lo stesso percorso, al tuo livello.' },
-  free: { name: 'Esercizio libero', minutes: 15, hint: 'Un esercizio scritto da te, senza livelli.' },
+  focus: { name: 'Esercizio del mese', minutes: 25, hint: 'Un percorso del mese in corso: l’app propone l’esercizio.' },
+  track: { name: 'Percorso fisso', minutes: 20, hint: 'Sempre lo stesso percorso: l’app propone l’esercizio.' },
+  exercise: { name: 'Esercizio', minutes: 15, hint: 'Sempre lo stesso esercizio della libreria.' },
+  free: { name: 'Esercizio libero', minutes: 15, hint: 'Un esercizio scritto da te, senza misura.' },
   match: { name: 'Partitella', minutes: 15, hint: 'Metà tempo rischiosa, metà a schema.' }
 };
 
@@ -20,7 +21,7 @@ export const TEMPLATES = {
     id: 'completo',
     name: 'Completo',
     color: 'blue',
-    about: 'La sessione del piano: cinque fasi, i due esercizi del mese al tuo livello.',
+    about: 'La sessione del piano: cinque fasi, con i due esercizi del mese.',
     steps: [step('warmup', 10), step('serve', 15), step('focus', 25, { slot: 1 }), step('focus', 25, { slot: 2 }), step('match', 15)]
   },
   breve: {
@@ -46,7 +47,7 @@ export const TEMPLATES = {
   }
 };
 
-/** Le sessioni composte dal suggeritore: nel diario si chiamano così, ma non si scelgono da un elenco. */
+/** Le sessioni «Su misura» della 0.2: nel diario si leggono ancora così, ma non si creano più. */
 export const AUTO_TEMPLATE = { id: 'auto', name: 'Su misura', color: 'plum', hidden: true, about: 'Composto dal suggeritore.', steps: [] };
 
 export const DEFAULT_TEMPLATE = 'completo';

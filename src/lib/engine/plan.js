@@ -12,7 +12,7 @@
 // Il primo formato del piano aveva due giorni fissi, { days: { A, B } }: normalizePlan lo legge
 // così com'è (A e B diventano due allenamenti, con il test nel giorno di B) senza riscriverlo.
 
-import { CYCLE_BLOCKS, WEEKS_PER_BLOCK, GATE } from '../data/program.js';
+import { CYCLE_BLOCKS, WEEKS_PER_BLOCK } from '../data/program.js';
 import { BASE } from '../data/catalog.js';
 import { DEFAULT_TEMPLATE, LEGACY_TEMPLATE } from '../data/templates.js';
 import { addDays, diffDays, mondayOf, today } from '../util/dates.js';
@@ -41,7 +41,6 @@ export function createPlan({ start, days = DEFAULT_DAYS, months = CYCLE_BLOCKS, 
     weeks,
     slots: sortSlots(slots ?? defaultSlots(days)),
     skip: [],
-    gateOk: false,
     createdAt: Date.now()
   };
 }
@@ -59,7 +58,7 @@ export function normalizePlan(plan) {
       { id: 'B-test', day: b, kind: 'test' }
     ];
   }
-  return { ...plan, slots: sortSlots(slots ?? []), skip: Array.isArray(plan.skip) ? plan.skip : [], gateOk: Boolean(plan.gateOk) };
+  return { ...plan, slots: sortSlots(slots ?? []), skip: Array.isArray(plan.skip) ? plan.skip : [] };
 }
 
 export function weekIndex(plan, date = today()) {
@@ -182,27 +181,4 @@ export function removeWeek(plan, idx) {
   const weeks = [...plan.weeks];
   weeks.splice(idx, 1);
   return { ...plan, weeks };
-}
-
-/** Il mese 3 è sbloccato? */
-export function gateStatus(tracks) {
-  const items = GATE.tracks.map((id) => ({
-    track: id,
-    level: tracks[id]?.started ? tracks[id].level : 0,
-    ok: Boolean(tracks[id]?.started && tracks[id].level >= GATE.minLevel)
-  }));
-  return { ok: items.every((i) => i.ok), items, minLevel: GATE.minLevel };
-}
-
-/**
- * Va chiesto cosa fare con il mese 3? Sì se la settimana corrente è del mese 3, il cancello
- * non è superato, non si è già deciso di cominciare comunque e nel mese 3 non ci si è ancora
- * allenati.
- */
-export function gatePending(plan, week, tracks, events) {
-  if (!week || week.kind !== GATE.block || plan.gateOk) return false;
-  if (gateStatus(tracks).ok) return false;
-  const firstIdx = plan.weeks.indexOf(GATE.block);
-  const from = addDays(plan.start, firstIdx * 7);
-  return !events.some((e) => e.kind === 'training' && e.date >= from && e.planId === plan.id);
 }

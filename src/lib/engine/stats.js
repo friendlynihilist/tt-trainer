@@ -1,9 +1,9 @@
-// Letture dei dati: cosa correggere, cosa migliora, quanto ci si allena.
+// Letture dei dati: cosa correggere, quanto ci si allena, i test di prima.
 
 import { BASE } from '../data/catalog.js';
-import { STROKE_DRILLS } from '../data/taxonomy.js';
+import { LIBRARY, LEVEL_IDS } from '../data/library.js';
 import { addDays, mondayOf, today } from '../util/dates.js';
-import { byTime } from './levels.js';
+import { byTime } from './events.js';
 
 /** L'ultima cosa «da correggere» segnata, guardando indietro al massimo `days` giorni. */
 export function lastFocus(events, { before = null, days = 21 } = {}) {
@@ -16,26 +16,15 @@ export function lastFocus(events, { before = null, days = 21 } = {}) {
 }
 
 /**
- * Esercizi che allenano un colpo, al livello giusto per l'utente.
- * @returns id di esercizio (es. '1-2-3', '2-S')
+ * Gli esercizi che allenano un colpo: tutti, nessuno escluso. Il livello del giocatore decide
+ * solo l'ordine (prima quelli più vicini al suo livello).
  */
-export function drillsFor(strokeId, tracks, catalog = BASE) {
-  const out = [];
-  // I colpi personali indicano i propri percorsi in `strokes`: si allenano lì, al livello raggiunto.
-  for (const id of catalog.activeTrackIds) {
-    const t = catalog.track(id);
-    if (t.custom && t.strokes?.includes(strokeId)) out.push(`${id}-${tracks?.[id]?.level ?? 1}`);
-  }
-  for (const d of STROKE_DRILLS[strokeId] ?? []) {
-    if (d.serve) {
-      out.push(`${d.serve}-S`);
-    } else {
-      const current = tracks?.[d.track]?.level ?? 1;
-      const level = d.level ?? Math.max(current, d.min ?? 1);
-      out.push(`${d.track}-${level}`);
-    }
-  }
-  return [...new Set(out)];
+export function drillsFor(strokeId, catalog = BASE, level = null) {
+  const at = LEVEL_IDS.indexOf(level);
+  const dist = (e) => (at < 0 || !e.level ? 0 : Math.abs(LEVEL_IDS.indexOf(e.level) - at));
+  const list = catalog.activeExerciseIds.map((id) => catalog.exercise(id)).filter((e) => e.strokes?.includes(strokeId));
+  const order = new Map(LIBRARY.map((e, i) => [e.id, i]));
+  return list.sort((a, b) => dist(a) - dist(b) || (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999)).map((e) => e.id);
 }
 
 /** Tutte le segnalazioni (da correggere + note tecniche) in forma piatta. */
@@ -74,26 +63,14 @@ export function weaknesses(events, opts) {
   return { total: list.length, strokes, errors: tally(list, 'error') };
 }
 
-/** Punteggi dei test di un percorso, in ordine di tempo (esclusi i livelli impostati a mano). */
-export function testSeries(trackState) {
-  return trackState.history.filter((h) => h.score != null);
-}
-
-export function totals(events) {
-  let minutes = 0;
-  let tests = 0;
-  let sum = 0;
-  for (const e of events) {
-    minutes += e.minutes ?? 0;
-    for (const t of e.tests ?? []) {
-      if (t.score != null && t.type !== 'placement') {
-        tests++;
-        sum += t.score;
-      }
-    }
-  }
-  const sessions = events.filter((e) => e.kind !== 'livello' && !e.planned).length;
-  return { sessions, minutes, tests, average: tests ? sum / tests : null };
+/** Attività, minuti e tentativi. */
+export function totals(events, attempts = []) {
+  const done = events.filter((e) => e.kind !== 'livello' && !e.planned);
+  return {
+    sessions: done.length,
+    minutes: done.reduce((n, e) => n + (e.minutes ?? 0), 0),
+    attempts: attempts.length
+  };
 }
 
 /** Attività per settimana nelle ultime `n` settimane (la più recente in fondo). */
@@ -128,26 +105,18 @@ export function weekStreak(events) {
   return n;
 }
 
-/** Ciò che gli altri del gruppo vedono di te: solo livelli e ritmo, mai note o errori. */
-export function publicSummary(tracks, events, plan, week) {
-  const levels = {};
-  // Si condividono i percorsi di base: quelli personali gli altri non li conoscono.
-  for (const id of BASE.trackIds) if (tracks[id]?.started) levels[id] = tracks[id].level;
-  const sessions = events.filter((e) => (e.kind === 'training' || e.kind === 'A' || e.kind === 'B') && !e.planned);
-  const last = sessions.sort(byTime)[sessions.length - 1];
-  return {
-    levels,
-    sessions: sessions.length,
-    lastDate: last?.date ?? null,
-    week: week?.number ?? null,
-    block: week?.kind ?? null
-  };
-}
-
-/** L'esercizio del compagno per un percorso, dal suo profilo pubblico. */
-export function partnerExercise(profile, trackId, catalog = BASE) {
-  const level = profile?.levels?.[trackId];
-  const exercise = level ? catalog.level(trackId, level) : null;
-  if (!exercise) return null;
-  return { level, exercise, name: catalog.track(trackId).short };
+/**
+ * I test sui percorsi salvati con le versioni di prima, per percorso: [{ track, tests: [{ date,
+ * level, score, type }] }]. Servono solo allo storico; i livelli dei percorsi non si calcolano più.
+ */
+export function legacyTests(events, catalog = BASE) {
+  const by = new Map();
+  for (const e of [...events].filter((x) => !x.planned).sort(byTime)) {
+    for (const t of e.tests ?? []) {
+      if (t.type === 'set' || t.score == null || !catalog.track(t.track)) continue;
+      if (!by.has(t.track)) by.set(t.track, []);
+      by.get(t.track).push({ date: e.date, eventId: e.id, level: t.level, score: t.score, type: t.type ?? 'test' });
+    }
+  }
+  return [...by.entries()].map(([track, tests]) => ({ track, tests }));
 }

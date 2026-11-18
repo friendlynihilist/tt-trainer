@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createPlan, normalizePlan, weekAt, weekIndex, insertWeek, removeWeek, weekOccurrences, gateStatus, gatePending, planPhase, defaultSlots } from '../src/lib/engine/plan.js';
-import { composeSession, composeTest, countTests, matchHalves } from '../src/lib/engine/compose.js';
-import { computeTracks } from '../src/lib/engine/levels.js';
-import { drillsFor, weaknesses, publicSummary } from '../src/lib/engine/stats.js';
-import { BASE, buildCatalog, exerciseLabel, parseExercise } from '../src/lib/data/catalog.js';
+import { createPlan, weekAt, weekIndex, insertWeek, removeWeek, weekOccurrences, planPhase, defaultSlots } from '../src/lib/engine/plan.js';
+import { composeSession, composeTest, matchHalves } from '../src/lib/engine/compose.js';
+import { drillsFor, weaknesses } from '../src/lib/engine/stats.js';
+import { BASE, buildCatalog, exerciseLabel, parseExercise, resolveExercise } from '../src/lib/data/catalog.js';
 import { TEMPLATES, templateMinutes } from '../src/lib/data/templates.js';
 import { BLOCKS, SCHEMES, CYCLE_BLOCKS } from '../src/lib/data/program.js';
 
@@ -82,99 +81,79 @@ describe('piano', () => {
   });
 });
 
-describe('sblocco del mese 3', () => {
-  const at = (l12, l22) =>
-    computeTracks([{ id: 'a', date: '2026-01-01', tests: [{ track: '1-2', type: 'set', level: l12 }, { track: '2-2', type: 'set', level: l22 }] }]);
-
-  it('servono le due aperture almeno al livello 3', () => {
-    expect(gateStatus(at(3, 3)).ok).toBe(true);
-    expect(gateStatus(at(4, 2)).ok).toBe(false);
-    expect(gateStatus(computeTracks([])).ok).toBe(false);
-  });
-
-  it('la domanda compare solo all’inizio del mese 3 e una volta sola', () => {
-    const w8 = weekAt(plan, 8);
-    expect(gatePending(plan, w8, at(2, 3), [])).toBe(true);
-    expect(gatePending(plan, w8, at(3, 3), [])).toBe(false);
-    expect(gatePending({ ...plan, gateOk: true }, w8, at(2, 3), [])).toBe(false);
-    expect(gatePending(plan, weekAt(plan, 7), at(2, 3), [])).toBe(false);
-    const started = [{ kind: 'training', date: '2027-01-12', planId: 'p1' }];
-    expect(gatePending(plan, w8, at(2, 3), started)).toBe(false);
-  });
-
-  it('la settimana di recupero allena le due aperture', () => {
+describe('mesi senza blocchi', () => {
+  it('il mese 3 si apre come gli altri e il recupero allena le due aperture', () => {
+    expect(weekAt(plan, 8).block.theme).toBe('Primi colpi');
     const p = insertWeek(plan, 8, 'R');
     const w = weekAt(p, 8);
     expect(w.number).toBeNull();
-    const s = composeSession({ week: w, template: completo, tracks: at(2, 3), test: true });
-    expect(s.steps.filter((x) => x.kind === 'exercise').map((x) => `${x.track}@${x.level}`)).toEqual(['1-2@2', '2-2@3']);
+    const s = composeSession({ week: w, template: completo });
+    expect(s.steps.filter((x) => x.kind === 'exercise').map((x) => `${x.track}:${x.ex}`)).toEqual(['1-2:ap-d-multiball', '2-2:ap-r-multiball']);
     expect(weekAt(p, 9).kind).toBe('3');
+    expect(plan.gateOk).toBeUndefined();
   });
 });
 
 describe('composizione della sessione', () => {
-  const tracks = computeTracks([
-    {
-      id: 'a',
-      date: '2026-11-17',
-      tests: [
-        { track: '1-1', type: 'placement', level: 1, score: 9 },
-        { track: '1-1', type: 'placement', level: 2, score: 5 },
-        { track: '1-2', type: 'placement', level: 1, score: 3 }
-      ]
-    }
-  ]);
+  // Argento nel primo esercizio del top di dritto: il mese propone il secondo.
+  const medals = { 'top-d-multiball': { A: '2026-11-17' } };
 
   it('il modello completo dura 90 minuti in cinque fasi, con un minuto di pausa fra l’una e l’altra', () => {
-    const s = composeSession({ week: weekAt(plan, 0), template: completo, tracks });
+    const s = composeSession({ week: weekAt(plan, 0), template: completo, medals });
     expect(s.minutes).toBe(90);
     expect(s.steps.map((x) => x.kind)).toEqual(['warmup', 'pause', 'serve', 'pause', 'exercise', 'pause', 'exercise', 'pause', 'match']);
     expect(s.steps.map((x) => x.minutes)).toEqual([10, 1, 14, 1, 24, 1, 24, 1, 14]);
-    expect(countTests(s)).toBe(0);
     expect(s.trained).toEqual(['1-1', '1-2']);
+    expect(s.exercises).toEqual(['srv-corto-tagliato', 'top-d-block', 'ap-d-multiball']);
   });
 
-  it('prende gli esercizi al livello raggiunto; con il test in calendario li misura', () => {
-    const s = composeSession({ week: weekAt(plan, 1), template: completo, tracks, test: true });
+  it('propone il primo esercizio della sequenza senza argento, e i servizi del mese', () => {
+    const s = composeSession({ week: weekAt(plan, 1), template: completo, medals });
     const [ex1, ex2] = s.steps.filter((x) => x.kind === 'exercise');
-    expect(ex1.exercise.name).toBe('Diagonale fissa');
-    expect(ex2.exercise.name).toBe('Multiball');
-    expect(ex1.test && ex2.test).toBe(true);
+    expect(ex1).toMatchObject({ track: '1-1', ex: 'top-d-block', name: 'Top di dritto contro block' });
+    expect(ex2).toMatchObject({ track: '1-2', ex: 'ap-d-multiball' });
+    expect(s.steps.find((x) => x.kind === 'serve').ex).toBe('srv-corto-tagliato');
     expect(s.steps[0].maint).toBeNull(); // mese 1: niente mantenimento
-    // I servizi non si misurano da soli, nemmeno nel giorno del test.
-    expect(s.steps.find((x) => x.kind === 'serve').test).toBe(false);
-    expect(countTests(s)).toBe(2);
+    expect(s.steps.some((x) => 'test' in x || 'placement' in x)).toBe(false); // niente test dentro l'allenamento
   });
 
-  it('chiede il test di partenza per i percorsi mai iniziati', () => {
-    const s = composeSession({ week: weekAt(plan, 4), template: completo, tracks, test: true });
-    const ex = s.steps.filter((x) => x.kind === 'exercise');
-    expect(ex.every((x) => x.placement && !x.test)).toBe(true);
+  it('con tutti gli argenti propone il primo senza oro, poi l’ultimo', () => {
+    const all = Object.fromEntries(BASE.sequence('1-1').map((id) => [id, { A: 'x' }]));
+    expect(composeSession({ week: weekAt(plan, 0), template: completo, medals: all }).steps.find((x) => x.track === '1-1').ex).toBe('top-d-multiball');
+    const gold = Object.fromEntries(BASE.sequence('1-1').map((id) => [id, { A: 'x', O: 'y' }]));
+    expect(composeSession({ week: weekAt(plan, 0), template: completo, medals: gold }).steps.find((x) => x.track === '1-1').ex).toBe('ric-top');
   });
 
-  it('dal mese 2 aggiunge il mantenimento, misurato solo nell’ultima settimana', () => {
-    const mid = composeSession({ week: weekAt(plan, 5), template: completo, tracks, test: true }).steps[0].maint;
-    expect(mid).toMatchObject({ track: '1-2', level: 1, test: false });
-    expect(composeSession({ week: weekAt(plan, 7), template: completo, tracks, test: true }).steps[0].maint.test).toBe(true);
-    expect(composeSession({ week: weekAt(plan, 7), template: completo, tracks }).steps[0].maint.test).toBe(false);
-    expect(composeSession({ week: weekAt(plan, 8), template: completo, tracks }).steps[0].maint.track).toBe('2-2');
+  it('dal mese 2 il riscaldamento chiude con il mantenimento, senza misura', () => {
+    const mid = composeSession({ week: weekAt(plan, 5), template: completo }).steps[0].maint;
+    expect(mid).toMatchObject({ track: '1-2', ex: 'ap-d-multiball', minutes: 5 });
+    expect(mid.test).toBeUndefined();
+    expect(composeSession({ week: weekAt(plan, 8), template: completo }).steps[0].maint.track).toBe('2-2');
   });
 
-  it('un modello personale: percorso fisso ed esercizio libero', () => {
-    const t = { id: 'c1', steps: [{ type: 'track', track: '3-2', minutes: 20 }, { type: 'free', name: 'Multiball', text: 'Palle veloci', minutes: 10 }] };
-    const s = composeSession({ week: weekAt(plan, 0), template: t, tracks });
-    expect(s.steps.map((x) => x.kind)).toEqual(['exercise', 'pause', 'free']);
-    expect(s.steps.map((x) => x.minutes)).toEqual([20, 1, 9]);
-    expect(s.steps[0].placement).toBe(true);
-    expect(s.minutes).toBe(30);
-    expect(t.steps.map((x) => x.minutes)).toEqual([20, 10]); // il modello salvato non cambia
+  it('un modello personale: percorso fisso, esercizio fisso ed esercizio libero', () => {
+    const t = {
+      id: 'c1',
+      steps: [
+        { type: 'track', track: '3-2', minutes: 20 },
+        { type: 'exercise', ex: 'ric-flip-r', minutes: 10 },
+        { type: 'free', name: 'Multiball', text: 'Palle veloci', minutes: 10 }
+      ]
+    };
+    const s = composeSession({ week: weekAt(plan, 0), template: t });
+    expect(s.steps.map((x) => x.kind)).toEqual(['exercise', 'pause', 'exercise', 'pause', 'free']);
+    expect(s.steps.map((x) => x.minutes)).toEqual([20, 1, 9, 1, 9]);
+    expect(s.steps[0].ex).toBe('ric-taglio-corto');
+    expect(s.steps[2]).toMatchObject({ ex: 'ric-flip-r', name: 'Chiquita' });
+    expect(s.minutes).toBe(40);
+    expect(t.steps.map((x) => x.minutes)).toEqual([20, 10, 10]); // il modello salvato non cambia
   });
 
   it('Breve e Servizi tengono la loro durata: il minuto di pausa si toglie al blocco dopo', () => {
-    const breve = composeSession({ week: weekAt(plan, 0), template: TEMPLATES.breve, tracks });
+    const breve = composeSession({ week: weekAt(plan, 0), template: TEMPLATES.breve });
     expect(breve.steps.map((x) => x.minutes)).toEqual([10, 1, 19, 1, 19, 1, 9]);
     expect(breve.minutes).toBe(templateMinutes(TEMPLATES.breve));
-    const servizi = composeSession({ week: weekAt(plan, 0), template: TEMPLATES.servizi, tracks });
+    const servizi = composeSession({ week: weekAt(plan, 0), template: TEMPLATES.servizi });
     expect(servizi.steps.map((x) => [x.kind, x.minutes])).toEqual([
       ['warmup', 5],
       ['pause', 1],
@@ -187,18 +166,18 @@ describe('composizione della sessione', () => {
     expect(TEMPLATES.completo.steps.map((x) => x.minutes)).toEqual([10, 15, 25, 25, 15]);
   });
 
-  it('le pause non contano come test né come percorsi allenati', () => {
-    const s = composeSession({ week: weekAt(plan, 1), template: completo, tracks, test: true });
+  it('le pause non contano come esercizi né come percorsi allenati', () => {
+    const s = composeSession({ week: weekAt(plan, 1), template: completo });
     const pauses = s.steps.filter((x) => x.kind === 'pause');
     expect(pauses).toHaveLength(4);
-    expect(pauses.every((x) => !x.test && !x.track && x.minutes === 1)).toBe(true);
+    expect(pauses.every((x) => !x.ex && !x.track && x.minutes === 1)).toBe(true);
     expect(new Set(s.steps.map((x) => x.id)).size).toBe(s.steps.length);
     expect(s.trained).toEqual(['1-1', '1-2']);
   });
 
   it('niente pausa prima di un blocco da un minuto, né prima del primo', () => {
     const t = { id: 'c2', steps: [{ type: 'free', name: 'A', minutes: 5 }, { type: 'free', name: 'B', minutes: 1 }, { type: 'match', minutes: 6 }] };
-    const s = composeSession({ week: weekAt(plan, 0), template: t, tracks });
+    const s = composeSession({ week: weekAt(plan, 0), template: t });
     expect(s.steps.map((x) => [x.kind, x.minutes])).toEqual([
       ['free', 5],
       ['free', 1],
@@ -206,11 +185,11 @@ describe('composizione della sessione', () => {
       ['match', 5]
     ]);
     expect(s.minutes).toBe(12);
-    expect(composeSession({ week: weekAt(plan, 0), template: t, tracks, pauses: false }).steps).toHaveLength(3);
+    expect(composeSession({ week: weekAt(plan, 0), template: t, pauses: false }).steps).toHaveLength(3);
   });
 
   it('la partitella: metà rischiosa, metà a schema, con gli schemi del mese', () => {
-    const match = (w) => composeSession({ week: weekAt(plan, w), template: completo, tracks }).steps.find((x) => x.kind === 'match');
+    const match = (w) => composeSession({ week: weekAt(plan, w), template: completo }).steps.find((x) => x.kind === 'match');
     expect(match(0)).toMatchObject({ schemes: ['ap-d', 'top-d'], scheme: SCHEMES['ap-d'] });
     expect(match(4).schemes).toEqual(['ap-r', 'top-r']);
     expect(match(8).schemes).toEqual(['terza', 'ric-corta']);
@@ -229,18 +208,20 @@ describe('composizione della sessione', () => {
     expect(JSON.stringify({ BLOCKS, SCHEMES })).not.toMatch(/doppio se/i);
   });
 
-  it('un test da solo: un passo per percorso', () => {
-    const s = composeTest({ week: weekAt(plan, 0), trackIds: ['1-1', '2-1'], tracks });
-    expect(s.steps.map((x) => [x.track, x.test, x.placement])).toEqual([
-      ['1-1', true, false],
-      ['2-1', false, true]
+  it('un test: un passo per esercizio, con l’obiettivo aperto', () => {
+    const s = composeTest({ exerciseIds: ['top-d-block', 'sparito', 'ric-flip-r'] });
+    expect(s.steps.map((x) => [x.ex, x.goal, x.minutes])).toEqual([
+      ['top-d-block', true, 5],
+      ['ric-flip-r', true, 5]
     ]);
+    expect(s.exercises).toEqual(['top-d-block', 'ric-flip-r']);
   });
 });
 
 describe('catalogo personale', () => {
   const catalog = buildCatalog({
-    tracks: [{ id: 'cflip', name: 'Flip di dritto', short: 'Flip', strokes: ['flip-d'], levels: [{ name: 'Fermo' }, { name: 'Lato' }, { name: 'Gioco' }] }],
+    tracks: [{ id: 'cflip', name: 'Flip di dritto', short: 'Flip', strokes: ['ric-flip-d'], levels: [{ name: 'Fermo' }, { name: 'Lato', goals: { B: 4, A: 6, O: 8 } }, { name: 'Gioco' }] }],
+    exercises: [{ id: 'cmio', name: 'Il mio esercizio', family: 'gambe', level: 'avanzato', measure: { type: 'fila', unit: 'colpi' }, goals: { B: 3, A: 5 } }],
     blocks: [
       { id: 'cm', theme: 'Flip', tracks: ['cflip', '1-1', 'sparito'], serve: '2-S', rule: 'Punto doppio col flip.' },
       { id: 'cn', theme: 'Ricezione', tracks: ['3-2'], scheme: 'ric-corta' }
@@ -248,10 +229,12 @@ describe('catalogo personale', () => {
     templates: [{ id: 'ct', name: 'Corto', color: 'pink', steps: [{ type: 'focus', slot: 1, minutes: 30 }] }]
   });
 
-  it('i percorsi personali hanno i loro livelli', () => {
-    expect(catalog.maxLevel('cflip')).toBe(3);
-    expect(catalog.level('cflip', 2).name).toBe('Lato');
-    expect(catalog.maxLevel('1-1')).toBe(5);
+  it('i livelli di un percorso personale diventano esercizi, con le soglie di base o le sue', () => {
+    expect(catalog.sequence('cflip')).toEqual(['cflip-1', 'cflip-2', 'cflip-3']);
+    expect(catalog.exercise('cflip-1')).toMatchObject({ name: 'Flip · Fermo', custom: true, track: 'cflip', measure: { type: 'su', n: 10 }, goals: { B: 6, A: 8, O: 9 } });
+    expect(catalog.exercise('cflip-2').goals).toEqual({ B: 4, A: 6, O: 8 });
+    expect(catalog.level('cflip', 2).name).toBe('Lato'); // il livello resta leggibile per lo storico
+    expect(catalog.exercise('cmio')).toMatchObject({ custom: true, family: 'gambe', level: 'avanzato', goals: { B: 3, A: 5 } });
     expect(catalog.block('cm').tracks).toEqual(['cflip', '1-1']); // i percorsi sconosciuti si scartano
     expect(catalog.block('cm').serve.test).toContain('servizi lunghi');
     // La vecchia regola resta nei dati ma non si usa: vale lo schema di base.
@@ -260,37 +243,32 @@ describe('catalogo personale', () => {
     expect(catalog.template('sparito').id).toBe('completo');
   });
 
-  it('il livello sale e si completa sul numero di livelli del percorso', () => {
-    const ev = (date, level, score) => ({ id: date, date, tests: [{ track: 'cflip', type: 'test', level, score }] });
-    const st = computeTracks([ev('2026-01-01', 3, 9), ev('2026-01-02', 3, 9)], undefined, {}, catalog).cflip;
-    expect(st.completed).toBe(true);
-    expect(st.level).toBe(3);
-  });
-
   it('un mese personale compone la sessione', () => {
     const p = { ...createPlan({ start: '2026-11-16', months: ['cm'] }), id: 'p2' };
-    const tracks = computeTracks([], undefined, {}, catalog);
-    const s = composeSession({ week: weekAt(p, 0, catalog), template: catalog.template('ct'), tracks, catalog });
-    expect(s.steps[0].track).toBe('cflip');
+    const s = composeSession({ week: weekAt(p, 0, catalog), template: catalog.template('ct'), catalog });
+    expect(s.steps[0]).toMatchObject({ track: 'cflip', ex: 'cflip-1' });
   });
 
-  it('esercizi e colpi personali', () => {
+  it('esercizi di prima, della libreria e personali', () => {
     expect(parseExercise('1-2-3')).toEqual({ track: '1-2', n: 3 });
     expect(parseExercise('2-S')).toEqual({ serve: '2-S' });
-    expect(exerciseLabel('cflip-2', catalog)).toBe('Flip · L2 Lato');
-    expect(exerciseLabel('1-1-2')).toBe('Top di dritto · L2 Diagonale fissa');
-    expect(drillsFor('flip-d', computeTracks([], undefined, {}, catalog), catalog)).toEqual(['cflip-1']);
+    expect(resolveExercise('1-1-2')).toBe('top-d-block');
+    expect(resolveExercise('2-S')).toBe('srv-lungo-veloce');
+    expect(exerciseLabel('cflip-2', catalog)).toBe('Flip · Lato');
+    expect(exerciseLabel('1-1-2')).toBe('Top di dritto contro block');
+    expect(exerciseLabel('3-S')).toBe('Lettura dell’effetto');
+    expect(exerciseLabel('multiball')).toBe('Multiball libero');
+    expect(drillsFor('ric-flip-d', catalog)).toEqual(expect.arrayContaining(['ric-flip-d', 'flip-d-top', 'cflip-1']));
   });
 });
 
 describe('statistiche', () => {
-  const tracks = computeTracks([{ id: 'a', date: '2026-01-01', tests: [{ track: '1-2', type: 'set', level: 2 }] }]);
-
-  it('propone l’esercizio giusto per il colpo da correggere', () => {
-    expect(drillsFor('ap-d', tracks)).toEqual(['1-2-2', '3-1-1']);
-    expect(drillsFor('top2-d', tracks)[0]).toBe('1-2-3'); // il secondo top entra dal livello 3
-    expect(drillsFor('srv-lungo-veloce', tracks)).toEqual(['2-S']);
-    expect(drillsFor('sconosciuto', tracks)).toEqual([]);
+  it('propone tutti gli esercizi che allenano un colpo, prima quelli del tuo livello', () => {
+    const all = drillsFor('ap-d');
+    expect(all).toEqual(expect.arrayContaining(['ap-d-multiball', 'ap-d', 'top2-d', 'flip-d-top', 'sch-srv-ap']));
+    expect(drillsFor('ap-d', BASE, 'intermedio')[0]).toBe('ap-d-multiball');
+    expect(drillsFor('ap-d', BASE, 'avanzato').slice().sort()).toEqual(all.slice().sort()); // il livello cambia l'ordine, non l'elenco
+    expect(drillsFor('sconosciuto')).toEqual([]);
   });
 
   it('conta colpi ed errori da correggere', () => {
@@ -302,13 +280,6 @@ describe('statistiche', () => {
     expect(w.total).toBe(4);
     expect(w.strokes[0]).toMatchObject({ id: 'ap-d', count: 3 });
     expect(w.strokes[0].errors[0]).toEqual({ id: 'rete', count: 2 });
-  });
-
-  it('il profilo pubblico contiene solo livelli e ritmo', () => {
-    const events = [{ id: 'a', kind: 'B', date: '2026-01-01', note: 'privata', focus: { stroke: 'ap-d' }, tests: [{ track: '1-2', type: 'set', level: 2 }] }];
-    const summary = publicSummary(tracks, events, plan, weekAt(plan, 0));
-    expect(summary).toEqual({ levels: { '1-2': 2 }, sessions: 1, lastDate: '2026-01-01', week: 1, block: '1' });
-    expect(JSON.stringify(summary)).not.toContain('privata');
   });
 
   it('il catalogo di base non cambia', () => {
@@ -331,28 +302,49 @@ describe('cambiare il ritmo', () => {
 });
 
 describe('importazione', () => {
-  it('legge l’esempio e collega percorsi, mesi e modelli', async () => {
+  it('legge l’esempio e collega esercizi, percorsi, mesi e modelli', async () => {
     const { parseImport, IMPORT_EXAMPLE, customId } = await import('../src/lib/data/importer.js');
     const r = parseImport('Ecco il file:\n```json\n' + JSON.stringify(IMPORT_EXAMPLE) + '\n```', BASE);
     expect(r.errors).toEqual([]);
-    expect(r.tracks[0]).toMatchObject({ id: 'cflipdritto', side: 'D' });
-    expect(r.tracks[0].levels).toHaveLength(2);
+    expect(r.warnings).toEqual([]);
+    expect(r.exercises[0]).toMatchObject({
+      id: 'cflipLaterale'.toLowerCase(),
+      family: 'ricezione',
+      level: 'avanzato',
+      modes: ['compagno'],
+      measure: { type: 'su', n: 10, what: 'in campo' },
+      goals: { B: 4, A: 6, O: 8 },
+      errors: ['rete', 'lunga', 'lettura']
+    });
+    expect(r.tracks[0]).toMatchObject({ id: 'cflipdritto', side: 'D', sequence: ['ric-flip-d', 'cfliplaterale', 'flip-d-top'] });
     expect(r.blocks[0]).toMatchObject({ id: 'cmeseflip', tracks: ['cflipdritto', '3-2'], maint: '2-2', serve: '1-S', scheme: 'ric-corta' });
     expect(r.blocks[0].rule).toBeUndefined();
-    expect(r.templates[0].steps.map((s) => s.type)).toEqual(['warmup', 'focus', 'track', 'free', 'match']);
+    expect(r.templates[0].steps.map((s) => s.type)).toEqual(['warmup', 'focus', 'track', 'exercise', 'free', 'match']);
+    expect(r.templates[0].steps[3].ex).toBe('cfliplaterale');
     expect(r.templates[0].color).toBe('pink');
-    const cat = buildCatalog({ tracks: r.tracks, blocks: r.blocks, templates: r.templates });
-    expect(cat.maxLevel('cflipdritto')).toBe(2);
+    const cat = buildCatalog({ exercises: r.exercises, tracks: r.tracks, blocks: r.blocks, templates: r.templates });
+    expect(cat.sequence('cflipdritto')).toEqual(['ric-flip-d', 'cfliplaterale', 'flip-d-top']);
+    expect(cat.exercise('cfliplaterale').name).toBe('Flip sul servizio laterale');
     expect(cat.block('cmeseflip').schemes).toEqual(['ric-corta']);
     expect(customId('Già fatto!')).toBe('cgiafatto');
+  });
+
+  it('legge ancora i percorsi a livelli, con i gradini facoltativi', async () => {
+    const { parseImport } = await import('../src/lib/data/importer.js');
+    const r = parseImport(JSON.stringify({ percorsi: [{ nome: 'Vecchio', livelli: [{ nome: 'Uno', test: '10 palle' }, { nome: 'Due', gradini: { bronzo: 3, argento: 5, oro: 7 } }] }] }), BASE);
+    const cat = buildCatalog({ tracks: r.tracks });
+    expect(cat.sequence('cvecchio')).toEqual(['cvecchio-1', 'cvecchio-2']);
+    expect(cat.exercise('cvecchio-2').goals).toEqual({ B: 3, A: 5, O: 7 });
   });
 
   it('segnala gli errori senza rompersi', async () => {
     const { parseImport } = await import('../src/lib/data/importer.js');
     expect(parseImport('ciao', BASE).errors).toHaveLength(1);
-    const r = parseImport(JSON.stringify({ percorsi: [{ nome: 'Senza livelli' }], mesi: [{ tema: 'X', percorsi: ['boh'] }] }), BASE);
+    const r = parseImport(JSON.stringify({ esercizi: [{ nome: 'Senza gradini', errori: ['inventato'] }], percorsi: [{ nome: 'Senza livelli' }], mesi: [{ tema: 'X', percorsi: ['boh'] }] }), BASE);
     expect(r.errors.length).toBe(2);
-    expect(r.warnings[0]).toContain('boh');
+    expect(r.exercises[0].goals).toEqual({ B: 6, A: 8, O: 9 });
+    expect(r.warnings.join(' ')).toContain('inventato');
+    expect(r.warnings.join(' ')).toContain('boh');
   });
 });
 

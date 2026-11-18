@@ -1,46 +1,33 @@
-// Compone la sessione: un modello di allenamento riempito con il mese in corso e con il livello
-// reale di ogni percorso. Lo stesso per un test: una scaletta di soli test.
+// Compone la sessione: un modello di allenamento riempito con il mese in corso. Per ogni passo
+// «del mese» l'app propone l'esercizio della sequenza del percorso (il primo senza argento); è solo
+// una proposta, e nella sessione si cambia con qualsiasi altro esercizio.
 //
 // Fra un blocco e l'altro di un allenamento c'è un minuto di pausa, preso dal blocco dopo: la
 // durata del modello non cambia. I modelli salvati restano come sono, le pause si aggiungono qui.
 
 import { WARMUP_TEXT, PAUSE_MINUTES, SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
-import { BASE } from '../data/catalog.js';
+import { BASE, serveExercise } from '../data/catalog.js';
 import { STEP_TYPES } from '../data/templates.js';
+import { currentInSequence } from './player.js';
 
 const MAINT_MINUTES = 5;
-const TEST_MINUTES = 5;
+export const TEST_MINUTES = 5;
 
-function exerciseStep(id, trackId, minutes, tracks, catalog, test, extra = {}) {
-  const track = catalog.track(trackId);
-  const st = tracks[trackId];
-  if (!track || !st) return null;
-  return {
-    id,
-    kind: 'exercise',
-    name: track.short,
-    minutes,
-    track: trackId,
-    level: st.level,
-    max: catalog.maxLevel(trackId),
-    exercise: catalog.level(trackId, st.level),
-    placement: !st.started,
-    // Il test comincia l'esercizio. Se il percorso parte oggi lo sostituisce il test di partenza.
-    test: Boolean(test && st.started),
-    ...extra
-  };
+/** Un passo con un esercizio della libreria (o personale). */
+export function exerciseStep(id, exId, minutes, catalog = BASE, extra = {}) {
+  const ex = catalog.exercise(exId);
+  if (!ex) return null;
+  return { id, kind: 'exercise', ex: ex.id, name: ex.name, minutes, ...extra };
 }
 
 /**
  * @param week      settimana del piano (weekAt) o null
  * @param template  il modello ({ steps }) già risolto
- * @param tracks    stato dei percorsi (computeTracks)
- * @param test      oggi si fanno i test (c'è un test in calendario o l'hai chiesto). Vale per gli
- *                  esercizi e il mantenimento: i servizi si misurano solo se lo chiedi durante la sessione.
+ * @param medals    medaglie per esercizio: servono solo a proporre l'esercizio di ogni percorso
  * @param pauses    un minuto di pausa fra un blocco e l'altro
- * @returns { block, template, minutes, steps[], trained[] }
+ * @returns { block, template, minutes, steps[], trained[], exercises[] }
  */
-export function composeSession({ week, template, tracks, catalog = BASE, test = false, pauses = true }) {
+export function composeSession({ week, template, catalog = BASE, medals = {}, pauses = true }) {
   const block = week?.focusBlock ?? week?.block ?? catalog.block('1');
   const steps = [];
 
@@ -50,28 +37,20 @@ export function composeSession({ week, template, tracks, catalog = BASE, test = 
 
     if (s.type === 'warmup') {
       let maint = null;
-      if (block.maint && tracks[block.maint] && minutes >= 10) {
-        const st = tracks[block.maint];
-        maint = {
-          track: block.maint,
-          name: catalog.track(block.maint).short,
-          level: st.level,
-          max: catalog.maxLevel(block.maint),
-          exercise: catalog.level(block.maint, st.level),
-          minutes: MAINT_MINUTES,
-          // Il mantenimento si misura una volta al mese: nell'ultima settimana.
-          test: Boolean(test && week?.lastOfBlock && st.started)
-        };
+      const exId = block.maint ? currentInSequence(block.maint, catalog, medals) : null;
+      if (exId && minutes >= 10) {
+        maint = { track: block.maint, ex: exId, name: catalog.exercise(exId).name, minutes: MAINT_MINUTES };
       }
       steps.push({ id, kind: 'warmup', name: STEP_TYPES.warmup.name, minutes, text: s.text || WARMUP_TEXT, maint });
     } else if (s.type === 'serve') {
-      steps.push({ id, kind: 'serve', name: STEP_TYPES.serve.name, minutes, serve: block.serve, test: false });
-    } else if (s.type === 'focus') {
-      const trackId = block.tracks[(s.slot ?? 1) - 1];
-      const step = trackId ? exerciseStep(id, trackId, minutes, tracks, catalog, test) : null;
+      steps.push({ id, kind: 'serve', name: STEP_TYPES.serve.name, minutes, serve: block.serve, ex: serveExercise(block.serve) });
+    } else if (s.type === 'focus' || s.type === 'track') {
+      const trackId = s.type === 'focus' ? block.tracks[(s.slot ?? 1) - 1] : s.track;
+      const exId = trackId ? currentInSequence(trackId, catalog, medals) : null;
+      const step = exId ? exerciseStep(id, exId, minutes, catalog, { track: trackId }) : null;
       if (step) steps.push(step);
-    } else if (s.type === 'track') {
-      const step = exerciseStep(id, s.track, minutes, tracks, catalog, test);
+    } else if (s.type === 'exercise') {
+      const step = exerciseStep(id, s.ex, minutes, catalog);
       if (step) steps.push(step);
     } else if (s.type === 'free') {
       steps.push({ id, kind: 'free', name: s.name || STEP_TYPES.free.name, minutes, text: s.text ?? '' });
@@ -88,7 +67,8 @@ export function composeSession({ week, template, tracks, catalog = BASE, test = 
     template: template ? { id: template.id, name: template.name, color: template.color } : null,
     minutes: all.reduce((n, s) => n + s.minutes, 0),
     steps: all,
-    trained: trainedTracks(all)
+    trained: trainedTracks(all),
+    exercises: sessionExercises(all)
   };
 }
 
@@ -111,43 +91,36 @@ export function matchHalves(minutes) {
   return [first, minutes - first];
 }
 
-/**
- * Un test da solo: un passo per percorso (test di partenza se non è mai stato fatto),
- * più i servizi del mese se richiesti.
- */
-export function composeTest({ week, trackIds, tracks, catalog = BASE, serve = false }) {
-  const block = week?.focusBlock ?? week?.block ?? catalog.block('1');
-  const steps = [];
-  if (serve) steps.push({ id: 'serve', kind: 'serve', name: STEP_TYPES.serve.name, minutes: TEST_MINUTES, serve: block.serve, test: true });
-  for (const id of trackIds) {
-    const step = exerciseStep(`t-${id}`, id, TEST_MINUTES, tracks, catalog, true, { maintTest: block.maint === id && !block.tracks.includes(id) });
-    if (step) steps.push(step);
-  }
+/** Un test: un passo per esercizio, con l'obiettivo già aperto. */
+export function composeTest({ exerciseIds = [], catalog = BASE }) {
+  const steps = exerciseIds.map((id) => exerciseStep(`t-${id}`, id, TEST_MINUTES, catalog, { goal: true })).filter(Boolean);
   return {
-    block,
+    block: null,
     template: null,
     minutes: steps.reduce((n, s) => n + s.minutes, 0),
     steps,
-    trained: []
+    trained: [],
+    exercises: sessionExercises(steps)
   };
 }
 
-/** I percorsi allenati in una sessione (per sapere quando conviene testarli). */
+/** I percorsi allenati in una sessione. */
 export function trainedTracks(steps) {
   const out = [];
   for (const s of steps) {
-    if (s.kind === 'exercise' && !out.includes(s.track)) out.push(s.track);
+    if (s.kind === 'exercise' && s.track && !out.includes(s.track)) out.push(s.track);
     if (s.maint && !out.includes(s.maint.track)) out.push(s.maint.track);
   }
   return out;
 }
 
-/** Quanti test prevede la sessione (per il riepilogo in Oggi). */
-export function countTests(session) {
-  let n = 0;
-  for (const s of session.steps) {
-    if (s.test || s.placement) n++;
-    if (s.maint?.test) n++;
+/** Gli esercizi di una sessione: quelli dei blocchi, dei servizi e del mantenimento. */
+export function sessionExercises(steps) {
+  const out = [];
+  const add = (id) => id && !out.includes(id) && out.push(id);
+  for (const s of steps) {
+    if (s.kind === 'exercise' || s.kind === 'serve') add(s.ex);
+    if (s.maint) add(s.maint.ex);
   }
-  return n;
+  return out;
 }

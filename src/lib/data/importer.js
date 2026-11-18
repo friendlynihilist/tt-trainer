@@ -1,32 +1,36 @@
-// Importazione di percorsi, mesi e modelli da un testo JSON (scritto a mano o da un assistente).
-// Il formato è in italiano e perdona: accetta nomi al posto degli id, campi mancanti, testo
-// prima e dopo il JSON. Reimportare lo stesso «id» aggiorna invece di duplicare.
+// Importazione di esercizi, percorsi, mesi e modelli da un testo JSON (scritto a mano o da un
+// assistente). Il formato è in italiano e perdona: accetta nomi al posto degli id, campi mancanti,
+// testo prima e dopo il JSON. Reimportare lo stesso «id» aggiorna invece di duplicare.
 
-import { MAX_LEVELS, SERVES } from './catalog.js';
+import { MAX_LEVELS, SERVES, CUSTOM_GOALS } from './catalog.js';
 import { SCHEMES, DEFAULT_SCHEME } from './program.js';
 import { COLORS, STEP_TYPES } from './templates.js';
+import { LIBRARY, LEVEL_IDS } from './library.js';
+import { FAMILIES, ERRORS } from './taxonomy.js';
 
 export const IMPORT_EXAMPLE = {
+  esercizi: [
+    {
+      id: 'flip-laterale',
+      nome: 'Flip sul servizio laterale',
+      famiglia: 'ricezione',
+      livello: 'avanzato',
+      formato: ['con compagno'],
+      descrizione: 'Il compagno serve corto con effetto laterale. Flip di dritto in diagonale.',
+      qualita: 'Racchetta orientata contro l’effetto, palla bassa.',
+      misura: { tipo: 'su', n: 10, cosa: 'in campo' },
+      gradini: { bronzo: 4, argento: 6, oro: 8 },
+      errori: ['rete', 'lunga', 'lettura'],
+      colpi: ['ric-flip-d']
+    }
+  ],
   percorsi: [
     {
       id: 'flip-dritto',
       nome: 'Flip di dritto',
       breve: 'Flip di dritto',
       lato: 'D',
-      livelli: [
-        {
-          nome: 'Palla ferma',
-          esercizio: 'Il compagno serve corto senza taglio sempre nello stesso punto. Flip in diagonale.',
-          test: '10 servizi: si contano i flip in campo.',
-          obiettivo: 'Polso sciolto, palla che passa bassa.'
-        },
-        {
-          nome: 'Due punti',
-          esercizio: 'Servizio corto al centro o sul dritto. Flip in diagonale o lungolinea.',
-          test: '10 servizi: si contano i flip in campo.',
-          obiettivo: 'Stessa qualità dai due punti.'
-        }
-      ]
+      esercizi: ['ric-flip-d', 'flip-laterale', 'flip-d-top']
     }
   ],
   mesi: [{ id: 'mese-flip', tema: 'Gioco corto', percorsi: ['flip-dritto', '3-2'], mantenimento: '2-2', servizi: '1-S', schema: 'ric-corta' }],
@@ -38,7 +42,8 @@ export const IMPORT_EXAMPLE = {
       passi: [
         { tipo: 'riscaldamento', minuti: 10 },
         { tipo: 'mese', quale: 1, minuti: 20 },
-        { tipo: 'percorso', percorso: '3-2', minuti: 15 },
+        { tipo: 'percorso', percorso: '3-2', minuti: 10 },
+        { tipo: 'esercizio', esercizio: 'flip-laterale', minuti: 5 },
         { tipo: 'libero', nome: 'Multiball sul corto', testo: 'Palle corte alternate sui due lati.', minuti: 10 },
         { tipo: 'partitella', minuti: 5 }
       ]
@@ -55,6 +60,8 @@ const STEP_ALIASES = {
   focus: 'focus',
   percorso: 'track',
   track: 'track',
+  esercizio: 'exercise',
+  exercise: 'exercise',
   libero: 'free',
   free: 'free',
   partitella: 'match',
@@ -97,11 +104,32 @@ function extractJson(text) {
   throw new Error('nessun JSON');
 }
 
+const MEASURES = { su: 'su', 'su n': 'su', fila: 'fila', 'di fila': 'fila', consecutivi: 'fila', tempo: 'tempo', 'a tempo': 'tempo', conta: 'conta' };
+const MODE_ALIASES = { solo: 'solo', 'da solo': 'solo', compagno: 'compagno', 'con compagno': 'compagno', multiball: 'multiball', robot: 'robot' };
+const TIER_KEYS = { B: ['bronzo', 'B'], A: ['argento', 'A'], O: ['oro', 'O'], P: ['platino', 'P'] };
+
+function parseMeasure(raw) {
+  const type = MEASURES[str(pick(raw, 'tipo', 'type'), 20).toLowerCase()] ?? 'su';
+  if (type === 'su') return { type, n: Math.max(1, Math.min(100, Math.round(Number(pick(raw, 'n', 'su')) || 10))), what: str(pick(raw, 'cosa', 'what'), 80) };
+  if (type === 'fila') return { type, unit: ['colpi', 'scambi', 'cicli', 'sequenze', 'difese'].includes(pick(raw, 'unita', 'unità', 'unit')) ? pick(raw, 'unita', 'unità', 'unit') : 'colpi' };
+  if (type === 'tempo') return { type, unit: pick(raw, 'unita', 'unità', 'unit') === 'scambi' ? 'scambi' : 'colpi', seconds: Math.round(Number(pick(raw, 'secondi', 'seconds')) || 30) };
+  return { type, what: str(pick(raw, 'cosa', 'what'), 80) || 'riusciti' };
+}
+
+function parseGoals(raw) {
+  const out = {};
+  for (const [k, keys] of Object.entries(TIER_KEYS)) {
+    const v = Number(pick(raw, ...keys));
+    if (Number.isFinite(v) && v > 0) out[k] = Math.round(v);
+  }
+  return out;
+}
+
 /**
- * @returns { tracks, blocks, templates, errors: string[], warnings: string[] }
+ * @returns { exercises, tracks, blocks, templates, errors: string[], warnings: string[] }
  */
 export function parseImport(text, catalog) {
-  const out = { tracks: [], blocks: [], templates: [], errors: [], warnings: [] };
+  const out = { exercises: [], tracks: [], blocks: [], templates: [], errors: [], warnings: [] };
   let data;
   try {
     data = extractJson(text);
@@ -110,6 +138,50 @@ export function parseImport(text, catalog) {
     return out;
   }
   if (Array.isArray(data)) data = { percorsi: data };
+
+  // Esercizi: si richiamano per id (della libreria, dei tuoi o scritto nel file) o per nome.
+  const exLookup = new Map();
+  const rememberEx = (keys, id) => keys.filter(Boolean).forEach((k) => exLookup.set(String(k).toLowerCase().trim(), id));
+  for (const e of LIBRARY) rememberEx([e.id, e.name], e.id);
+  for (const id of catalog.exerciseIds ?? []) rememberEx([id, catalog.exercise(id)?.name], id);
+
+  for (const [i, raw] of (pick(data, 'esercizi', 'exercises') ?? []).entries()) {
+    const name = str(pick(raw, 'nome', 'name'), 80);
+    if (!name) {
+      out.errors.push(`Esercizio ${i + 1}: manca il nome.`);
+      continue;
+    }
+    const given = pick(raw, 'id');
+    const id = customId(given ?? name);
+    const family = str(pick(raw, 'famiglia', 'family'), 20).toLowerCase();
+    const level = str(pick(raw, 'livello', 'level'), 20).toLowerCase();
+    const goals = parseGoals(pick(raw, 'gradini', 'obiettivi', 'goals'));
+    const errs = (pick(raw, 'errori', 'errors') ?? []).map((x) => str(x, 30));
+    const unknown = errs.filter((x) => !ERRORS.some((e) => e.id === x));
+    if (unknown.length) out.warnings.push(`«${name}»: errori sconosciuti (${unknown.join(', ')}), saltati.`);
+    if (!Object.keys(goals).length) out.warnings.push(`«${name}»: niente gradini, uso ${CUSTOM_GOALS.B}, ${CUSTOM_GOALS.A} e ${CUSTOM_GOALS.O}.`);
+    out.exercises.push({
+      id,
+      name,
+      family: FAMILIES.some((f) => f.id === family) ? family : null,
+      level: LEVEL_IDS.includes(level) ? level : null,
+      modes: [...new Set((pick(raw, 'formato', 'modes') ?? []).map((m) => MODE_ALIASES[str(m, 20).toLowerCase()]).filter(Boolean))],
+      text: str(pick(raw, 'descrizione', 'testo', 'text')),
+      quality: str(pick(raw, 'qualita', 'qualità', 'quality')),
+      measure: parseMeasure(pick(raw, 'misura', 'measure') ?? {}),
+      goals: Object.keys(goals).length ? goals : { ...CUSTOM_GOALS },
+      errors: errs.filter((x) => ERRORS.some((e) => e.id === x)),
+      strokes: (pick(raw, 'colpi', 'strokes') ?? []).map((x) => str(x, 40)).filter(Boolean)
+    });
+    rememberEx([given, name, id], id);
+  }
+
+  const exRef = (ref, where) => {
+    if (ref == null || ref === '') return null;
+    const id = exLookup.get(String(ref).toLowerCase().trim());
+    if (!id) out.warnings.push(`${where}: non trovo l’esercizio «${ref}», lo salto.`);
+    return id ?? null;
+  };
 
   // Percorsi: si possono richiamare per id (anche quello scritto nel file) o per nome.
   const lookup = new Map();
@@ -121,18 +193,23 @@ export function parseImport(text, catalog) {
 
   for (const [i, raw] of (pick(data, 'percorsi', 'tracks') ?? []).entries()) {
     const name = str(pick(raw, 'nome', 'name'), 80);
-    const levels = (pick(raw, 'livelli', 'levels') ?? []).slice(0, MAX_LEVELS).map((l, n) => ({
-      name: str(pick(l, 'nome', 'name'), 80) || `Livello ${n + 1}`,
-      drill: str(pick(l, 'esercizio', 'drill', 'descrizione')),
-      test: str(pick(l, 'test')),
-      goal: str(pick(l, 'obiettivo', 'goal'))
-    }));
+    const levels = (pick(raw, 'livelli', 'levels') ?? []).slice(0, MAX_LEVELS).map((l, n) => {
+      const goals = parseGoals(pick(l, 'gradini', 'goals'));
+      return {
+        name: str(pick(l, 'nome', 'name'), 80) || `Livello ${n + 1}`,
+        drill: str(pick(l, 'esercizio', 'drill', 'descrizione')),
+        test: str(pick(l, 'test')),
+        goal: str(pick(l, 'obiettivo', 'goal')),
+        ...(Object.keys(goals).length ? { goals } : {})
+      };
+    });
     if (!name) {
       out.errors.push(`Percorso ${i + 1}: manca il nome.`);
       continue;
     }
-    if (!levels.length) {
-      out.errors.push(`«${name}»: servono i livelli (almeno uno).`);
+    const sequence = (pick(raw, 'esercizi', 'sequence') ?? []).map((r) => exRef(r, `«${name}»`)).filter(Boolean);
+    if (!levels.length && !sequence.length) {
+      out.errors.push(`«${name}»: servono gli esercizi in ordine (o i livelli).`);
       continue;
     }
     if ((pick(raw, 'livelli', 'levels') ?? []).length > MAX_LEVELS) out.warnings.push(`«${name}»: tenuti i primi ${MAX_LEVELS} livelli.`);
@@ -145,7 +222,8 @@ export function parseImport(text, catalog) {
       short: str(pick(raw, 'breve', 'short'), 40) || name,
       side: side === 'D' || side === 'R' ? side : null,
       strokes: (pick(raw, 'colpi', 'strokes') ?? []).map((x) => str(x, 40)).filter(Boolean),
-      levels
+      levels,
+      ...(sequence.length ? { sequence } : {})
     });
     remember([given, name, pick(raw, 'breve', 'short'), id], id);
   }
@@ -199,6 +277,10 @@ export function parseImport(text, catalog) {
         step.track = trackRef(pick(s, 'percorso', 'track'), `«${name}»`);
         if (!step.track) continue;
       }
+      if (type === 'exercise') {
+        step.ex = exRef(pick(s, 'esercizio', 'exercise'), `«${name}»`);
+        if (!step.ex) continue;
+      }
       if (type === 'free') step.name = str(pick(s, 'nome', 'name'), 60) || 'Esercizio';
       const text = str(pick(s, 'testo', 'text'));
       if (text) step.text = text;
@@ -212,8 +294,8 @@ export function parseImport(text, catalog) {
     out.templates.push({ id: customId(pick(raw, 'id') ?? name), name, color: COLORS.includes(color) ? color : 'violet', steps });
   }
 
-  if (!out.tracks.length && !out.blocks.length && !out.templates.length && !out.errors.length) {
-    out.errors.push('Nel testo non c’è niente da importare: servono «percorsi», «mesi» o «allenamenti».');
+  if (!out.exercises.length && !out.tracks.length && !out.blocks.length && !out.templates.length && !out.errors.length) {
+    out.errors.push('Nel testo non c’è niente da importare: servono «esercizi», «percorsi», «mesi» o «allenamenti».');
   }
   return out;
 }
@@ -226,11 +308,12 @@ Rispondi solo con il JSON, in italiano, seguendo questo formato:
 ${JSON.stringify(IMPORT_EXAMPLE, null, 2)}
 
 Regole:
-- «percorsi»: un esercizio che progredisce per livelli (da 1 a ${MAX_LEVELS}, di solito 5), dal più guidato al punto giocato. Ogni livello ha nome, esercizio (cosa si fa), test (10 tentativi: cosa si conta) e obiettivo (come deve venire la palla).
-- Si sale di livello con due test di fila da almeno 8 su 10 e si scende con 4 o meno: il test deve essere misurabile su 10.
-- «lato»: "D" dritto, "R" rovescio, oppure null.
-- «mesi»: un tema con 1–3 percorsi (per id o per nome; i percorsi di base sono "1-1" top di dritto, "1-2" apertura di dritto, "2-1" top di rovescio, "2-2" apertura di rovescio, "3-1" servizio e apertura, "3-2" ricezione tagliata), un percorso di mantenimento facoltativo, il lavoro sui servizi ("1-S", "2-S" o "3-S") e lo schema della partitella a schema (${Object.values(SCHEMES).map((x) => `"${x.id}" ${x.name.toLowerCase()}`).join(', ')}).
-- «allenamenti»: una scaletta di passi. Tipi: "riscaldamento", "servizi", "mese" (con "quale": 1, 2 o 3 = il percorso del mese in corso), "percorso" (con "percorso": id o nome), "libero" (con "nome" e "testo"), "partitella". Ogni passo ha "minuti".
+- «esercizi»: ogni esercizio ha nome, famiglia (${FAMILIES.map((f) => `"${f.id}"`).join(', ')}), livello suggerito (${LEVEL_IDS.map((l) => `"${l}"`).join(', ')}), formato (uno o più fra "da solo", "con compagno", "multiball", "robot"), descrizione, qualità (come deve venire il colpo), errori comuni (2 o 3 fra ${ERRORS.map((e) => `"${e.id}"`).join(', ')}) e colpi allenati.
+- «misura»: come si conta. "su" con "n" (10 o 20) e "cosa" si conta; "fila" (quante di fila, con "unita": colpi, scambi, cicli o sequenze); "tempo" (quanti in 30 secondi); "conta" (un numero per seduta).
+- «gradini»: le soglie delle medaglie, crescenti: "bronzo", "argento", "oro" e, se serve, "platino". Le medaglie sono solo un traguardo personale: nessun esercizio viene mai bloccato.
+- «percorsi»: una sequenza di esercizi dal più guidato al più libero ("esercizi": id o nomi, anche quelli della libreria come "top-d-block" o "ap-d").
+- «mesi»: un tema con 1–3 percorsi (per id o per nome; quelli di base sono "1-1" top di dritto, "1-2" apertura di dritto, "2-1" top di rovescio, "2-2" apertura di rovescio, "3-1" servizio e apertura, "3-2" ricezione tagliata), un percorso di mantenimento facoltativo, il lavoro sui servizi ("1-S", "2-S" o "3-S") e lo schema della partitella a schema (${Object.values(SCHEMES).map((x) => `"${x.id}" ${x.name.toLowerCase()}`).join(', ')}).
+- «allenamenti»: una scaletta di passi. Tipi: "riscaldamento", "servizi", "mese" (con "quale": 1, 2 o 3 = il percorso del mese in corso), "percorso" (con "percorso": id o nome), "esercizio" (con "esercizio": id o nome), "libero" (con "nome" e "testo"), "partitella". Ogni passo ha "minuti".
 - Colori possibili: ${COLORS.join(', ')}.
 - Gli "id" sono facoltativi ma utili: reimportando lo stesso id si aggiorna invece di duplicare.`;
 }
