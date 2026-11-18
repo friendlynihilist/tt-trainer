@@ -38,6 +38,14 @@ impediscono di leggere o scrivere quelli degli altri.
 - **Regola generale**: medaglie e livello non nascondono né disabilitano mai un esercizio, un test o un
   obiettivo.
 
+### Note per colpo
+
+- Un diario libero per ogni colpo: testo, sensazione da 1 a 5, e se vuoi l'esercizio e l'allenamento in cui
+  è nata la nota. Si salvano in `users/{uid}/notes/{id}` (in modalità locale nel browser) e restano personali.
+- Ogni nota salva anche la famiglia del colpo: `src/lib/engine/notes.js` (`feelSeries`) dà già i punti per i
+  grafici della sensazione per colpo e per famiglia.
+- Le note sono nel CSV e nella copia completa (`src/lib/engine/export.js`).
+
 ### Allenamenti, test e calendario
 
 - **Allenamenti** (`src/lib/data/templates.js`): blocchi con durata ed esercizi della libreria (o «del mese»).
@@ -96,7 +104,7 @@ Nel repository: **Settings → Pages → Source: GitHub Actions**.
 Scritto e provato nel browser in modalità locale (`VITE_LOCAL=1 npm run dev` forza la modalità locale anche
 con Firebase configurato), anche a 390 px: wizard, Oggi, sessione dal vivo con obiettivi e medaglie, test,
 diario, progressi, libreria, livello, pacchetti, editor degli allenamenti, e il passaggio dei dati della
-prima versione, della 0.2 e dei modelli personali. Il motore ha 84 test.
+prima versione, della 0.2 e dei modelli personali. Il motore ha 93 test.
 
 Non ancora provato: il backend cloud (`src/lib/store/cloud.js`) e le regole Firestore, che richiedono un
 progetto Firebase o gli emulatori (`VITE_EMULATOR=1 npm run dev` insieme a `npm run emulators`).
