@@ -1,7 +1,8 @@
 # Terza palla
 
 Allenamento e diario di tennistavolo. Nasce dal foglio «Piano allenamento tennistavolo – ciclo di 3 mesi»:
-l'app compone ogni sessione al livello raggiunto in ciascun percorso e tiene il diario di ognuno separato.
+l'app compone ogni sessione con gli esercizi del mese, misura i progressi con le medaglie e tiene il diario
+di ognuno separato.
 
 Sito: **https://friendlynihilist.github.io/tt-trainer/**
 
@@ -11,39 +12,52 @@ Sito: **https://friendlynihilist.github.io/tt-trainer/**
 - **Backend**: Firebase — Authentication (Google) e Firestore. Nessun server da gestire, piano gratuito.
 - **Senza Firebase** (`src/firebase.config.js` vuoto) l'app gira in modalità locale: dati nel browser.
 
-Il "file principale" (esercizi, livelli, tassonomia) sta nel codice, in `src/lib/data/`: è di sola lettura
+Il "file principale" (libreria degli esercizi, programma, tassonomia) sta nel codice, in `src/lib/data/`: è di sola lettura
 per tutti. I dati di ciascuno stanno in Firestore sotto `users/{uid}` e le regole (`firestore.rules`)
 impediscono di leggere o scrivere quelli degli altri.
 
 | Percorso | Contenuto |
 | --- | --- |
-| `src/lib/data/` | programma, percorsi, esercizi, tassonomia dei colpi |
-| `src/lib/engine/` | livelli, piano, composizione della sessione, statistiche (funzioni pure, testate) |
+| `src/lib/data/` | libreria degli esercizi, programma, percorsi, tassonomia dei colpi |
+| `src/lib/engine/` | tentativi, medaglie, livello, piano, composizione della sessione, statistiche (funzioni pure, testate) |
 | `src/lib/store/` | stato dell'app, backend locale e cloud |
 | `src/lib/pages/`, `sheets/`, `screens/`, `ui/` | interfaccia |
-| `tests/` | test del motore, incluso il confronto con le formule dell'Excel |
+| `tests/` | test del motore: medaglie, livello, migrazione dei dati, piano, composizione |
+| `docs/` | la ricerca sui livelli e gli esercizi, il progetto della fase 2 |
 
-Il livello di un percorso non è mai salvato: si ricalcola dalla storia dei test. Correggere una sessione
-passata aggiorna da solo il livello di oggi.
+### Libreria, medaglie e livello
+
+- **Libreria** (`src/lib/data/library.js`): 82 esercizi in otto famiglie, ognuno con livello suggerito,
+  formato (da solo, con compagno, multiball, robot), misura, gradini delle medaglie, criterio di qualità,
+  errori comuni e colpi allenati. Fonti e scelte sono in `docs/ricerca-livelli-esercizi.md`.
+- **Tentativi**: ogni misura su un esercizio. Le voci nuove li salvano in `attempts`.
+- **Medaglie** (`src/lib/engine/medals.js`): non sono mai salvate, si ricalcolano dai tentativi. Correggere
+  una misura passata rimette tutto in ordine da solo. Le medaglie non si perdono e non bloccano niente.
+- **Livello del giocatore** (`meta.player`): lo sceglie il giocatore. L'app propone il livello dopo con la
+  regola di `src/lib/engine/player.js`; il livello serve solo a scegliere cosa proporre.
+- **Regola generale**: medaglie e livello non nascondono né disabilitano mai un esercizio, un test o un
+  obiettivo.
 
 ### Allenamenti, test e calendario
 
 - **Modelli** (`src/lib/data/templates.js`): la scaletta di un allenamento. Di base: Completo (il programma
-  del foglio), Breve, Servizi e terza palla. Ognuno può crearne di suoi dalla Libreria.
-- **Percorsi e mesi personali**: in `meta.custom` (tracks, blocks, templates) di ciascun utente; il catalogo
-  (`src/lib/data/catalog.js`) li unisce a quelli di base. I percorsi personali hanno da 1 a 8 livelli.
+  del foglio), Breve, Servizi e terza palla. Ognuno può crearne di suoi dalla Libreria, anche con esercizi fissi.
+- **Percorsi**: una sequenza di esercizi. Il passo «esercizio del mese» propone il primo senza argento.
+- **Esercizi, percorsi e mesi personali**: in `meta.custom` (exercises, tracks, blocks, templates) di ciascun
+  utente; il catalogo (`src/lib/data/catalog.js`) li unisce a quelli di base.
 - **Piano**: mesi in fila (di base o personali), settimane per mese, e un ritmo settimanale libero
   (`slots`: quanti allenamenti e test si vuole, in che giorni). Cambiare il ritmo non riscrive il passato.
-- **Test**: un appuntamento a sé. Se cade lo stesso giorno di un allenamento si fa dentro l'allenamento.
-- **Suggeritore** (`src/lib/engine/suggest.js`): quali percorsi misurare e una sessione su misura, con i motivi.
+- **Test**: un appuntamento a sé, con gli esercizi proposti dall'app (e il motivo). In allenamento ogni
+  esercizio ha «Prova l'obiettivo».
 - **Importazione**: Libreria → Importa. Il formato (con le istruzioni da dare a un assistente) è in
   `src/lib/data/importer.js`.
 
 ### Dati del primo modello
 
-Le voci salvate come «Sessione A/B» e il piano con due giorni fissi non vengono riscritti: si leggono così come
-sono (`normalizeEvent`, `normalizePlan`) e restano identici finché non li si modifica. I test in
-`tests/migration.test.js` verificano che livelli, storia e calendario restino gli stessi.
+Le voci salvate come «Sessione A/B», quelle della 0.2 e il piano con due giorni fissi non vengono riscritti:
+si leggono così come sono (`normalizeEvent`, `normalizePlan`). I test sui percorsi e i servizi diventano
+tentativi sugli esercizi corrispondenti, in lettura (`src/lib/engine/attempts.js`). I test in
+`tests/migration.test.js` verificano storia, medaglie e calendario.
 
 ## Sviluppo
 
@@ -60,7 +74,7 @@ npm run build
 2. **Authentication → Metodo di accesso → Google → Attiva.**
 3. **Authentication → Impostazioni → Domini autorizzati**: aggiungi `friendlynihilist.github.io`.
 4. **Firestore Database → Crea database** (modalità produzione).
-5. **Regole**: incolla il contenuto di `firestore.rules` e pubblica
+5. **Regole**: incolla il contenuto di `firestore.rules` e pubblica (dalla 0.3 il profilo del gruppo accetta solo il nome)
    (oppure `npx firebase-tools deploy --only firestore:rules --project ID_PROGETTO`).
 6. **Impostazioni progetto → Le tue app → Web**: copia la configurazione in `src/firebase.config.js`.
 
@@ -75,9 +89,9 @@ Nel repository: **Settings → Pages → Source: GitHub Actions**.
 ## Stato dei lavori
 
 Scritto e provato nel browser in modalità locale (`VITE_LOCAL=1 npm run dev` forza la modalità locale anche
-con Firebase configurato): wizard, Oggi, sessione dal vivo, diario, progressi, libreria, editor di modelli,
-importazione, piano, e il passaggio dei dati del primo modello. Il motore ha 59 test, incluso il confronto con
-le formule dell'Excel.
+con Firebase configurato), anche a 390 px: wizard, Oggi, sessione dal vivo con obiettivi e medaglie, test,
+diario, progressi, libreria, livello, e il passaggio dei dati della prima versione e della 0.2. Il motore ha
+70 test.
 
 Non ancora provato: il backend cloud (`src/lib/store/cloud.js`) e le regole Firestore, che richiedono un
 progetto Firebase o gli emulatori (`VITE_EMULATOR=1 npm run dev` insieme a `npm run emulators`).

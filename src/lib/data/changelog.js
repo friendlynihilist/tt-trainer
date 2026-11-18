@@ -10,6 +10,19 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.3.0',
+    date: '2026-11-18',
+    title: 'Medaglie e livelli',
+    items: [
+      { icon: 'medal', text: 'Ogni esercizio ha le sue medaglie: bronzo, argento, oro e a volte platino. Non si perdono e non bloccano niente.' },
+      { icon: 'library', text: 'La libreria ha 82 esercizi in otto famiglie. Per ognuno trovi il livello suggerito, il formato, la qualità da cercare e gli errori più comuni.' },
+      { icon: 'gauge', text: 'In allenamento tocchi «Prova l’obiettivo» e l’app ti mostra il prossimo gradino. Il test resta un appuntamento a parte.' },
+      { icon: 'trending', text: 'Il tuo livello lo scegli tu. Quando sei pronto per quello dopo, te lo propone l’app.' },
+      { icon: 'users', text: 'Medaglie e livello sono solo tuoi: il gruppo vede soltanto il nome.' }
+    ],
+    note: 'I test fatti finora contano per le medaglie degli esercizi corrispondenti. Il test di partenza e «Su misura» non ci sono più.'
+  },
+  {
     version: '0.2.1',
     date: '2026-11-18',
     title: 'Correzioni',
