@@ -9,6 +9,7 @@ import { normalizeEvent } from '../engine/events.js';
 import { allAttempts } from '../engine/attempts.js';
 import { allMedals } from '../engine/medals.js';
 import { normalizePlayer, suggestLevel } from '../engine/player.js';
+import { makeNote } from '../engine/notes.js';
 import { buildCatalog } from '../data/catalog.js';
 import { STROKES, ERRORS } from '../data/taxonomy.js';
 import { today } from '../util/dates.js';
@@ -49,6 +50,8 @@ class AppState {
   meta = $state.raw(null);
   /** Le voci come arrivano dal backend, mai riscritte qui. */
   rawEvents = $state.raw([]);
+  /** Le note per colpo (users/{uid}/notes). Solo tue. */
+  notes = $state.raw([]);
   profiles = $state.raw([]);
   access = $state.raw(null);
   requests = $state.raw([]);
@@ -138,6 +141,7 @@ class AppState {
     this.user = user;
     this.meta = null;
     this.rawEvents = [];
+    this.notes = [];
     this.profiles = [];
     this.requests = [];
     this.access = null;
@@ -180,6 +184,7 @@ class AppState {
           this.rawEvents = events;
           arrived('events');
         },
+        notes: (notes) => (this.notes = notes),
         profiles: (profiles) => (this.profiles = profiles),
         access: (access) => {
           this.access = access;
@@ -275,6 +280,20 @@ class AppState {
 
   deleteEvent(id) {
     this.#run(this.#backend.deleteEvent(this.user.uid, id));
+  }
+
+  // ── Note per colpo ───────────────────────────────────────────────────────
+
+  /** Crea o aggiorna una nota (vedi engine/notes.js). */
+  saveNote(input) {
+    const strokes = Object.fromEntries(this.strokes.map((s) => [s.id, s]));
+    const note = clean(makeNote({ ...input, id: input.id ?? newId('n') }, { strokes }));
+    this.#run(this.#backend.saveNote(this.user.uid, note));
+    return note;
+  }
+
+  deleteNote(id) {
+    this.#run(this.#backend.deleteNote(this.user.uid, id));
   }
 
   eventById(id) {

@@ -4,6 +4,7 @@
 //   requests/{uid}           richieste di accesso in attesa
 //   users/{uid}              impostazioni e piano dell'utente
 //   users/{uid}/events/{id}  le sue attività (sessioni, test, note)
+//   users/{uid}/notes/{id}   le sue note per colpo
 //   profiles/{uid}           ciò che il gruppo può vedere: nome e livelli
 //
 // Ognuno legge e scrive solo sotto il proprio uid (vedi firestore.rules). Gli esercizi e la
@@ -59,6 +60,7 @@ export function createCloudBackend(config, { emulator = false } = {}) {
   const accessRef = doc(db, 'config', 'access');
   const userRef = (uid) => doc(db, 'users', uid);
   const eventsRef = (uid) => collection(db, 'users', uid, 'events');
+  const notesRef = (uid) => collection(db, 'users', uid, 'notes');
 
   return {
     mode: 'cloud',
@@ -143,6 +145,7 @@ export function createCloudBackend(config, { emulator = false } = {}) {
       const subs = [
         onSnapshot(userRef(uid), (snap) => h.meta(snap.exists() ? snap.data() : null), fail),
         onSnapshot(eventsRef(uid), (snap) => h.events(list(snap)), fail),
+        onSnapshot(notesRef(uid), (snap) => h.notes?.(list(snap)), fail),
         onSnapshot(collection(db, 'profiles'), (snap) => h.profiles?.(list(snap)), fail),
         onSnapshot(accessRef, (snap) => h.access?.(snap.data() ?? null), fail)
       ];
@@ -160,6 +163,12 @@ export function createCloudBackend(config, { emulator = false } = {}) {
     },
     deleteEvent(uid, id) {
       return deleteDoc(doc(eventsRef(uid), id));
+    },
+    saveNote(uid, note) {
+      return setDoc(doc(notesRef(uid), note.id), note);
+    },
+    deleteNote(uid, id) {
+      return deleteDoc(doc(notesRef(uid), id));
     },
     saveProfile(uid, profile) {
       return profile ? setDoc(doc(db, 'profiles', uid), profile) : deleteDoc(doc(db, 'profiles', uid));
@@ -180,12 +189,14 @@ export function createCloudBackend(config, { emulator = false } = {}) {
     },
 
     async wipe(uid) {
-      const snap = await getDocs(eventsRef(uid));
-      // I batch arrivano a 500 scritture.
-      for (let i = 0; i < snap.docs.length; i += 400) {
-        const batch = writeBatch(db);
-        snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
-        await batch.commit();
+      for (const ref of [eventsRef(uid), notesRef(uid)]) {
+        const snap = await getDocs(ref);
+        // I batch arrivano a 500 scritture.
+        for (let i = 0; i < snap.docs.length; i += 400) {
+          const batch = writeBatch(db);
+          snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+          await batch.commit();
+        }
       }
       await deleteDoc(userRef(uid));
       await deleteDoc(doc(db, 'profiles', uid)).catch(() => {});

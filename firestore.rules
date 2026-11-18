@@ -44,10 +44,13 @@ service cloud.firestore {
       allow list, delete: if isAdmin();
     }
 
-    // Dati personali: impostazioni, piano, attività.
+    // Dati personali: impostazioni, piano, attività, note per colpo.
     match /users/{uid} {
       allow read, write: if isMember() && request.auth.uid == uid;
       match /events/{id} {
+        allow read, write: if isMember() && request.auth.uid == uid;
+      }
+      match /notes/{id} {
         allow read, write: if isMember() && request.auth.uid == uid;
       }
     }

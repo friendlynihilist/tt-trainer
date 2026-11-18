@@ -37,6 +37,7 @@ export function createLocalBackend() {
     if (!handlers) return;
     handlers.meta(data.meta ?? null);
     handlers.events(Object.values(data.events ?? {}));
+    handlers.notes?.(Object.values(data.notes ?? {}));
   };
 
   // Più schede aperte restano allineate.
@@ -93,6 +94,17 @@ export function createLocalBackend() {
     async deleteEvent(_uid, id) {
       const { [id]: _gone, ...rest } = data.events ?? {};
       data.events = rest;
+      write();
+      emit();
+    },
+    async saveNote(_uid, note) {
+      data.notes = { ...(data.notes ?? {}), [note.id]: note };
+      write();
+      emit();
+    },
+    async deleteNote(_uid, id) {
+      const { [id]: _gone, ...rest } = data.notes ?? {};
+      data.notes = rest;
       write();
       emit();
     },
