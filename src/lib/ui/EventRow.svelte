@@ -2,12 +2,24 @@
   // Una voce del diario in elenco, con il colore del suo tipo.
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { eventColor, eventTitle, realTests } from '../engine/events.js';
+  import { eventColor, eventTitle } from '../engine/events.js';
+  import { attemptsOf } from '../engine/attempts.js';
+  import { shortValue, size } from '../engine/medals.js';
+  import { TRIES_PER_DAY } from '../data/library.js';
   import { fmtShort, fmtDuration } from '../util/dates.js';
 
   let { event, showDate = true } = $props();
 
-  const scores = $derived(realTests(event).filter((t) => t.score != null && t.type !== 'placement'));
+  // Le misure della voce, anche quelle delle versioni di prima: «Apertura di dritto 8/10».
+  const scores = $derived(
+    attemptsOf(event, app.catalog)
+      .map((a) => {
+        const ex = app.catalog.exercise(a.ex);
+        const best = a.tries.slice(0, TRIES_PER_DAY[a.fmt] ?? 1).reduce((b, v) => (size(v) > size(b) ? v : b), a.tries[0]);
+        return ex ? `${ex.name} ${shortValue(ex, best)}` : null;
+      })
+      .filter(Boolean)
+  );
   const title = $derived(eventTitle(event, app.catalog));
   const color = $derived(event.kind === 'livello' ? 'slate' : eventColor(event, app.catalog));
   const initial = $derived(event.kind === 'test' ? 'T' : event.kind === 'livello' ? 'L' : (title[0] ?? '·').toUpperCase());
@@ -22,7 +34,7 @@
     </span>
     <span class="small muted line">
       {#if scores.length}
-        {scores.map((t) => `${app.catalog.track(t.track)?.short ?? 'Percorso'} ${t.score}`).join(' · ')}
+        {scores.join(' · ')}
       {:else if event.minutes && event.kind !== 'test'}
         {fmtDuration(event.minutes)}
       {/if}

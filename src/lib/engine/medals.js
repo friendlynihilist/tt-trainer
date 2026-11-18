@@ -152,6 +152,16 @@ export function valueText(exercise, v, tier = null) {
   return String(v);
 }
 
+/** Come si misura, in breve: «su 10 in campo», «di fila», «colpi in 30 secondi». */
+export function measureLabel(exercise) {
+  const m = exercise?.measure;
+  if (!m) return '';
+  if (m.type === 'su') return m.parts ? `su ${m.n}, ${m.parts.join(' e ')}` : `su ${m.n}${m.what ? ` ${m.what}` : ''}`;
+  if (m.type === 'fila') return `${(FILA_UNIT[m.unit] ?? '').trim()} di fila`.trim();
+  if (m.type === 'tempo') return `${m.unit} in ${m.seconds} secondi`;
+  return m.what;
+}
+
 /** Un valore breve, per le etichette: «9/10», «20», «8·6/10». */
 export function shortValue(exercise, v) {
   const m = exercise?.measure;

@@ -35,6 +35,8 @@
   import BlockSheet from './lib/sheets/BlockSheet.svelte';
   import TrackEditSheet from './lib/sheets/TrackEditSheet.svelte';
   import ImportSheet from './lib/sheets/ImportSheet.svelte';
+  import ExerciseSheet from './lib/sheets/ExerciseSheet.svelte';
+  import LevelSheet from './lib/sheets/LevelSheet.svelte';
 
   const PAGES = { oggi: Today, calendario: Calendar, progressi: Progress, libreria: Library, guida: Guide, impostazioni: Settings };
   const SHEETS = {
@@ -50,7 +52,9 @@
     template: TemplateSheet,
     block: BlockSheet,
     trackedit: TrackEditSheet,
-    import: ImportSheet
+    import: ImportSheet,
+    exercise: ExerciseSheet,
+    level: LevelSheet
   };
 
   onMount(() => {
@@ -93,6 +97,16 @@
   let dismissed = $state(false);
   const fresh = $derived(inApp && app.meta ? unseen(app.meta.seenVersion ?? '0.1.0') : []);
   const autoNews = $derived(!dismissed && fresh.length > 0 && !ui.live && !ui.sheets.length);
+
+  // Chi usava già l'app sceglie il suo livello una volta, dopo le novità. Chi arriva ora lo sceglie
+  // nel primo avvio. Se chiude senza scegliere è principiante (vedi LevelSheet).
+  let levelAsked = $state(false);
+  $effect(() => {
+    if (!inApp || !app.meta || app.meta.player?.level || levelAsked) return;
+    if (autoNews || ui.news || ui.live || ui.sheets.length) return;
+    levelAsked = true;
+    ui.open('level', { auto: true });
+  });
 
   function closeNews() {
     if (ui.news) ui.news = null;

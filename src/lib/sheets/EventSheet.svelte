@@ -2,26 +2,27 @@
   // Una voce del diario: allenamento (con il suo modello), test, o attività libera. Serve sia per
   // registrare sia per correggere, anche a distanza di tempo.
   //
-  // I test sono righe indipendenti, una per percorso: si aggiungono, si tolgono, si cambia il
-  // livello o il punteggio. Quelli già salvati si ricaricano tali e quali, così modificare una
-  // voce vecchia non perde nulla (nemmeno i tentativi del test di partenza).
+  // Le misure sono tentativi sugli esercizi: righe indipendenti, una per esercizio. I test sui
+  // percorsi salvati con le versioni di prima restano come sono, si vedono in sola lettura e si
+  // possono togliere: modificare una voce vecchia non perde nulla.
   import Plus from '@lucide/svelte/icons/plus';
   import Trash from '@lucide/svelte/icons/trash';
   import X from '@lucide/svelte/icons/x';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { weekOf } from '../store/actions.js';
+  import { weekOf, proposalFor } from '../store/actions.js';
   import { composeSession } from '../engine/compose.js';
-  import { computeTracks } from '../engine/levels.js';
-  import { testPlan } from '../engine/suggest.js';
   import { serveScore } from '../engine/events.js';
-  import { exerciseLabel } from '../data/catalog.js';
+  import { fromLegacyTest, fromLegacyServe, makeAttempt } from '../engine/attempts.js';
+  import { valueText, measureLabel } from '../engine/medals.js';
+  import { legacyExercise } from '../data/catalog.js';
   import { templateMinutes } from '../data/templates.js';
+  import { TRIES_PER_DAY, TIER } from '../data/library.js';
   import { KINDS, KIND, BALL, POINT_PHASE, zoneLabel } from '../data/taxonomy.js';
-  import { addDays, fmtLong } from '../util/dates.js';
-  import { pickTrack } from '../ui/pickers.js';
+  import { fmtLong } from '../util/dates.js';
+  import { pickExercise } from '../ui/pickers.js';
   import Sheet from '../ui/Sheet.svelte';
-  import Score from '../ui/Score.svelte';
+  import Counter from '../ui/Counter.svelte';
   import FocusEditor from '../ui/FocusEditor.svelte';
 
   let { id = null, draft = null } = $props();
@@ -41,9 +42,6 @@
   let feel = $state(base.feel ?? null);
   let focus = $state(base.focus ?? null);
   let obs = $state(base.obs ?? []);
-  let serve = $state(serveScore(base));
-  // In un allenamento i servizi si misurano solo se lo chiedi; nei test fanno parte del test.
-  let askServe = $state(serveScore(base) != null);
   let minutesTouched = $state(Boolean(original));
 
   function defaultMinutes(k, t) {
@@ -51,86 +49,64 @@
     return KIND[k]?.minutes ?? 60;
   }
 
-  // ── Test ────────────────────────────────────────────────────────────────
+  // ── Misure ──────────────────────────────────────────────────────────────
 
-  /** Le righe salvate, raggruppate per percorso e nell'ordine originale. */
-  function rowsFrom(tests) {
-    const rows = [];
-    for (const t of tests ?? []) {
-      if (t.type === 'placement') {
-        const r = rows.find((x) => x.track === t.track && x.type === 'placement');
-        if (r) r.attempts.push(t);
-        else rows.push({ key: `${t.track}-p`, track: t.track, type: 'placement', attempts: [t] });
-      } else {
-        rows.push({ key: `${t.track}-${t.type}-${rows.length}`, track: t.track, type: t.type ?? 'test', level: t.level ?? null, score: t.score ?? null, marks: t.marks });
-      }
-    }
-    return rows;
-  }
+  let seq = 0;
+  const row = (a) => ({ key: seq++, ex: a.ex, tier: a.tier ?? null, tries: [...(a.tries ?? [])], marks: a.marks ?? null, q: a.q ?? null, touched: false });
 
-  // Il livello di ogni percorso com'era quel giorno, senza questa voce.
-  const tracksAt = $derived(computeTracks(app.events, app.rules, { exclude: original?.id, before: addDays(date, 1) }, app.catalog));
-  const week = $derived(weekOf(date));
-
-  function newRow(trackId) {
-    const st = tracksAt[trackId];
-    if (!st?.started) return { key: `${trackId}-${Date.now()}`, track: trackId, type: 'set', level: null };
-    return { key: `${trackId}-${Date.now()}`, track: trackId, type: 'test', level: st.level, score: null };
-  }
-
+  /** Le misure salvate, oppure (per un test nuovo) gli esercizi proposti, ancora vuoti. */
   function initialRows() {
-    if (base.tests?.length && !isLevel) return rowsFrom(base.tests);
-    if (original) return [];
-    if (base.kind === 'test' || (base.kind === 'training' && base.withTest)) {
-      const { trackIds } = testPlan({ week: weekOf(base.date), events: app.events, tracks: app.tracks, catalog: app.catalog, date: base.date });
-      return trackIds.map(newRow);
-    }
+    if (base.attempts?.length) return base.attempts.map(row);
+    if (!original && base.kind === 'test') return proposalFor(base.date).map((p) => row({ ex: p.ex }));
     return [];
   }
   let rows = $state(initialRows());
+  // I test e i servizi delle versioni di prima: non si modificano, si possono togliere.
+  let oldTests = $state((base.tests ?? []).filter((t) => t.type !== 'set'));
+  let oldServe = $state(serveScore(base));
+  const setTests = (base.tests ?? []).filter((t) => t.type === 'set');
 
+  const week = $derived(weekOf(date));
   const measured = $derived(kind === 'training' || kind === 'test');
-  const dropping = $derived(!measured && !isLevel && (rows.length > 0 || serve != null));
+  const filled = $derived(rows.filter((r) => r.tries.length));
+  const dropping = $derived(!measured && !isLevel && (filled.length > 0 || oldTests.length > 0 || oldServe != null));
 
   function addRow() {
-    pickTrack({
-      title: 'Quale percorso hai misurato?',
-      exclude: rows.filter((r) => r.type !== 'maint').map((r) => r.track),
-      onpick: (trackId) => trackId && (rows = [...rows, newRow(trackId)])
+    pickExercise({
+      title: 'Quale esercizio hai misurato?',
+      onpick: (ex) => ex && (rows = [...rows, row({ ex })])
     });
   }
   function removeRow(key) {
     rows = rows.filter((r) => r.key !== key);
   }
-  function pickLevel(row) {
-    const t = app.catalog.track(row.track);
-    ui.open('pick', {
-      title: row.type === 'set' ? 'Livello di partenza' : 'Livello del test',
-      value: row.level,
-      groups: [{ options: t.levels.map((l) => ({ id: l.n, label: `Livello ${l.n}`, hint: l.name })) }],
-      onpick: (level) => (rows = rows.map((r) => (r.key === row.key ? { ...r, level } : r)))
-    });
+  /** Il valore che si vede e si corregge: per «di fila» e «a tempo» il migliore dei primi tre. */
+  function shown(r, ex) {
+    if (!r.tries.length) return null;
+    const per = TRIES_PER_DAY[ex?.measure?.type] ?? 1;
+    const list = r.tries.slice(0, per);
+    if (Array.isArray(list[0])) return list[0];
+    return Math.max(...list.map(Number));
   }
-  function setScore(row, score) {
-    rows = rows.map((r) => (r.key === row.key ? { ...r, score } : r));
+  function setValue(r, v) {
+    rows = rows.map((x) => (x.key === r.key ? { ...x, tries: v == null ? [] : [v], marks: null, touched: true } : x));
   }
-  function setStart(row, level) {
-    rows = rows.map((r) => (r.key === row.key ? { ...r, level: r.level === level ? null : level } : r));
+  function setPart(r, ex, i, v) {
+    const current = Array.isArray(r.tries[0]) ? [...r.tries[0]] : ex.measure.parts.map(() => null);
+    current[i] = v;
+    rows = rows.map((x) => (x.key === r.key ? { ...x, tries: current.every((n) => n != null) ? [current] : [], partial: current, touched: true } : x));
   }
 
-  function testsOut() {
-    const out = [];
-    for (const r of rows) {
-      if (r.type === 'placement') out.push(...r.attempts);
-      else if (r.type === 'set') {
-        if (r.level) out.push({ track: r.track, type: 'set', level: r.level });
-      } else if (r.score != null && r.level) {
-        const t = { track: r.track, type: r.type, level: r.level, score: r.score };
-        if (r.marks) t.marks = r.marks;
-        out.push(t);
-      }
-    }
-    return out;
+  function legacyLine(t) {
+    const track = app.catalog.track(t.track);
+    const type = t.type === 'maint' ? ' · mantenimento' : t.type === 'placement' ? ' · partenza' : '';
+    return `${track?.short ?? 'Percorso'} · livello ${t.level}${type} · ${t.score} su 10`;
+  }
+  function legacyFor(t) {
+    const a = fromLegacyTest(t, app.catalog);
+    const ex = app.catalog.exercise(a?.ex ?? legacyExercise(t.track, t.level, app.catalog));
+    if (!ex) return '';
+    return a ? `Vale per «${ex.name}»: ${valueText(ex, a.tries[0])}` : `Non vale per «${ex.name}»: senza i segni non si sa quante di fila`;
   }
 
   // ── Salvataggio ─────────────────────────────────────────────────────────
@@ -145,30 +121,34 @@
     if (draft?.occ && !out.occ) out.occ = draft.occ;
 
     if (measured) {
-      const tests = testsOut();
-      out.tests = tests;
+      const attempts = filled.map((r) => {
+        const ex = app.catalog.exercise(r.ex);
+        return makeAttempt({ ex: r.ex, fmt: ex?.measure?.type ?? 'su', tries: r.tries, tier: r.tier, marks: r.touched ? null : r.marks, q: r.q });
+      });
+      out.attempts = attempts;
+      if (original?.tests || oldTests.length) out.tests = [...setTests, ...oldTests];
+      if (original?.serve !== undefined || oldServe != null) out.serve = oldServe != null ? (original?.serve ?? null) : null;
       out.block = week?.focusBlock?.id ?? original?.block ?? null;
       out.planId = original?.planId ?? (week ? app.plan.id : null);
-      out.serve = serve != null ? { id: original?.serve?.id ?? week?.focusBlock?.serve?.id ?? null, score: serve } : null;
       if (kind === 'training') {
         out.template = template;
         // Cosa si è allenato: quello che c'era già, altrimenti il modello applicato a quel giorno.
         if (!original?.trained || original.template !== template) {
-          out.trained = composeSession({ week, template: app.catalog.template(template), tracks: tracksAt, catalog: app.catalog }).trained;
+          const session = composeSession({ week, template: app.catalog.template(template), catalog: app.catalog, medals: app.medals });
+          out.trained = session.trained;
+          out.exercises = session.exercises;
         }
-        // Le vecchie sessioni A/B tengono il loro significato (B = con test); le altre valgono
-        // «con test» se dentro c'è una misura.
-        out.withTest = original?.legacy
-          ? Boolean(original.withTest) || tests.some((t) => t.type === 'test' || t.type === 'maint')
-          : tests.some((t) => t.type !== 'set') || serve != null;
+        // Le voci di prima tengono il loro «con test» (serve al calendario passato); le nuove non lo usano.
+        if (original?.withTest != null) out.withTest = original.withTest && (oldTests.length > 0 || oldServe != null || Boolean(original.legacy));
       } else {
         delete out.template;
         delete out.trained;
         delete out.withTest;
       }
     } else if (!isLevel) {
-      out.tests = [];
-      out.serve = null;
+      out.attempts = [];
+      if (original?.tests) out.tests = [];
+      if (original?.serve !== undefined) out.serve = null;
       delete out.template;
       delete out.trained;
       delete out.withTest;
@@ -181,7 +161,7 @@
   function remove() {
     ui.open('confirm', {
       title: 'Eliminare questa voce?',
-      text: rows.length ? 'I livelli vengono ricalcolati senza i suoi test.' : 'Non si può annullare.',
+      text: filled.length || oldTests.length ? 'Le medaglie si ricalcolano senza le sue misure. Non si può annullare.' : 'Non si può annullare.',
       action: 'Elimina',
       danger: true,
       onconfirm: () => {
@@ -230,8 +210,9 @@
       {#if date}<p class="small muted when">{fmtLong(date)}</p>{/if}
       {#if isLevel}
         {#each base.tests ?? [] as t (t.track)}
-          <p class="muted">{exerciseLabel(`${t.track}-${t.level}`, app.catalog)}</p>
+          <p class="muted">{app.catalog.track(t.track)?.short ?? 'Percorso'} · livello {t.level}</p>
         {/each}
+        <p class="small faint">Livello impostato con una versione di prima. Resta nello storico.</p>
       {:else}
         <div class="chips">
           {#each KINDS as k (k.id)}
@@ -252,66 +233,65 @@
 
     {#if measured}
       <section class="stack g-12">
-        <div class="spread">
-          <h3 class="heading">{kind === 'test' ? 'Percorsi misurati' : 'Test fatti in questo allenamento'}</h3>
-        </div>
+        <h3 class="heading">{kind === 'test' ? 'Esercizi misurati' : 'Obiettivi provati'}</h3>
 
         {#each rows as r (r.key)}
-          {@const t = app.catalog.track(r.track)}
+          {@const ex = app.catalog.exercise(r.ex)}
           <div class="trow">
             <div class="spread">
               <span class="grow">
-                <strong>{t?.short ?? 'Percorso non più disponibile'}</strong>
-                {#if r.type === 'maint'}<span class="small muted"> · mantenimento</span>{/if}
-                {#if r.type === 'placement'}<span class="small muted"> · test di partenza</span>{/if}
+                <strong>{ex?.name ?? 'Esercizio non più disponibile'}</strong>
+                {#if ex?.measure}<span class="small muted block">{measureLabel(ex)}{r.tier ? ` · ${TIER[r.tier].name.toLowerCase()}` : ''}</span>{/if}
               </span>
-              {#if t && (r.type === 'test' || r.type === 'maint')}
-                <button class="lv-chip" onclick={() => pickLevel(r)} aria-label="Cambia livello">L{r.level}</button>
-              {/if}
-              <button class="icon-btn" onclick={() => removeRow(r.key)} aria-label="Togli questo test"><X size={16} /></button>
+              <button class="icon-btn" onclick={() => removeRow(r.key)} aria-label="Togli questa misura"><X size={16} /></button>
             </div>
-            {#if r.type === 'placement'}
-              <p class="small muted">{r.attempts.map((a) => `L${a.level} ${a.score}/10`).join(' · ')}</p>
-            {:else if r.type === 'set'}
-              <div class="row g-8 start">
-                <span class="small muted grow">Livello di partenza</span>
-                {#each Array(app.catalog.maxLevel(r.track)) as _, n (n)}
-                  <button class="lv" class:on={r.level === n + 1} onclick={() => setStart(r, n + 1)} aria-label="Livello {n + 1}">{n + 1}</button>
-                {/each}
-              </div>
-            {:else if t}
-              <p class="small muted">{app.catalog.level(r.track, r.level)?.test}</p>
-              <Score value={r.score} up={app.rules.up} down={app.rules.down} level={r.level} onchange={(n) => setScore(r, n)} />
+            {#if ex?.measure?.parts}
+              {#each ex.measure.parts as part, i (part)}
+                <div class="stack g-6">
+                  <span class="small muted">{part}</span>
+                  <Counter value={(Array.isArray(r.tries[0]) ? r.tries[0][i] : r.partial?.[i]) ?? null} max={ex.measure.n} label={part} onchange={(v) => setPart(r, ex, i, v)} />
+                </div>
+              {/each}
+            {:else if ex?.measure}
+              <Counter value={shown(r, ex)} max={ex.measure.type === 'su' ? ex.measure.n : 999} onchange={(v) => setValue(r, v)} />
+              {#if r.tries.length > 1 && !r.touched}<p class="small faint">Tentativi: {r.tries.join(' · ')}</p>{/if}
             {/if}
           </div>
         {/each}
 
-        <button class="btn ghost small add" onclick={addRow}><Plus size={16} /> {rows.length ? 'Un altro percorso' : 'Aggiungi un test'}</button>
+        <button class="btn ghost small add" onclick={addRow}><Plus size={16} /> {rows.length ? 'Un altro esercizio' : 'Aggiungi una misura'}</button>
 
-        {#if kind === 'test' || askServe}
-          <div class="trow">
-            <div class="spread">
-              <strong class="grow">Servizi del mese</strong>
-              {#if kind !== 'test'}
-                <button
-                  class="icon-btn"
-                  onclick={() => {
-                    serve = null;
-                    askServe = false;
-                  }}
-                  aria-label="Togli i servizi"><X size={16} /></button
-                >
-              {/if}
-            </div>
-            {#if week?.focusBlock?.serve?.test}<p class="small muted">{week.focusBlock.serve.test}</p>{/if}
-            <Score value={serve} up={app.rules.up} down={-1} onchange={(n) => (serve = n)} />
+        {#if oldTests.length || oldServe != null}
+          <div class="stack g-8 old">
+            <span class="small muted">Test salvati con una versione di prima</span>
+            {#each oldTests as t, i (i)}
+              <div class="trow">
+                <div class="spread">
+                  <span class="grow">
+                    {legacyLine(t)}
+                    <span class="small muted block">{legacyFor(t)}</span>
+                  </span>
+                  <button class="icon-btn" onclick={() => (oldTests = oldTests.filter((_, k) => k !== i))} aria-label="Togli questo test"><X size={16} /></button>
+                </div>
+              </div>
+            {/each}
+            {#if oldServe != null}
+              {@const a = fromLegacyServe(base, app.catalog)}
+              <div class="trow">
+                <div class="spread">
+                  <span class="grow">
+                    Servizi del mese · {oldServe} su 10
+                    {#if a}<span class="small muted block">Vale per «{app.catalog.exercise(a.ex).name}»</span>{/if}
+                  </span>
+                  <button class="icon-btn" onclick={() => (oldServe = null)} aria-label="Togli i servizi"><X size={16} /></button>
+                </div>
+              </div>
+            {/if}
           </div>
-        {:else}
-          <button class="btn ghost small add" onclick={() => (askServe = true)}><Plus size={16} /> Misura i servizi</button>
         {/if}
       </section>
     {:else if dropping}
-      <p class="small warn">Questa voce aveva dei test: salvandola come {KIND[kind].short.toLowerCase()} vengono tolti e i livelli si ricalcolano.</p>
+      <p class="small warn">Questa voce ha delle misure: salvandola come {KIND[kind].short.toLowerCase()} vengono tolte e le medaglie si ricalcolano.</p>
     {/if}
 
     {#if !isLevel}
@@ -416,36 +396,10 @@
     width: 32px;
     height: 32px;
   }
-  .lv-chip {
-    height: 28px;
-    padding: 0 10px;
-    border-radius: 999px;
-    font-family: var(--mono);
-    font-size: 13px;
-    font-weight: 600;
+  .old .trow {
     background: var(--sunk);
-    color: var(--ink-2);
-  }
-  .lv {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--ink-2);
-    box-shadow: inset 0 0 0 1px var(--line-strong);
-    transition:
-      background 0.2s var(--ease),
-      color 0.2s var(--ease);
-  }
-  .lv.on {
-    background: var(--accent);
-    color: #15171a;
-    box-shadow: none;
-    font-weight: 600;
-  }
-  .start {
-    flex-wrap: wrap;
+    border-color: transparent;
+    font-size: 14px;
   }
   .warn {
     color: var(--stay);

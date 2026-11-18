@@ -4,7 +4,7 @@
 import { app } from './app.svelte.js';
 import { ui } from './ui.svelte.js';
 import { agenda } from '../engine/events.js';
-import { testPlan } from '../engine/suggest.js';
+import { testProposal } from '../engine/player.js';
 import { weekFor } from '../engine/plan.js';
 import { fmtLong } from '../util/dates.js';
 
@@ -13,35 +13,27 @@ export function todoOn(date) {
   return agenda(app.plan, app.events, app.planned, date, date, app.catalog).get(date)?.todo ?? [];
 }
 
-/** Il test previsto in quel giorno e non ancora fatto, se c'è. */
-export function pendingTest(date) {
-  return todoOn(date).find((x) => x.kind === 'test') ?? null;
-}
-
 export function weekOf(date) {
   return weekFor(app.plan, date, app.catalog);
 }
 
-/** Apre la sessione dal vivo per un appuntamento (oggi). */
-export function startItem(item, { template = null, withTest = null } = {}) {
+/** Gli esercizi proposti per un test in quel giorno, con il motivo. */
+export function proposalFor(date = app.today) {
+  return testProposal({ catalog: app.catalog, week: weekOf(date), medals: app.medals, events: app.events, level: app.player.level });
+}
+
+/**
+ * Apre la sessione dal vivo per un appuntamento (oggi). Un test si compone dalle proposte (o dagli
+ * esercizi indicati); un allenamento dal suo modello. Il test resta separato dall'allenamento.
+ */
+export function startItem(item, { template = null, exercises = null } = {}) {
   const date = app.today;
   const link = { occ: item?.source === 'plan' ? item.key : null, eventId: item?.source === 'event' ? item.eventId : null };
   if (item?.kind === 'test') {
-    const { trackIds } = testPlan({ week: weekOf(date), events: app.events, tracks: app.tracks, catalog: app.catalog, date });
-    ui.live = { mode: 'test', date, trackIds, ...link };
+    ui.live = { mode: 'test', date, exercises: exercises ?? proposalFor(date).map((p) => p.ex), ...link };
     return;
   }
-  // Quando oggi c'è anche un test, lo fai all'inizio di ogni esercizio (salvo indicazione contraria).
-  const test = withTest === false ? null : (pendingTest(date) ?? (withTest ? true : null));
-  ui.live = {
-    mode: 'training',
-    date,
-    template: template?.auto ? null : (template?.id ?? item?.template ?? 'completo'),
-    custom: template?.auto ? template : null,
-    withTest: Boolean(test),
-    testItem: test && test !== true ? { source: test.source, key: test.key, eventId: test.eventId ?? null } : null,
-    ...link
-  };
+  ui.live = { mode: 'training', date, template: template?.id ?? item?.template ?? 'completo', ...link };
 }
 
 /** Registra a posteriori quello che era previsto. */
@@ -52,8 +44,7 @@ export function logItem(item) {
       template: item.template,
       date: item.date,
       occ: item.source === 'plan' ? item.key : null,
-      fromPlanned: item.source === 'event' ? item.eventId : null,
-      withTest: item.kind === 'training' && Boolean(pendingTest(item.date))
+      fromPlanned: item.source === 'event' ? item.eventId : null
     }
   });
 }

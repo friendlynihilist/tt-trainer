@@ -2,13 +2,11 @@
   // Il «+»: inizia, registra o metti in calendario. Oggi si può iniziare dal vivo; un giorno
   // passato si registra; un giorno futuro si pianifica. Qualsiasi modello, il test, le attività libere.
   import Play from '@lucide/svelte/icons/play';
-  import Sparkles from '@lucide/svelte/icons/sparkles';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { FREE_KINDS, KIND } from '../data/taxonomy.js';
   import { templateMinutes } from '../data/templates.js';
-  import { suggestSession } from '../engine/suggest.js';
-  import { startItem, pendingTest, planOn, weekOf } from '../store/actions.js';
+  import { startItem, planOn } from '../store/actions.js';
   import { fmtLong } from '../util/dates.js';
   import Sheet from '../ui/Sheet.svelte';
   import Segmented from '../ui/Segmented.svelte';
@@ -21,8 +19,6 @@
   let mode = $state(future ? 'plan' : isToday ? 'live' : 'log');
 
   const templates = $derived(Object.values(app.catalog.templates));
-  const auto = $derived(isToday ? suggestSession({ week: weekOf(day), events: app.events, tracks: app.tracks, catalog: app.catalog, date: day }) : null);
-  const testToday = $derived(isToday ? pendingTest(day) : null);
 
   function pickTraining(t) {
     ui.close();
@@ -59,21 +55,12 @@
 
     <section class="stack g-8">
       <h3 class="heading">Allenamento</h3>
-      {#if auto && mode === 'live'}
-        <button class="opt hero" onclick={() => pickTraining(auto.template)}>
-          <span class="ic"><Sparkles size={18} /></span>
-          <span class="grow">
-            <strong>Su misura</strong>
-            <span class="small block">{auto.reasons[0] ?? 'Composto dal tuo livello e dal mese in corso'}</span>
-          </span>
-        </button>
-      {/if}
       {#each templates as t (t.id)}
         <button class="opt" data-color={t.color} onclick={() => pickTraining(t)}>
           <span class="ic dot">{#if mode === 'live'}<Play size={15} fill="currentColor" />{/if}</span>
           <span class="grow">
             <strong>{t.name}</strong>
-            <span class="small muted block">{templateMinutes(t)} min{t.custom ? ' · tuo' : ''}{mode === 'live' && testToday ? ' · con il test di oggi' : ''}</span>
+            <span class="small muted block">{templateMinutes(t)} min{t.custom ? ' · tuo' : ''}</span>
           </span>
         </button>
       {/each}
@@ -114,11 +101,6 @@
   .opt:active {
     transform: scale(0.985);
   }
-  .opt.hero {
-    background: var(--accent);
-    border-color: transparent;
-    color: #15171a;
-  }
   .ic {
     display: grid;
     place-items: center;
@@ -133,10 +115,6 @@
     background: color-mix(in srgb, var(--c) 16%, var(--card));
     box-shadow: inset 0 0 0 1.5px var(--c);
     color: var(--c);
-  }
-  .hero .ic {
-    background: rgba(21, 23, 26, 0.12);
-    color: #15171a;
   }
   .kinds {
     display: grid;

@@ -1,44 +1,41 @@
 <script>
-  // «Oggi»: quello che c'è in calendario, già composto al livello di ogni percorso.
-  // Se oggi non c'è niente: il prossimo appuntamento e una sessione su misura, se ti va.
+  // «Oggi»: quello che c'è in calendario, già composto con gli esercizi del mese. Il test è un
+  // appuntamento a parte, con gli esercizi proposti. Le medaglie dicono solo il prossimo obiettivo:
+  // niente è bloccato e tutto si può cambiare.
   import Play from '@lucide/svelte/icons/play';
-  import Lock from '@lucide/svelte/icons/lock';
   import Coffee from '@lucide/svelte/icons/coffee';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
-  import ChevronRight from '@lucide/svelte/icons/chevron-right';
-  import Sparkles from '@lucide/svelte/icons/sparkles';
-  import Gauge from '@lucide/svelte/icons/gauge';
+  import TrendingUp from '@lucide/svelte/icons/trending-up';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { loadLive, clearLive } from '../store/live.js';
-  import { startItem, logItem, weekOf } from '../store/actions.js';
-  import { weekAt, gatePending, insertWeek, removeWeek } from '../engine/plan.js';
+  import { startItem, logItem, weekOf, proposalFor } from '../store/actions.js';
+  import { weekAt, removeWeek } from '../engine/plan.js';
   import { agenda } from '../engine/events.js';
-  import { composeSession, composeTest, countTests } from '../engine/compose.js';
-  import { suggestSession, testPlan } from '../engine/suggest.js';
+  import { composeSession } from '../engine/compose.js';
+  import { nearGoals } from '../engine/player.js';
+  import { goalText } from '../engine/medals.js';
   import { lastFocus } from '../engine/stats.js';
   import { exerciseLabel } from '../data/catalog.js';
-  import { templateMinutes } from '../data/templates.js';
+  import { PLAYER_LEVEL } from '../data/library.js';
   import { addDays, fmtLong, fmtRelative, fmtShort } from '../util/dates.js';
   import PageHead from '../ui/PageHead.svelte';
   import WeekStrip from '../ui/WeekStrip.svelte';
-  import Dots from '../ui/Dots.svelte';
   import StepBody from '../ui/StepBody.svelte';
-  import Avatar from '../ui/Avatar.svelte';
   import PlannedRow from '../ui/PlannedRow.svelte';
   import EventRow from '../ui/EventRow.svelte';
+  import Medal from '../ui/Medal.svelte';
+  import MedalRow from '../ui/MedalRow.svelte';
 
   const plan = $derived(app.plan);
   const week = $derived(app.week);
-  const gateAsk = $derived(plan && week ? gatePending(plan, week, app.tracks, app.events) : false);
 
   const days = $derived(agenda(plan, app.events, app.planned, app.today, addDays(app.today, 28), app.catalog));
   const todayInfo = $derived(days.get(app.today) ?? { todo: [], done: [] });
   const todo = $derived(todayInfo.todo);
   const testToday = $derived(todo.find((x) => x.kind === 'test') ?? null);
   const trainingToday = $derived(todo.find((x) => x.kind === 'training') ?? null);
-  const primary = $derived(trainingToday ?? testToday);
-  const others = $derived(todo.filter((x) => x !== primary && !(trainingToday && x === testToday)));
+  const others = $derived(todo.filter((x) => x !== trainingToday && x !== testToday));
   const upcoming = $derived.by(() => {
     for (const [d, v] of [...days.entries()].sort(([a], [b]) => (a < b ? -1 : 1))) {
       if (d > app.today && v.todo.length) return v.todo[0];
@@ -46,20 +43,17 @@
     return null;
   });
 
-  // Il modello si può cambiare al volo, o lasciare comporre al suggeritore.
+  // Il modello si può cambiare al volo; senza niente in calendario si sceglie qui.
   let chosen = $state(null);
-  let autoMinutes = $state(90);
   const weekToday = $derived(weekOf(app.today));
-  const auto = $derived(suggestSession({ week: weekToday, events: app.events, tracks: app.tracks, catalog: app.catalog, minutes: autoMinutes, date: app.today }));
   const templateId = $derived(chosen ?? trainingToday?.template ?? null);
-  const template = $derived(templateId === 'auto' ? auto.template : templateId ? app.catalog.template(templateId) : null);
-  const session = $derived(template ? composeSession({ week: weekToday, template, tracks: app.tracks, catalog: app.catalog, test: Boolean(testToday) }) : null);
-  const testOnly = $derived(!trainingToday && testToday ? testPlan({ week: weekToday, events: app.events, tracks: app.tracks, catalog: app.catalog }) : null);
-  const testSession = $derived(testOnly ? composeTest({ week: weekToday, trackIds: testOnly.trackIds, tracks: app.tracks, catalog: app.catalog }) : null);
-  const tests = $derived(session ? countTests(session) : 0);
-  const due = $derived(auto.due);
+  const template = $derived(templateId ? app.catalog.template(templateId) : null);
+  const session = $derived(template ? composeSession({ week: weekToday, template, catalog: app.catalog, medals: app.medals }) : null);
+  const proposal = $derived(testToday ? proposalFor(app.today) : []);
+  const near = $derived(nearGoals({ medals: app.medals, catalog: app.catalog }));
   const focus = $derived(lastFocus(app.events));
   const templates = $derived(Object.values(app.catalog.templates));
+  const offer = $derived(app.levelOffer);
 
   let draft = $state(null);
   $effect(() => {
@@ -76,28 +70,15 @@
     return { title: `Settimana ${week.number}`, sub: week.block?.custom ? week.block.theme : `${week.block?.label} · ${week.block?.theme}` };
   });
 
-  function startToday() {
-    if (trainingToday || chosen) startItem(trainingToday ?? null, { template });
-    else if (testToday) startItem(testToday);
+  function startTraining() {
+    startItem(trainingToday ?? null, { template });
   }
-
-  function logToday() {
-    if (trainingToday) logItem({ ...trainingToday, template: templateId === 'auto' ? trainingToday.template : (templateId ?? trainingToday.template) });
-    else if (testToday) logItem(testToday);
-    else ui.open('event', { draft: { kind: 'training', template: templateId === 'auto' ? 'auto' : templateId, date: app.today } });
+  function logTraining() {
+    if (trainingToday) logItem({ ...trainingToday, template: templateId ?? trainingToday.template });
+    else ui.open('event', { draft: { kind: 'training', template: templateId, date: app.today } });
   }
-
-  function saveAuto() {
-    ui.open('template', { draft: { ...auto.template, id: undefined, name: 'Su misura', auto: undefined, hidden: undefined } });
-  }
-
-  function pickPartner() {
-    ui.open('pick', {
-      title: 'Con chi ti alleni?',
-      value: app.settings.partner,
-      groups: [{ options: [{ id: null, label: 'Nessuno' }, ...app.mates.map((m) => ({ id: m.id, label: m.name }))] }],
-      onpick: (id) => app.patchSettings({ partner: id })
-    });
+  function startTest(exercises = null) {
+    startItem(testToday ?? { kind: 'test' }, { exercises });
   }
 </script>
 
@@ -127,34 +108,23 @@
     </section>
   {/if}
 
-  {#if gateAsk}
-    <section class="card stack g-16 gate">
-      <div class="row g-12">
-        <span class="badge"><Lock size={18} /></span>
-        <div>
-          <h2 class="title">Il mese 3 aspetta</h2>
-          <p class="muted small">Servono le due aperture su taglio almeno al livello {app.gate.minLevel}.</p>
+  {#if offer}
+    <section class="card offer">
+      <span class="badge up"><TrendingUp size={18} /></span>
+      <div class="grow stack g-4">
+        <strong>Sei pronto per il livello {PLAYER_LEVEL[offer.level].name.toLowerCase()}?</strong>
+        <span class="small muted">Hai l’argento in {offer.progress.coverage.have} esercizi chiave su {offer.progress.coverage.total} e l’oro in {offer.progress.solidity.have}. Cambia solo cosa ti propone l’app.</span>
+        <div class="actions">
+          <button class="btn primary small" onclick={() => app.setPlayerLevel(offer.level, 'proposto')}>Passo a {PLAYER_LEVEL[offer.level].name.toLowerCase()}</button>
+          <button class="btn plain small" onclick={() => app.declineLevel(offer.level)}>Non ora</button>
         </div>
       </div>
-      <div class="stack g-12">
-        {#each app.gate.items as g (g.track)}
-          <div class="spread">
-            <span>{app.catalog.track(g.track).short}</span>
-            <span class="row g-8">
-              <Dots level={g.level || 1} started={g.level > 0} />
-              <span class="tag" class:up={g.ok}>{g.ok ? 'ok' : g.level ? `L${g.level}` : 'da iniziare'}</span>
-            </span>
-          </div>
-        {/each}
-      </div>
-      <div class="stack g-8">
-        <button class="btn primary" onclick={() => app.setPlan(insertWeek(plan, week.idx, 'R'))}>Una settimana di recupero</button>
-        <button class="btn plain" onclick={() => app.setPlan({ ...plan, gateOk: true })}>Comincia comunque il mese 3</button>
-      </div>
     </section>
-  {:else if plan && app.phase === 'done'}
+  {/if}
+
+  {#if plan && app.phase === 'done'}
     <section class="card stack g-16">
-      <p class="muted">Ciclo finito. I livelli a cui sei arrivato sono il punto di partenza del prossimo.</p>
+      <p class="muted">Ciclo finito. Medaglie e livello restano: sono il punto di partenza del prossimo.</p>
       <button class="btn primary" onclick={() => ui.open('plan', { fresh: true })}>Nuovo ciclo <ArrowRight size={18} /></button>
     </section>
   {:else if plan && app.phase === 'active' && week.kind === 'P' && !todo.length}
@@ -165,155 +135,148 @@
     </section>
   {/if}
 
-  {#if !gateAsk}
-    {#if primary && (session || testSession)}
-      <section class="card session" data-color={trainingToday ? (template?.color ?? 'blue') : 'orange'}>
-        <div class="top">
-          <span class="small muted">In calendario oggi</span>
-          <h2 class="title">{trainingToday ? template.name : 'Test'}</h2>
-          <p class="muted">
-            {#if trainingToday}
-              {session.minutes} min{tests ? ` · ${tests} test` : ''}{testToday ? ' · c’è il test' : ''}
-            {:else}
-              {testSession.steps.map((x) => x.name).join(' · ')}
-            {/if}
-          </p>
-        </div>
-        {#if trainingToday}
-          <div class="chips tpls" role="group" aria-label="Modello">
-            {#each templates as t (t.id)}
-              <button class="chip tpl" data-color={t.color} aria-pressed={templateId === t.id} onclick={() => (chosen = t.id)}>{t.name}</button>
-            {/each}
-            <button class="chip tpl" data-color="plum" aria-pressed={templateId === 'auto'} onclick={() => (chosen = 'auto')}><Sparkles size={14} /> Su misura</button>
-          </div>
-        {/if}
-        <div class="actions">
-          <button class="btn accent grow" onclick={startToday}><Play size={18} fill="currentColor" /> Inizia</button>
-          <button class="btn ghost" onclick={logToday}>Registra</button>
-        </div>
-        {#if app.cloud && app.mates.length}
-          <button class="mate" onclick={pickPartner}>
-            {#if app.partner}
-              <Avatar name={app.partner.name} photo={app.partner.photo} size={22} />
-              <span class="grow">Con {app.partner.name.split(/\s+/)[0]}</span>
-            {:else}
-              <span class="grow muted">Scegli il compagno</span>
-            {/if}
-            <ChevronRight size={16} />
-          </button>
-        {/if}
-      </section>
-    {:else if !draft}
-      <section class="card stack g-12 rest">
-        {#if todayInfo.done.length}
-          <strong>Oggi hai già fatto</strong>
-          <div class="card flush list inner">
-            {#each todayInfo.done as e (e.id)}<EventRow event={e} showDate={false} />{/each}
-          </div>
-        {:else}
-          <p class="muted">{plan ? 'Oggi niente in calendario.' : 'Nessun piano: l’app compone comunque la sessione al tuo livello.'}</p>
-        {/if}
-        {#if upcoming}
-          <span class="small muted">Prossimo</span>
-          <div class="card flush list inner"><PlannedRow item={upcoming} showDate /></div>
-        {/if}
-        {#if !plan}
-          <button class="btn ghost" onclick={() => ui.open('plan', { fresh: true })}>Crea un piano</button>
-        {/if}
-      </section>
+  {#if testToday}
+    <section class="card session" data-color="orange">
+      <div class="top">
+        <span class="small muted">In calendario oggi</span>
+        <h2 class="title">Test</h2>
+        <p class="muted">{proposal.length ? `${proposal.length} esercizi da misurare` : 'Scegli tu cosa misurare'}</p>
+      </div>
+      {#if proposal.length}
+        <ul class="props">
+          {#each proposal as p (p.ex)}
+            {@const ex = app.catalog.exercise(p.ex)}
+            <li>
+              <button class="prop" onclick={() => ui.open('exercise', { id: p.ex })}>
+                <span class="grow">
+                  <strong>{ex.name}</strong>
+                  <span class="small muted block">{p.reason}</span>
+                </span>
+                <MedalRow exercise={ex} medals={app.medals[p.ex]} />
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      <div class="actions">
+        <button class="btn accent grow" onclick={() => startTest()}><Play size={18} fill="currentColor" /> Inizia il test</button>
+        <button class="btn ghost" onclick={() => logItem(testToday)}>Registra</button>
+      </div>
+    </section>
+  {/if}
 
-      <section class="card session" data-color="plum">
-        <div class="top">
-          <span class="small muted row g-6"><Sparkles size={14} /> Se ti va di allenarti</span>
-          <h2 class="title">Su misura</h2>
-          <div class="chips mins">
-            {#each [45, 60, 90, 120] as m (m)}
-              <button class="chip" aria-pressed={autoMinutes === m} onclick={() => (autoMinutes = m)}>{m} min</button>
-            {/each}
-          </div>
+  {#if trainingToday || chosen}
+    <section class="card session" data-color={template?.color ?? 'blue'}>
+      <div class="top">
+        <span class="small muted">{trainingToday ? 'In calendario oggi' : 'Allenamento di oggi'}</span>
+        <h2 class="title">{template.name}</h2>
+        <p class="muted">{session.minutes} min · {session.exercises.length} esercizi</p>
+      </div>
+      <div class="chips tpls" role="group" aria-label="Modello">
+        {#each templates as t (t.id)}
+          <button class="chip tpl" data-color={t.color} aria-pressed={templateId === t.id} onclick={() => (chosen = t.id)}>{t.name}</button>
+        {/each}
+      </div>
+      <div class="actions">
+        <button class="btn accent grow" onclick={startTraining}><Play size={18} fill="currentColor" /> Inizia</button>
+        <button class="btn ghost" onclick={logTraining}>Registra</button>
+      </div>
+    </section>
+  {:else if !draft && !testToday}
+    <section class="card stack g-12 rest">
+      {#if todayInfo.done.length}
+        <strong>Oggi hai già fatto</strong>
+        <div class="card flush list inner">
+          {#each todayInfo.done as e (e.id)}<EventRow event={e} showDate={false} />{/each}
         </div>
-        {#if auto.reasons.length}
-          <ul class="reasons small muted">
-            {#each auto.reasons as r (r)}<li>{r}</li>{/each}
-          </ul>
-        {/if}
-        <div class="actions">
-          <button
-            class="btn accent grow"
-            onclick={() => {
-              chosen = 'auto';
-              startItem(null, { template: auto.template });
-            }}><Play size={18} fill="currentColor" /> Inizia</button
-          >
-          <button class="btn ghost" onclick={saveAuto}>Salva come modello</button>
-        </div>
-      </section>
-    {/if}
+      {:else}
+        <p class="muted">{plan ? 'Oggi niente in calendario.' : 'Nessun piano: puoi allenarti lo stesso.'}</p>
+      {/if}
+      {#if upcoming}
+        <span class="small muted">Prossimo</span>
+        <div class="card flush list inner"><PlannedRow item={upcoming} showDate /></div>
+      {/if}
+      <span class="small muted">Se ti va di allenarti</span>
+      <div class="chips tpls" role="group" aria-label="Modello">
+        {#each templates as t (t.id)}
+          <button class="chip tpl" data-color={t.color} aria-pressed="false" onclick={() => (chosen = t.id)}>{t.name}</button>
+        {/each}
+      </div>
+      {#if !plan}
+        <button class="btn ghost" onclick={() => ui.open('plan', { fresh: true })}>Crea un piano</button>
+      {/if}
+    </section>
+  {/if}
 
-    {#if others.length}
-      <section class="section">
-        <h2 class="heading">Anche oggi</h2>
-        <div class="card flush list">
-          {#each others as item (item.key)}<PlannedRow {item} />{/each}
-        </div>
-      </section>
-    {/if}
+  {#if others.length}
+    <section class="section">
+      <h2 class="heading">Anche oggi</h2>
+      <div class="card flush list">
+        {#each others as item (item.key)}<PlannedRow {item} />{/each}
+      </div>
+    </section>
+  {/if}
 
-    {#if due.length && !testToday}
-      <section class="card due">
-        <span class="badge"><Gauge size={18} /></span>
-        <div class="grow stack g-4">
-          <strong>Da misurare</strong>
-          <span class="small muted">{due.slice(0, 3).map((d) => `${app.catalog.track(d.track).short}: ${d.reason}`).join(' · ')}</span>
-        </div>
-        <button class="btn ghost small" onclick={() => startItem({ kind: 'test' })}>Test ora</button>
-      </section>
-    {/if}
+  {#if near.length && !testToday}
+    <section class="card near">
+      <div class="spread">
+        <strong>Obiettivi vicini</strong>
+        <button class="btn ghost small" onclick={() => startTest(near.map((n) => n.ex))}>Test ora</button>
+      </div>
+      {#each near as n (n.ex)}
+        {@const ex = app.catalog.exercise(n.ex)}
+        <button class="prop" onclick={() => ui.open('exercise', { id: n.ex })}>
+          <Medal tier={n.goal.tier} on={false} half={n.goal.half} size={18} />
+          <span class="grow">
+            <strong>{ex.name}</strong>
+            <span class="small muted block">{goalText(ex, n.goal)}</span>
+          </span>
+        </button>
+      {/each}
+    </section>
+  {/if}
 
-    {#if focus}
-      <button class="card focus" onclick={() => ui.open('event', { id: focus.eventId })}>
-        <span class="small muted">Da correggere · {fmtShort(focus.date)}</span>
-        <span class="what">
-          <strong>{app.strokeName(focus.stroke)}</strong>{#if focus.error}<span class="muted"> · {app.errorName(focus.error)}</span>{/if}
-        </span>
-        {#if focus.exercise}
-          <span class="small muted">→ {exerciseLabel(focus.exercise, app.catalog)}</span>
-        {/if}
-      </button>
-    {/if}
+  {#if focus}
+    <button class="card focus" onclick={() => ui.open('event', { id: focus.eventId })}>
+      <span class="small muted">Da correggere · {fmtShort(focus.date)}</span>
+      <span class="what">
+        <strong>{app.strokeName(focus.stroke)}</strong>{#if focus.error}<span class="muted"> · {app.errorName(focus.error)}</span>{/if}
+      </span>
+      {#if focus.exercise}
+        <span class="small muted">→ {exerciseLabel(focus.exercise, app.catalog)}</span>
+      {/if}
+    </button>
+  {/if}
 
-    {#if (primary && (session || testSession)) || (!primary && !draft)}
-      {@const shown = primary ? (session ?? testSession) : composeSession({ week: weekToday, template: auto.template, tracks: app.tracks, catalog: app.catalog })}
-      <section class="section">
-        <ol class="plan">
-          {#each shown.steps as step (step.id)}
-            {#if step.kind === 'pause'}
-              <li class="pause"><span class="mono min">{step.minutes}′</span><span class="small faint">Pausa</span></li>
-            {:else}
+  {#if session}
+    <section class="section">
+      <ol class="plan">
+        {#each session.steps as step (step.id)}
+          {#if step.kind === 'pause'}
+            <li class="pause"><span class="mono min">{step.minutes}′</span><span class="small faint">Pausa</span></li>
+          {:else}
             <li>
               <span class="mono min">{step.minutes}′</span>
               <div class="what">
                 {#if step.kind === 'exercise'}
-                  <button class="name" onclick={() => ui.open('track', { id: step.track })}>
+                  {@const ex = app.catalog.exercise(step.ex)}
+                  <button class="name" onclick={() => ui.open('exercise', { id: step.ex })}>
                     <span class="grow">
+                      {#if step.track}<span class="small muted lvl">{app.catalog.track(step.track)?.short}</span>{/if}
                       <strong>{step.name}</strong>
-                      <span class="small muted lvl">
-                        {step.placement ? 'Da iniziare' : `Livello ${step.level} · ${step.exercise.name}`}
-                      </span>
                     </span>
-                    <Dots level={step.level} max={step.max} started={!step.placement} completed={app.tracks[step.track].completed} />
+                    <MedalRow exercise={ex} medals={app.medals[step.ex]} />
                   </button>
                 {:else}
                   <strong class="name">{step.name}</strong>
                 {/if}
-                <StepBody {step} partner={app.partner} />
+                <StepBody {step} />
               </div>
             </li>
-            {/if}
-          {/each}
-        </ol>
-      </section>
-    {/if}
+          {/if}
+        {/each}
+      </ol>
+    </section>
   {/if}
 </div>
 
@@ -340,12 +303,8 @@
     flex-direction: column;
     gap: 4px;
   }
-  .tpls,
-  .mins {
+  .tpls {
     gap: 6px;
-  }
-  .mins {
-    margin-top: 8px;
   }
   .chip.tpl {
     min-height: 32px;
@@ -357,42 +316,58 @@
     color: #fff;
     box-shadow: inset 0 0 0 1px var(--c);
   }
-  .mins .chip {
-    min-height: 30px;
-    padding: 4px 12px;
-    font-size: 13px;
-  }
-  .reasons {
-    margin: -4px 0 0;
-    padding-left: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
   .rest .inner {
     border-radius: var(--r-s);
   }
-  .due {
+  .offer {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border-color: color-mix(in srgb, var(--up) 40%, var(--line));
+  }
+  .offer .actions {
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .badge.up {
+    background: var(--up-soft);
+    color: var(--up);
+  }
+  .props {
+    list-style: none;
+    margin: -4px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .prop {
     display: flex;
     align-items: center;
     gap: 12px;
+    width: 100%;
+    padding: 9px 0;
+    text-align: left;
+    border-top: 1px solid var(--line);
+  }
+  .props li:first-child .prop {
+    border-top: 0;
+  }
+  .near {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     padding: 14px 16px;
+  }
+  .near .prop:first-of-type {
+    border-top: 0;
+  }
+  .block {
+    display: block;
   }
   .actions {
     display: flex;
     gap: 10px;
-  }
-  .mate {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: -4px -6px -6px;
-    padding: 8px 6px;
-    border-top: 1px solid var(--line);
-    padding-top: 14px;
-    font-size: 14px;
-    color: var(--ink-2);
-    text-align: left;
   }
 
   .resume,

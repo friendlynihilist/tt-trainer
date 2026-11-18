@@ -35,6 +35,12 @@
   --c-slate: #687080;
   --c-orange: var(--accent);
 
+  /* Medaglie */
+  --m-bronze: #b0703a;
+  --m-silver: #8a96a6;
+  --m-gold: #c99a0e;
+  --m-plat: #4f8fa6;
+
   --serif: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
   --sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -87,6 +93,10 @@
     --c-brown: #c99766;
     --c-plum: #d97fdb;
     --c-slate: #9aa3b2;
+    --m-bronze: #d9965c;
+    --m-silver: #b8c3d1;
+    --m-gold: #f0c544;
+    --m-plat: #8fd1e6;
     color-scheme: dark;
   }
 }
@@ -120,6 +130,10 @@
   --c-brown: #c99766;
   --c-plum: #d97fdb;
   --c-slate: #9aa3b2;
+  --m-bronze: #d9965c;
+  --m-silver: #b8c3d1;
+  --m-gold: #f0c544;
+  --m-plat: #8fd1e6;
   color-scheme: dark;
 }
 
@@ -502,6 +516,10 @@ a {
 [data-color='brown'] { --c: var(--c-brown); }
 [data-color='plum'] { --c: var(--c-plum); }
 [data-color='orange'] { --c: var(--c-orange); }
+[data-tier='B'] { --m: var(--m-bronze); }
+[data-tier='A'] { --m: var(--m-silver); }
+[data-tier='O'] { --m: var(--m-gold); }
+[data-tier='P'] { --m: var(--m-plat); }
 
 /* Pallino pieno = fatto, anello = previsto. */
 .pip {
@@ -589,6 +607,12 @@ button.item:active {
 @keyframes pop {
   0% { transform: scale(0.6); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes medal-in {
+  0% { transform: scale(0.3) rotate(-30deg); opacity: 0; }
+  60% { transform: scale(1.15) rotate(6deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); }
 }
 
 @keyframes pulse-ring {

@@ -63,10 +63,10 @@
 
     <section class="stack g-8">
       <h3 class="heading">Risultato su 10</h3>
-      <Score value={o.score} up={app.rules.up} down={-1} onchange={(n) => (o.score = n)} />
+      <Score value={o.score} up={8} down={-1} onchange={(n) => (o.score = n)} />
     </section>
 
-    <button class="select" class:empty={!o.exercise} onclick={() => pickExercise({ value: o.exercise, onpick: (v) => (o.exercise = v) })}>
+    <button class="select" class:empty={!o.exercise} onclick={() => pickExercise({ value: o.exercise, other: true, onpick: (v) => (o.exercise = v) })}>
       <span class="grow">{o.exercise ? exerciseLabel(o.exercise, app.catalog) : 'Esercizio'}</span><ChevronDown size={18} />
     </button>
 

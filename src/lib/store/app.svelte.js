@@ -1,12 +1,14 @@
 // Stato dell'app. Un'unica istanza reattiva: i componenti leggono da qui e chiamano i metodi
-// per scrivere. Livelli, settimana e sessione sono sempre derivati dagli eventi, mai salvati.
+// per scrivere. Tentativi, medaglie, settimana e sessione sono sempre derivati dalle voci, mai
+// salvati. Del giocatore si salva solo il livello che sceglie (meta.player).
 
 import { firebaseConfig } from '../../firebase.config.js';
 import { createLocalBackend } from './local.js';
-import { computeTracks, DEFAULT_RULES } from '../engine/levels.js';
-import { weekAt, weekIndex, planPhase, gateStatus, normalizePlan } from '../engine/plan.js';
+import { weekAt, weekIndex, planPhase, normalizePlan } from '../engine/plan.js';
 import { normalizeEvent } from '../engine/events.js';
-import { publicSummary } from '../engine/stats.js';
+import { allAttempts } from '../engine/attempts.js';
+import { allMedals } from '../engine/medals.js';
+import { normalizePlayer, suggestLevel } from '../engine/player.js';
 import { buildCatalog } from '../data/catalog.js';
 import { STROKES, ERRORS } from '../data/taxonomy.js';
 import { today } from '../util/dates.js';
@@ -17,7 +19,6 @@ const CLOUD = import.meta.env.VITE_LOCAL !== '1' && (EMULATOR || Boolean(firebas
 const DEMO_CONFIG = { apiKey: 'demo', authDomain: 'demo-tt-trainer.firebaseapp.com', projectId: 'demo-tt-trainer', appId: 'demo' };
 
 const DEFAULT_SETTINGS = {
-  ...DEFAULT_RULES,
   sound: true,
   haptics: true,
   share: true,
@@ -61,14 +62,18 @@ class AppState {
   planned = $derived(this.allEvents.filter((e) => e.planned));
 
   settings = $derived({ ...DEFAULT_SETTINGS, ...(this.meta?.settings ?? {}) });
-  rules = $derived({ up: this.settings.up, down: this.settings.down });
   catalog = $derived(buildCatalog(this.meta?.custom));
-  tracks = $derived(computeTracks(this.events, this.rules, {}, this.catalog));
+  /** Ogni misura, nuova o convertita dalle versioni di prima. */
+  attempts = $derived(allAttempts(this.events, this.catalog));
+  /** Medaglie per esercizio: { [id]: { B, A, O, P, half, best, … } }. Solo indicatori, non bloccano niente. */
+  medals = $derived(allMedals(this.catalog, this.attempts, this.today));
+  player = $derived(normalizePlayer(this.meta?.player));
+  /** Il livello che l'app propone, oppure null. */
+  levelOffer = $derived(suggestLevel({ player: this.meta?.player, medals: this.medals, attempts: this.attempts, catalog: this.catalog, today: this.today }));
   plan = $derived(normalizePlan(this.meta?.plan));
   weekIdx = $derived(this.plan ? weekIndex(this.plan, this.today) : null);
   week = $derived(this.plan ? weekAt(this.plan, this.weekIdx, this.catalog) : null);
   phase = $derived(this.plan ? planPhase(this.plan, this.today) : 'none');
-  gate = $derived(gateStatus(this.tracks));
   onboarded = $derived(Boolean(this.meta?.onboarded));
 
   name = $derived(this.meta?.profile?.name || this.user?.name || '');
@@ -306,9 +311,21 @@ class AppState {
     else this.skipOccurrence(item.key);
   }
 
-  /** Imposta a mano il livello di un percorso (resta nella storia come «Impostato»). */
-  setLevel(trackId, level) {
-    return this.saveEvent({ kind: 'livello', date: this.today, tests: [{ track: trackId, type: 'set', level }] });
+  // ── Livello del giocatore ────────────────────────────────────────────────
+
+  /**
+   * Cambia il livello. `how`: 'scelto' (dal giocatore), 'proposto' (accettato dall'app),
+   * 'predefinito' (nessuna scelta: principiante). Ogni cambio resta nella storia.
+   */
+  setPlayerLevel(level, how = 'scelto') {
+    const p = this.player;
+    const history = [...p.history, { date: this.today, level, how }];
+    this.patchMeta({ player: { level, since: this.today, history, declined: null } });
+  }
+
+  /** «Non ora»: la proposta torna dopo 21 giorni o dopo 3 nuovi ori. */
+  declineLevel(level) {
+    this.patchMeta({ player: { declined: { level, date: this.today } } });
   }
 
   addCustom(list, item) {
@@ -364,7 +381,7 @@ class AppState {
     this.#run(this.#backend.reject(request));
   }
 
-  /** Tiene aggiornato il profilo visibile al gruppo. Solo livelli e ritmo, mai il diario. */
+  /** Tiene aggiornato il profilo visibile al gruppo: solo il nome. Medaglie e livello sono personali. */
   #queueProfile() {
     if (!CLOUD || this.stage !== 'ready') return;
     clearTimeout(this.#profileTimer);
@@ -379,11 +396,7 @@ class AppState {
       if (mine) this.#run(this.#backend.saveProfile(uid, null));
       return;
     }
-    const next = {
-      name: this.name,
-      photo: this.photo,
-      ...publicSummary(this.tracks, this.events, this.plan, this.week)
-    };
+    const next = { name: this.name };
     const { id: _id, updatedAt: _at, ...prev } = mine ?? {};
     if (JSON.stringify(sortKeys(prev)) === JSON.stringify(sortKeys(next))) return;
     this.#run(this.#backend.saveProfile(uid, clean({ ...next, updatedAt: Date.now() })));

@@ -1,32 +1,29 @@
 <script>
   // Le istruzioni di una fase della sessione. Usato sia in «Oggi» sia nella sessione dal vivo.
   import Target from '@lucide/svelte/icons/target';
-  import { partnerExercise } from '../engine/stats.js';
   import { app } from '../store/app.svelte.js';
-  import { VALID_ATTEMPT, MATCH_TYPES, SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
+  import { MATCH_TYPES, SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
   import { matchHalves } from '../engine/compose.js';
-  import Avatar from './Avatar.svelte';
+  import { nextGoal, goalText } from '../engine/medals.js';
+  import Medal from './Medal.svelte';
 
   // part: la metà della partitella in corso (1 o 2), solo nella sessione dal vivo.
   // onscheme, onmore: per cambiare lo schema della partitella, solo nella sessione dal vivo.
-  let { step, partner = null, big = false, showTest = true, part = null, onscheme = null, onmore = null } = $props();
+  // showGoal: mostra il prossimo obiettivo dell'esercizio.
+  let { step, big = false, showGoal = true, part = null, onscheme = null, onmore = null } = $props();
 
-  const mate = $derived(step.kind === 'exercise' && partner ? partnerExercise(partner, step.track, app.catalog) : null);
+  const ex = $derived(step.ex ? app.catalog.exercise(step.ex) : null);
+  const goal = $derived(ex ? nextGoal(ex, app.medals[ex.id]) : null);
+  const maint = $derived(step.maint?.ex ? app.catalog.exercise(step.maint.ex) : null);
 </script>
 
 <div class="body" class:big>
   {#if step.kind === 'warmup'}
     <p>{step.text}</p>
-    {#if step.maint}
+    {#if maint}
       <div class="aside">
         <span class="tag line">Ultimi {step.maint.minutes}′</span>
-        <p>
-          <strong>Mantenimento.</strong>
-          {step.maint.name}, livello {step.maint.level}: {step.maint.exercise.drill}
-        </p>
-        {#if step.maint.test && showTest}
-          <p class="test"><span class="tag accent">Test</span> {step.maint.exercise.test}</p>
-        {/if}
+        <p><strong>Mantenimento: {maint.name}.</strong> {maint.text}</p>
       </div>
     {/if}
   {:else if step.kind === 'serve'}
@@ -36,28 +33,21 @@
       <dt>Chi riceve</dt>
       <dd>{step.serve.receiver}</dd>
     </dl>
-    {#if step.test && showTest}
-      <p class="test"><span class="tag accent">Test</span> {step.serve.test}</p>
+    {#if ex && showGoal}
+      <p class="next">
+        <Medal tier={goal?.tier ?? 'P'} on={!goal} half={goal?.half} size={big ? 16 : 13} />
+        <span><strong>{ex.name}</strong>{goal ? ` · ${goalText(ex, goal)}` : ' · tutte le medaglie prese'}</span>
+      </p>
     {/if}
-  {:else if step.kind === 'exercise'}
-    <p>{step.exercise.drill}</p>
-    <p class="goal"><Target size={big ? 17 : 15} strokeWidth={1.8} /> <span>{step.exercise.goal}</span></p>
-    {#if showTest}
-      {#if step.placement}
-        <p class="test">
-          <span class="tag accent">Test di partenza</span>
-          Parti dal livello 1: con almeno {app.rules.up} su 10 provi quello dopo. Il primo che non passi è il tuo.
-        </p>
-      {:else if step.test}
-        <p class="test"><span class="tag accent">Test</span> {step.exercise.test}</p>
-      {/if}
+  {:else if step.kind === 'exercise' && ex}
+    <p>{ex.text}</p>
+    {#if ex.quality}
+      <p class="goal"><Target size={big ? 17 : 15} strokeWidth={1.8} /> <span>{ex.quality}</span></p>
     {/if}
-    {#if mate}
-      <p class="mate">
-        <Avatar name={partner.name} photo={partner.photo} size={20} />
-        <span>
-          <strong>{partner.name.split(/\s+/)[0]}</strong> è al livello {mate.level}: {mate.exercise.drill}
-        </span>
+    {#if showGoal && goal}
+      <p class="next">
+        <Medal tier={goal.tier} on={false} half={goal.half} size={big ? 16 : 13} />
+        <span>Prossimo obiettivo · {goalText(ex, goal)}</span>
       </p>
     {/if}
   {:else if step.kind === 'match'}
@@ -83,9 +73,6 @@
     </div>
   {:else if step.kind === 'free'}
     {#if step.text}<p>{step.text}</p>{/if}
-  {/if}
-  {#if big && (step.test || step.placement || step.maint?.test)}
-    <p class="small faint">{VALID_ATTEMPT}</p>
   {/if}
 </div>
 
@@ -124,7 +111,8 @@
   dd {
     margin: 0;
   }
-  .goal {
+  .goal,
+  .next {
     display: flex;
     gap: 8px;
     align-items: flex-start;
@@ -138,11 +126,9 @@
   .big .goal :global(svg) {
     margin-top: 3px;
   }
-  .test {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 6px;
+  .next {
+    color: var(--ink-2);
+    align-items: center;
   }
   .aside {
     display: flex;
@@ -182,21 +168,5 @@
     min-height: 34px;
     padding: 4px 12px;
     font-size: 14px;
-  }
-  .mate {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-    padding: 10px 12px;
-    border-radius: var(--r-s);
-    background: var(--sunk);
-    font-size: 13px;
-    color: var(--ink-2);
-  }
-  .big .mate {
-    font-size: 14px;
-  }
-  .mate :global(.avatar) {
-    margin-top: 1px;
   }
 </style>

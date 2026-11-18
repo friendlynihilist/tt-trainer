@@ -3,7 +3,8 @@
 import { app } from '../store/app.svelte.js';
 import { ui } from '../store/ui.svelte.js';
 import { FAMILIES, ERROR_GROUPS, BALLS, POINT_PHASES } from '../data/taxonomy.js';
-import { exerciseOptions } from '../data/catalog.js';
+import { OTHER } from '../data/catalog.js';
+import { LEVEL_IDS, PLAYER_LEVEL, TIERS, TIER } from '../data/library.js';
 
 function grouped(defs, items, key, otherName) {
   const groups = defs
@@ -37,14 +38,31 @@ export function pickError({ value = null, onpick }) {
   });
 }
 
-export function pickExercise({ value = null, onpick }) {
+/**
+ * Un esercizio fra tutti: la libreria intera e i tuoi, raggruppati per famiglia. Nessuno è
+ * escluso: il livello del giocatore decide solo l'ordine (prima i più vicini al suo livello) e
+ * `family` porta in cima la famiglia indicata. Con `other` compaiono anche gli esercizi generici.
+ */
+export function pickExercise({ title = 'Esercizio', value = null, onpick, family = null, other = false }) {
+  const cat = app.catalog;
+  const at = LEVEL_IDS.indexOf(app.player.level);
+  const dist = (e) => (e.level ? Math.abs(LEVEL_IDS.indexOf(e.level) - at) : 0);
+  const all = cat.activeExerciseIds.map((id) => cat.exercise(id));
+  const opt = (e) => {
+    const m = app.medals[e.id];
+    const won = TIERS.filter((t) => m?.[t]).map((t) => TIER[t].name.toLowerCase());
+    return { id: e.id, label: e.name, hint: [PLAYER_LEVEL[e.level]?.name, won.length ? won.join(', ') : null].filter(Boolean).join(' · ') || undefined };
+  };
+  const fams = [...FAMILIES].sort((a, b) => (a.id === family ? -1 : b.id === family ? 1 : 0));
   const groups = [];
-  for (const e of exerciseOptions(app.catalog)) {
-    let g = groups.find((x) => x.name === e.group);
-    if (!g) groups.push((g = { name: e.group, options: [] }));
-    g.options.push({ id: e.id, label: e.label });
+  for (const f of fams) {
+    const list = all.filter((e) => e.family === f.id).sort((a, b) => dist(a) - dist(b));
+    if (list.length) groups.push({ name: f.name, options: list.map(opt) });
   }
-  ui.open('pick', { title: 'Esercizio', value, clearable: true, groups, onpick });
+  const mine = all.filter((e) => !FAMILIES.some((f) => f.id === e.family));
+  if (mine.length) groups.push({ name: 'I tuoi esercizi', options: mine.map(opt) });
+  if (other) groups.push({ name: 'Altro', options: Object.entries(OTHER).map(([id, label]) => ({ id, label })) });
+  ui.open('pick', { title, value, clearable: other, groups, onpick });
 }
 
 export function pickBall({ value = null, onpick }) {

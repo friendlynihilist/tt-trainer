@@ -1,7 +1,8 @@
 <script>
-  // La sessione dal vivo. Il telefono sta sul tavolo: timer grande, un tocco per ogni palla
-  // del test, esito subito. Tutto viene salvato sul dispositivo a ogni tocco e diventa una
-  // voce del diario solo alla fine.
+  // La sessione dal vivo. Il telefono sta sul tavolo: timer grande e, su ogni esercizio, il
+  // prossimo obiettivo da provare quando vuoi. Tutto viene salvato sul dispositivo a ogni tocco e
+  // diventa una voce del diario solo alla fine. Niente è bloccato: ogni esercizio si cambia e ogni
+  // obiettivo si prova, con qualsiasi medaglia.
   import { onMount } from 'svelte';
   import { fly, fade } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
@@ -11,48 +12,53 @@
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Check from '@lucide/svelte/icons/check';
+  import Repeat from '@lucide/svelte/icons/repeat-2';
+  import Plus from '@lucide/svelte/icons/plus';
   import { app } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
   import { loadLive, saveLive, clearLive } from '../store/live.js';
   import { weekFor } from '../engine/plan.js';
-  import { composeSession, composeTest, trainedTracks, matchHalves } from '../engine/compose.js';
+  import { composeSession, composeTest, exerciseStep, sessionExercises, trainedTracks, matchHalves, TEST_MINUTES } from '../engine/compose.js';
+  import { upgradeDraft, makeAttempt, allAttempts } from '../engine/attempts.js';
+  import { allMedals, newMedals, valueText, size } from '../engine/medals.js';
   import { SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
-  import { judge, placementResult } from '../engine/levels.js';
+  import { TIER } from '../data/library.js';
   import { fmtClock } from '../util/dates.js';
   import { chime, keepAwake, unlockAudio } from '../util/device.js';
-  import Dots from '../ui/Dots.svelte';
+  import { pickExercise } from '../ui/pickers.js';
   import StepBody from '../ui/StepBody.svelte';
-  import TestPad from '../ui/TestPad.svelte';
+  import GoalPad, { startGoal, goalTries } from '../ui/GoalPad.svelte';
+  import Medal from '../ui/Medal.svelte';
   import FocusEditor from '../ui/FocusEditor.svelte';
 
   const uid = app.user.uid;
-
-  const levelOf = (track, n) => app.catalog.level(track, n);
-  const maxOf = (track) => app.catalog.maxLevel(track);
 
   function create() {
     const live = ui.live;
     const date = live.date ?? app.today;
     const week = weekFor(app.plan, date, app.catalog);
     const test = live.mode === 'test';
-    const template = test ? null : (live.custom ?? app.catalog.template(live.template));
+    const template = test ? null : app.catalog.template(live.template);
     const session = test
-      ? composeTest({ week, trackIds: live.trackIds ?? [], tracks: app.tracks, catalog: app.catalog, serve: true })
-      : composeSession({ week, template, tracks: app.tracks, catalog: app.catalog, test: live.withTest });
+      ? composeTest({ exerciseIds: live.exercises ?? [], catalog: app.catalog })
+      : composeSession({ week, template, catalog: app.catalog, medals: app.medals });
+    const attempts = {};
+    // Nel test l'obiettivo di ogni esercizio è già aperto.
+    if (test) for (const s of session.steps) attempts[s.id] = startGoal(app.catalog.exercise(s.ex), app.medals[s.ex]);
     return {
+      version: 3,
       mode: test ? 'test' : 'training',
-      template: test ? null : live.custom ? 'auto' : template.id,
+      template: test ? null : template.id,
       title: test ? 'Test' : template.name,
       color: test ? 'orange' : template.color,
       date,
       planId: app.plan?.id ?? null,
+      block: week?.focusBlock?.id ?? null,
       occ: live.occ ?? null,
       eventId: live.eventId ?? null,
-      testItem: live.testItem ?? null,
       step: 0,
       timers: {},
-      tests: {},
-      placement: {},
+      attempts,
       focus: null,
       note: '',
       feel: null,
@@ -63,15 +69,13 @@
   }
 
   function restore() {
-    const saved = loadLive(uid);
+    let saved = loadLive(uid);
     if (!saved) return null;
     // Sessione lasciata a metà con la prima versione (A o B): si riprende uguale.
     if (saved.slot && !saved.mode) {
       Object.assign(saved, { mode: 'training', template: 'completo', title: `Sessione ${saved.slot}`, color: 'blue', legacy: saved.slot });
     }
     for (const s of saved.session?.steps ?? []) {
-      // Sessione cominciata prima della 0.2.1: i servizi si misurano solo se lo chiedi.
-      if (saved.mode === 'training' && s.kind === 'serve' && s.test && !s.asked && saved.tests?.serve?.score == null) s.test = false;
       // La vecchia regola della partitella diventa lo schema del mese.
       if (s.kind === 'match' && !s.scheme) {
         const block = saved.session.block;
@@ -81,8 +85,10 @@
         delete s.rule;
       }
     }
+    // Sessione cominciata con la 0.2: i passi diventano esercizi, i test già contati restano.
+    saved = upgradeDraft(saved, app.catalog);
     // I timer rimasti accesi si fermano all'ultimo momento in cui l'app era viva.
-    for (const t of Object.values(saved.timers)) {
+    for (const t of Object.values(saved.timers ?? {})) {
       if (t.since) {
         t.acc += Math.max(0, (saved.beat - t.since) / 1000);
         t.since = null;
@@ -106,6 +112,8 @@
   const total = $derived(step ? step.minutes * 60 : 0);
   const remaining = $derived(total - elapsed);
   const running = $derived(Boolean(timer?.since));
+  const stepEx = $derived(step?.ex ? app.catalog.exercise(step.ex) : null);
+  const canGoal = $derived(Boolean(stepEx?.measure && Object.keys(stepEx.goals ?? {}).length));
 
   // ── Timer ────────────────────────────────────────────────────────────────
 
@@ -167,7 +175,7 @@
     }
     const release = keepAwake();
     unlockAudio();
-    if (!resumed && !closing) play(step.id);
+    if (!resumed && !closing && step) play(step.id);
     const tick = setInterval(() => {
       now = Date.now();
       checkBells();
@@ -189,7 +197,7 @@
 
   function goTo(index) {
     unlockAudio();
-    if (!closing) pause(step.id);
+    if (!closing && step) pause(step.id);
     dir = index >= draft.step ? 1 : -1;
     draft.step = Math.max(0, Math.min(steps.length, index));
     if (draft.step < steps.length) play(steps[draft.step].id);
@@ -197,101 +205,61 @@
   }
 
   function leave() {
-    if (!closing) pause(step.id);
+    if (!closing && step) pause(step.id);
     saveLive(uid, $state.snapshot(draft));
     finished = true;
     ui.live = null;
     ui.toast('Sessione in pausa: la ritrovi in Oggi');
   }
 
-  // ── Test ─────────────────────────────────────────────────────────────────
+  // ── Obiettivi ────────────────────────────────────────────────────────────
 
-  function verdict(trackId, level, score) {
-    if (score == null) return null;
-    const st = app.tracks[trackId];
-    if (!st) return null;
-    const r = judge(st, level, score, app.rules);
-    if (r.outcome === 'sali') return { tone: 'up', text: `Sali al livello ${r.after}`, after: r.after, outcome: r.outcome };
-    if (r.outcome === 'completato') return { tone: 'up', text: 'Percorso completato', after: r.after, outcome: r.outcome };
-    if (r.outcome === 'scendi') return { tone: 'down', text: `Scendi al livello ${r.after}`, after: r.after, outcome: r.outcome };
-    const next = level >= maxOf(trackId) ? 'completi' : 'sali';
-    return {
-      tone: 'stay',
-      text: r.streak ? `Ancora un test da ${app.rules.up} e ${next}` : `Resti al livello ${level}`,
-      after: level,
-      outcome: r.outcome
-    };
+  function openGoal(s) {
+    unlockAudio();
+    buzz();
+    draft.attempts[s.id] ??= startGoal(app.catalog.exercise(s.ex), app.medals[s.ex]);
+  }
+  function closeGoal(s) {
+    const v = draft.attempts[s.id];
+    // Si chiude senza perdere niente: se c'è già una misura resta salvata.
+    if (v && !goalTries(app.catalog.exercise(v.ex), v).length) delete draft.attempts[s.id];
+    else if (v) v.closed = true;
   }
 
-  function setTest(key, patch) {
-    draft.tests[key] = patch;
-  }
-
-  // Test di partenza: si sale di livello finché il test viene superato.
-  function placementOf(track) {
-    return draft.placement[track] ?? { tries: [{ level: 1, marks: [], score: null }], set: null };
-  }
-  function placementView(track) {
-    const p = placementOf(track);
-    if (p.set) return { done: true, level: p.set, current: null, waiting: false };
-    const res = placementResult(p.tries.filter((t) => t.score != null), app.rules, maxOf(track));
-    const current = p.tries[p.tries.length - 1];
-    return { done: res.done, level: res.level, current, waiting: current.score != null && !res.done };
-  }
-  function setTry(track, patch) {
-    const p = placementOf(track);
-    const tries = [...p.tries];
-    tries[tries.length - 1] = { ...tries[tries.length - 1], ...patch };
-    draft.placement[track] = { ...p, tries };
-  }
-  function nextTry(track, level) {
-    const p = placementOf(track);
-    draft.placement[track] = { ...p, tries: [...p.tries, { level, marks: [], score: null }] };
-  }
-  function pickStart(track) {
-    ui.open('pick', {
-      title: 'Livello di partenza',
-      value: placementOf(track).set,
-      groups: [
-        {
-          options: Array.from({ length: maxOf(track) }, (_, i) => ({
-            id: i + 1,
-            label: `Livello ${i + 1}`,
-            hint: levelOf(track, i + 1).name
-          }))
-        }
-      ],
-      onpick: (level) => (draft.placement[track] = { ...placementOf(track), set: level })
+  /** Cambia l'esercizio di un passo con uno qualsiasi della libreria. */
+  function changeExercise(index) {
+    const s = draft.session.steps[index];
+    const current = app.catalog.exercise(s.ex);
+    pickExercise({
+      title: 'Cambia esercizio',
+      value: s.ex,
+      family: current?.family,
+      onpick: (id) => {
+        const ex = id && app.catalog.exercise(id);
+        if (!ex || id === s.ex) return;
+        s.ex = ex.id;
+        if (s.kind === 'exercise') s.name = ex.name;
+        // Un esercizio fuori dalla sequenza del percorso non allena quel percorso.
+        if (s.track && !app.catalog.sequence(s.track).includes(ex.id)) delete s.track;
+        if (draft.attempts[s.id]) draft.attempts[s.id] = startGoal(ex, app.medals[ex.id]);
+        buzz();
+      }
     });
   }
-  function resetPlacement(track) {
-    draft.placement[track] = { tries: [{ level: 1, marks: [], score: null }], set: null };
-  }
 
-  /** La fase da mostrare: durante il test di partenza l'esercizio è quello del livello in prova. */
-  const view = $derived.by(() => {
-    if (!step || step.kind !== 'exercise' || !step.placement) return step;
-    const p = placementView(step.track);
-    const level = p.done ? p.level : p.current.level;
-    return { ...step, level, exercise: levelOf(step.track, level) };
-  });
-
-  /** Un esercizio senza test può diventare un test in qualsiasi momento. I servizi solo se lo chiedi. */
-  function enableTest(index) {
-    const s = draft.session.steps[index];
-    if (s.kind === 'exercise' && !s.placement) s.test = true;
-    if (s.kind === 'serve') {
-      s.test = true;
-      s.asked = true;
-    }
-    buzz();
-  }
-  function disableServe(index) {
-    const s = draft.session.steps[index];
-    s.test = false;
-    s.asked = false;
-    delete draft.tests.serve;
-    buzz();
+  /** Nel test: aggiunge un esercizio qualsiasi e ci va. */
+  function addExercise() {
+    pickExercise({
+      title: 'Aggiungi un esercizio',
+      onpick: (id) => {
+        const ex = id && app.catalog.exercise(id);
+        if (!ex) return;
+        const s = exerciseStep(`t-${ex.id}-${Date.now().toString(36)}`, ex.id, TEST_MINUTES, app.catalog, { goal: true });
+        draft.session.steps.push(s);
+        draft.attempts[s.id] = startGoal(ex, app.medals[ex.id]);
+        goTo(draft.session.steps.length - 1);
+      }
+    });
   }
 
   function pickScheme(index, id) {
@@ -320,71 +288,52 @@
 
   // ── Chiusura ─────────────────────────────────────────────────────────────
 
-  const results = $derived.by(() => {
+  /** I tentativi da salvare, nell'ordine dei passi. */
+  function collect() {
     const out = [];
     for (const s of steps) {
-      if (s.maint?.test) {
-        const t = draft.tests.maint;
-        out.push({ id: 'maint', name: `Mantenimento · ${s.maint.name}`, max: s.maint.max, score: t?.score ?? null, before: s.maint.level, ...(verdict(s.maint.track, s.maint.level, t?.score ?? null) ?? {}) });
-      }
-      // I servizi compaiono solo se sono stati misurati davvero.
-      if (s.kind === 'serve' && s.test && draft.tests.serve?.score != null) {
-        out.push({ id: 'serve', name: 'Servizi', score: draft.tests.serve.score });
-      }
-      if (s.kind === 'exercise' && s.placement) {
-        const p = placementView(s.track);
-        out.push({ id: s.track, name: s.name, max: s.max, score: null, start: p.done ? p.level : null, placement: true });
-      } else if (s.kind === 'exercise' && s.test) {
-        const t = draft.tests[s.track];
-        out.push({ id: s.track, name: s.name, max: s.max, score: t?.score ?? null, before: s.level, ...(verdict(s.track, s.level, t?.score ?? null) ?? {}) });
-      }
+      const v = draft.attempts?.[s.id];
+      const ex = v && app.catalog.exercise(v.ex);
+      const tries = goalTries(ex, v);
+      if (!ex || !tries.length) continue;
+      out.push(makeAttempt({ ex: ex.id, fmt: ex.measure.type, tries, tier: v.tier, marks: v.marks?.length ? v.marks.join('') : null, q: v.q }));
     }
     return out;
+  }
+
+  /** Il riepilogo: le misure di oggi e le medaglie arrivate. */
+  const summary = $derived.by(() => {
+    if (!closing) return null;
+    const attempts = collect();
+    const legacy = draft.legacyTests;
+    const ev = { id: '__live', date: draft.date, createdAt: Date.now(), attempts, tests: legacy?.tests ?? [], serve: legacy?.serve ?? null };
+    const after = allMedals(app.catalog, [...app.attempts, ...allAttempts([ev], app.catalog)], draft.date);
+    return { attempts, won: newMedals(app.medals, after) };
   });
 
   function finish() {
-    const tests = [];
-    for (const s of steps) {
-      if (s.maint?.test && draft.tests.maint?.score != null) {
-        tests.push({ track: s.maint.track, type: 'maint', level: s.maint.level, score: draft.tests.maint.score });
-      }
-      if (s.kind !== 'exercise') continue;
-      if (s.placement) {
-        const p = draft.placement[s.track];
-        if (p?.set) tests.push({ track: s.track, type: 'set', level: p.set });
-        else {
-          for (const t of p?.tries ?? []) {
-            if (t.score != null) tests.push({ track: s.track, type: 'placement', level: t.level, score: t.score, marks: t.marks.join('') });
-          }
-        }
-      } else if (s.test && draft.tests[s.track]?.score != null) {
-        const t = draft.tests[s.track];
-        tests.push({ track: s.track, type: s.maintTest ? 'maint' : 'test', level: s.level, score: t.score, marks: (t.marks ?? []).join('') });
-      }
-    }
-    const served = steps.some((s) => s.kind === 'serve' && s.test);
-    const serve = served && draft.tests.serve?.score != null ? { id: draft.session.block.serve?.id ?? null, score: draft.tests.serve.score } : null;
+    const attempts = collect();
     const seconds = Object.values(draft.timers).reduce((n, t) => n + t.acc + (t.since ? (Date.now() - t.since) / 1000 : 0), 0);
     // Se i timer non sono stati usati, vale la durata prevista.
     const minutes = seconds >= 600 ? Math.round(seconds / 60) : draft.session.minutes;
-
-    const measured = tests.some((t) => t.type !== 'set') || serve != null;
     const ev = {
       kind: draft.mode,
       date: draft.date,
       planId: draft.planId,
-      block: draft.session.block?.id ?? null,
+      block: draft.block ?? draft.session.block?.id ?? null,
       minutes,
-      tests,
-      serve,
+      attempts,
+      exercises: sessionExercises(draft.session.steps),
       focus: draft.focus,
       note: draft.note.trim(),
       feel: draft.feel
     };
+    // I test contati in una sessione cominciata con la 0.2 si salvano come allora.
+    if (draft.legacyTests?.tests?.length) ev.tests = draft.legacyTests.tests;
+    if (draft.legacyTests?.serve) ev.serve = draft.legacyTests.serve;
     if (draft.mode === 'training') {
       ev.template = draft.template;
-      ev.trained = draft.session.trained ?? trainedTracks(draft.session.steps);
-      ev.withTest = measured;
+      ev.trained = trainedTracks(draft.session.steps);
       if (draft.legacy) ev.legacy = draft.legacy;
     }
     if (draft.occ) ev.occ = draft.occ;
@@ -393,13 +342,13 @@
       ev.id = draft.eventId;
       ev.adhoc = true;
     }
+    const won = summary?.won ?? [];
     app.saveEvent(ev);
-    // Il test aggiunto a mano per oggi è stato fatto qui dentro: non resta in sospeso.
-    if (measured && draft.testItem?.source === 'event' && draft.testItem.eventId) app.deleteEvent(draft.testItem.eventId);
     finished = true;
     clearLive(uid);
     ui.live = null;
-    ui.toast('Sessione salvata nel diario');
+    const full = won.filter((w) => !w.half);
+    ui.toast(full.length ? `Sessione salvata · ${full.length === 1 ? 'una medaglia nuova' : `${full.length} medaglie nuove`}` : 'Sessione salvata nel diario');
   }
 
   const FEEL = ['Dura', 'Così così', 'Bene', 'Molto bene', 'Ottima'];
@@ -437,101 +386,31 @@
             <div class="bar" class:over={remaining < 0}><i style:width="{Math.min(100, (elapsed / total) * 100)}%"></i></div>
 
             <div class="head">
+              {#if step.kind === 'exercise' && step.track}
+                <span class="small muted">{app.catalog.track(step.track)?.short ?? ''}</span>
+              {/if}
               <h1 class="display">{step.name}</h1>
-              {#if view.kind === 'exercise'}
-                <p class="row g-12 muted">
-                  <span>Livello {view.level} · {view.exercise.name}</span>
-                  <Dots level={view.level} max={view.max} size={9} />
-                </p>
+              {#if stepEx && (step.kind === 'exercise' || step.kind === 'serve')}
+                <div class="tools">
+                  <button class="chip mini" onclick={() => changeExercise(draft.step)}><Repeat size={14} /> Cambia esercizio</button>
+                </div>
               {/if}
             </div>
 
-            <!-- Mantenimento: test nell'ultima settimana del mese -->
-            {#if step.maint?.test}
-              {@const t = draft.tests.maint ?? { marks: [], score: null }}
-              <section class="card test">
-                <p class="small"><span class="tag accent">Test · mantenimento</span> <span class="muted">{step.maint.exercise.test}</span></p>
-                <TestPad
-                  marks={t.marks}
-                  score={t.score}
-                  up={app.rules.up}
-                  down={app.rules.down}
-                  level={step.maint.level}
-                  verdict={verdict(step.maint.track, step.maint.level, t.score)}
-                  onchange={(v) => setTest('maint', v)}
-                />
-              </section>
-            {/if}
-
-            {#if step.kind === 'serve' && step.test}
-              {@const t = draft.tests.serve ?? { marks: [], score: null }}
-              <section class="card test">
-                <p class="small"><span class="tag accent">Servizi</span> <span class="muted">{step.serve.test}</span></p>
-                <TestPad marks={t.marks} score={t.score} up={app.rules.up} down={-1} onchange={(v) => setTest('serve', v)} />
-                {#if draft.mode === 'training'}
-                  <button class="link self" onclick={() => disableServe(draft.step)}>Non misurare</button>
-                {/if}
-              </section>
-            {/if}
-
-            {#if step.kind === 'exercise' && step.placement}
-              {@const p = placementView(step.track)}
-              <section class="card test">
-                {#if p.done}
-                  <div class="start">
-                    <span class="big mono">L{p.level}</span>
-                    <div class="grow">
-                      <strong>Parti dal livello {p.level}</strong>
-                      <p class="small muted">{levelOf(step.track, p.level).name}</p>
-                    </div>
-                    <button class="link" onclick={() => resetPlacement(step.track)}>Rifai</button>
-                  </div>
-                {:else}
-                  <p class="small">
-                    <span class="tag accent">Test di partenza · livello {p.current.level}</span>
-                    <span class="muted">{levelOf(step.track, p.current.level).test}</span>
-                  </p>
-                  {#key p.current.level}
-                    <div in:fly={{ y: 10, duration: 300 }}>
-                      <TestPad
-                        marks={p.current.marks}
-                        score={p.current.score}
-                        up={app.rules.up}
-                        down={-1}
-                        verdict={p.waiting ? { tone: 'up', text: 'Superato' } : null}
-                        onchange={(v) => setTry(step.track, v)}
-                      />
-                    </div>
-                  {/key}
-                  {#if p.waiting}
-                    <button class="btn primary" onclick={() => nextTry(step.track, p.level)}>
-                      Prova il livello {p.level} <ArrowRight size={18} />
-                    </button>
-                  {:else}
-                    <button class="link self" onclick={() => pickStart(step.track)}>So già il mio livello</button>
-                  {/if}
-                {/if}
-              </section>
-            {:else if step.kind === 'exercise' && step.test}
-              {@const t = draft.tests[step.track] ?? { marks: [], score: null }}
-              <section class="card test">
-                <p class="small"><span class="tag accent">Test</span> <span class="muted">{step.exercise.test}</span></p>
-                <TestPad
-                  marks={t.marks}
-                  score={t.score}
-                  up={app.rules.up}
-                  down={app.rules.down}
-                  level={step.level}
-                  verdict={verdict(step.track, step.level, t.score)}
-                  onchange={(v) => setTest(step.track, v)}
-                />
-              </section>
-            {/if}
-
-            {#if step.kind === 'exercise' && !step.test && !step.placement}
-              <button class="link self" onclick={() => enableTest(draft.step)}>Fai il test qui</button>
-            {:else if step.kind === 'serve' && !step.test}
-              <button class="link self" onclick={() => enableTest(draft.step)}>Misura i servizi</button>
+            {#if canGoal}
+              {@const v = draft.attempts?.[step.id]}
+              {#if v && !v.closed}
+                <GoalPad exercise={stepEx} value={v} date={draft.date} onchange={(next) => (draft.attempts[step.id] = next)} onclose={() => closeGoal(step)} />
+              {:else}
+                <button class="goal-btn" onclick={() => (v ? (v.closed = false) : openGoal(step))}>
+                  <Medal tier="O" on={false} size={20} />
+                  <span class="grow">
+                    <strong>{v ? 'Torna all’obiettivo' : 'Prova l’obiettivo'}</strong>
+                    {#if step.kind === 'serve'}<span class="small muted block">{stepEx.name}</span>{/if}
+                  </span>
+                  <ArrowRight size={18} />
+                </button>
+              {/if}
             {/if}
 
             {#if step.kind === 'pause'}
@@ -545,10 +424,9 @@
               {/if}
             {:else}
               <StepBody
-                step={view}
-                partner={app.partner}
+                {step}
                 big
-                showTest={false}
+                showGoal={!draft.attempts?.[step.id] || draft.attempts[step.id].closed}
                 part={matchPart}
                 onscheme={step.kind === 'match' ? (id) => pickScheme(draft.step, id) : null}
                 onmore={step.kind === 'match' ? () => moreSchemes(draft.step) : null}
@@ -559,33 +437,40 @@
               <h1 class="display">Com’è andata?</h1>
             </div>
 
-            {#if results.length}
+            {#if summary?.won.length}
               <section class="card flush list">
-                {#each results as r (r.id)}
-                  <div class="res" class:up={r.outcome === 'sali' || r.outcome === 'completato'}>
+                {#each summary.won as w (w.ex + w.tier + (w.half ? 'h' : ''))}
+                  {@const ex = app.catalog.exercise(w.ex)}
+                  <div class="res won" data-tier={w.tier}>
+                    <Medal tier={w.tier} half={w.half} size={30} pop />
                     <div class="grow">
-                      <strong>{r.name}</strong>
-                      <p class="small muted">
-                        {#if r.placement}
-                          {r.start ? `Parti dal livello ${r.start}` : 'Test di partenza non fatto'}
-                        {:else if r.score == null}
-                          Test non fatto
-                        {:else}
-                          {r.text ?? 'Registrato'}
-                        {/if}
-                      </p>
+                      <strong>{w.half ? 'Metà oro' : TIER[w.tier].name}</strong>
+                      <p class="small muted">{ex?.name}</p>
                     </div>
-                    {#if r.after}
-                      <Dots level={r.after} max={r.max} completed={r.outcome === 'completato'} />
-                    {:else if r.start}
-                      <Dots level={r.start} max={r.max} />
-                    {/if}
-                    {#if r.score != null}
-                      <span class="mono pts {r.tone ?? ''}">{r.score}</span>
-                    {/if}
                   </div>
                 {/each}
               </section>
+            {/if}
+
+            {#if summary?.attempts.length}
+              <section class="stack g-8">
+                <h2 class="heading">Misure di oggi</h2>
+                <div class="card flush list">
+                  {#each summary.attempts as a, i (i)}
+                    {@const ex = app.catalog.exercise(a.ex)}
+                    <div class="res">
+                      <span class="grow">{ex?.name}</span>
+                      <span class="mono small">{valueText(ex, a.tries.slice(0, ex?.measure?.type === 'fila' || ex?.measure?.type === 'tempo' ? 3 : 1).reduce((best, x) => (size(x) > size(best) ? x : best)), a.tier)}</span>
+                    </div>
+                  {/each}
+                </div>
+              </section>
+            {:else if draft.mode === 'test'}
+              <p class="muted">Nessuna misura registrata.</p>
+            {/if}
+
+            {#if draft.mode === 'test'}
+              <button class="btn ghost self" onclick={addExercise}><Plus size={16} /> Aggiungi un esercizio</button>
             {/if}
 
             <section class="stack g-12">
@@ -796,33 +681,39 @@
     font-size: clamp(30px, 8vw, 38px);
   }
 
-  .test {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .test > p {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 6px 8px;
-  }
   .self {
     align-self: flex-start;
   }
-  .start {
+  strong {
+    font-weight: 580;
+  }
+  .block {
+    display: block;
+  }
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .goal-btn {
     display: flex;
     align-items: center;
     gap: 14px;
+    width: 100%;
+    padding: 16px 18px;
+    border-radius: var(--r);
+    border: 1px solid var(--line);
+    background: var(--card);
+    text-align: left;
+    transition:
+      transform 0.3s var(--spring),
+      border-color 0.2s var(--ease);
   }
-  .big {
-    font-size: 34px;
-    font-weight: 560;
-    color: var(--accent);
-    animation: pop 0.5s var(--spring) both;
+  .goal-btn:active {
+    transform: scale(0.98);
   }
-  strong {
-    font-weight: 580;
+  .goal-btn :global(svg) {
+    color: var(--ink-3);
   }
 
   .res {
@@ -832,20 +723,8 @@
     padding: 14px 18px;
     animation: rise 0.5s var(--ease-out) both;
   }
-  .res.up {
-    background: var(--up-soft);
-  }
-  .pts {
-    width: 30px;
-    text-align: right;
-    font-size: 20px;
-    font-weight: 560;
-  }
-  .pts.up {
-    color: var(--up);
-  }
-  .pts.down {
-    color: var(--down);
+  .res.won {
+    background: color-mix(in srgb, var(--m) 14%, var(--card));
   }
 
   .feel {

@@ -186,7 +186,8 @@ export function parseExercise(id) {
   return Number.isInteger(n) && n > 0 ? { track: id.slice(0, i), n } : { other: id };
 }
 
-const OTHER = { multiball: 'Multiball libero', partita: 'Partita libera', altro: 'Altro' };
+/** Esercizi generici per «esercizio per correggerlo», fuori dalla libreria. */
+export const OTHER = { multiball: 'Multiball libero', partita: 'Partita libera', altro: 'Altro' };
 
 /** Un esercizio scelto altrove (es. «esercizio per correggerlo»): della libreria, personale o di prima. */
 export function resolveExercise(id, catalog = BASE) {

@@ -1,6 +1,6 @@
 <script>
   // «Da correggere»: un colpo, l'errore più frequente e l'esercizio per lavorarci.
-  // Scelto il colpo, l'esercizio giusto al tuo livello viene proposto da solo.
+  // Scelto il colpo, viene proposto un esercizio che lo allena (prima quelli del tuo livello).
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import { app } from '../store/app.svelte.js';
   import { buzz } from '../store/ui.svelte.js';
@@ -12,7 +12,7 @@
   let { value = null, onchange } = $props();
 
   const v = $derived(value ?? {});
-  const suggestions = $derived(v.stroke ? drillsFor(v.stroke, app.tracks, app.catalog) : []);
+  const suggestions = $derived(v.stroke ? drillsFor(v.stroke, app.catalog, app.player.level) : []);
   const customErrors = $derived(app.errors.filter((e) => e.custom));
 
   function set(patch) {
@@ -27,7 +27,7 @@
         if (!stroke) return onchange?.(null);
         // Cambiando colpo l'esercizio suggerito segue, a meno che non sia stato scelto a mano.
         const auto = !v.exercise || suggestions.includes(v.exercise);
-        set({ stroke, exercise: auto ? (drillsFor(stroke, app.tracks, app.catalog)[0] ?? null) : v.exercise });
+        set({ stroke, exercise: auto ? (drillsFor(stroke, app.catalog, app.player.level)[0] ?? null) : v.exercise });
       }
     });
   }
@@ -72,7 +72,7 @@
         {#if v.exercise && !suggestions.includes(v.exercise)}
           <button class="chip on" onclick={() => set({ exercise: null })}>{exerciseLabel(v.exercise, app.catalog)}</button>
         {/if}
-        <button class="chip more" onclick={() => pickExercise({ value: v.exercise, onpick: (exercise) => set({ exercise }) })}>Altro…</button>
+        <button class="chip more" onclick={() => pickExercise({ value: v.exercise, other: true, onpick: (exercise) => set({ exercise }) })}>Altro…</button>
       </div>
     </div>
   {/if}
