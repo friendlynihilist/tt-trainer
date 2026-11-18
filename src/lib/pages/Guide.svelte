@@ -43,7 +43,7 @@
         {/each}
       </div>
       <ul class="rules small muted">
-        <li>Quando conti quante di fila hai tre tentativi per seduta, e vale il migliore.</li>
+        <li>Quando conti quante di fila hai tre tentativi per seduta, e vale il migliore. Se sbaglia il compagno, il tentativo non conta: ripetilo.</li>
         <li>Quando conti su 10 o su 20 vale la prima serie del giorno: non si ripete finché esce il numero giusto.</li>
         <li>L’oro chiede la soglia in due giorni diversi. Con un giorno solo hai «metà oro».</li>
         <li>Le medaglie non si perdono. Se non misuri un esercizio da 90 giorni, l’app lo segna «da ripassare».</li>

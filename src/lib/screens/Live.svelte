@@ -12,7 +12,12 @@
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Check from '@lucide/svelte/icons/check';
-  import Repeat from '@lucide/svelte/icons/repeat-2';
+  import Shuffle from '@lucide/svelte/icons/shuffle';
+  import Info from '@lucide/svelte/icons/info';
+  import Coffee from '@lucide/svelte/icons/coffee';
+  import Timer from '@lucide/svelte/icons/timer';
+  import ListChecks from '@lucide/svelte/icons/list-checks';
+  import Target from '@lucide/svelte/icons/target';
   import Plus from '@lucide/svelte/icons/plus';
   import Save from '@lucide/svelte/icons/save';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
@@ -22,15 +27,19 @@
   import { weekFor } from '../engine/plan.js';
   import { composeSession, composeTest, exerciseStep, sessionExercises, trainedTracks, matchHalves, TEST_MINUTES, replaceStepExercise, schemeOf, templateWithOverrides } from '../engine/compose.js';
   import { upgradeDraft, makeAttempt, allAttempts } from '../engine/attempts.js';
-  import { allMedals, newMedals, valueText, size } from '../engine/medals.js';
+  import { allMedals, newMedals, valueText, size, nextGoal } from '../engine/medals.js';
   import { SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
   import { TIER } from '../data/library.js';
+  import { FAMILY } from '../data/taxonomy.js';
   import { fmtClock } from '../util/dates.js';
   import { chime, keepAwake, unlockAudio } from '../util/device.js';
   import { pickExercise } from '../ui/pickers.js';
   import StepBody from '../ui/StepBody.svelte';
   import GoalPad, { startGoal, goalTries } from '../ui/GoalPad.svelte';
-  import Medal from '../ui/Medal.svelte';
+  import MedalRing from '../ui/MedalRing.svelte';
+  import Brick from '../ui/Brick.svelte';
+  import { stepFamily, FAMILY_ICON } from '../ui/design.js';
+  import { celebrateFinish } from '../util/celebrate.js';
   import FocusEditor from '../ui/FocusEditor.svelte';
   import PartnerField, { lastPartner } from '../ui/PartnerField.svelte';
 
@@ -121,6 +130,11 @@
   const running = $derived(Boolean(timer?.since));
   const stepEx = $derived(step?.ex ? app.catalog.exercise(step.ex) : null);
   const canGoal = $derived(Boolean(stepEx?.measure && Object.keys(stepEx.goals ?? {}).length));
+  // Il colore e l'icona del blocco in corso: quelli della famiglia dell'esercizio.
+  const fam = $derived(stepFamily(step, app.catalog) ?? 'libero');
+  const FamIcon = $derived(FAMILY_ICON[fam] ?? FAMILY_ICON.libero);
+  // La descrizione dell'esercizio si apre con (i): durante la sessione basta il nome.
+  let info = $state(false);
 
   // ── Timer ────────────────────────────────────────────────────────────────
 
@@ -238,6 +252,7 @@
     unlockAudio();
     if (!closing && step) pause(step.id);
     dir = index >= draft.step ? 1 : -1;
+    info = false;
     draft.step = Math.max(0, Math.min(steps.length, index));
     if (draft.step < steps.length) play(steps[draft.step].id);
     scroller?.scrollTo({ top: 0 });
@@ -409,6 +424,7 @@
     }
     const won = summary?.won ?? [];
     app.saveEvent(ev);
+    celebrateFinish(steps.map((s) => stepFamily(s, app.catalog)).filter((f) => f && f !== 'pausa'));
     finished = true;
     clearLive(uid);
     ui.live = null;
@@ -417,6 +433,14 @@
   }
 
   const FEEL = ['Dura', 'Così così', 'Bene', 'Molto bene', 'Ottima'];
+
+  /** I minuti fatti (dai timer), oppure quelli previsti se i timer non sono stati usati. */
+  const doneMinutes = $derived.by(() => {
+    if (!closing) return 0;
+    const seconds = Object.values(draft.timers).reduce((n, t) => n + t.acc + (t.since ? (now - t.since) / 1000 : 0), 0);
+    return seconds >= 600 ? Math.round(seconds / 60) : draft.session.minutes;
+  });
+  const doneExercises = $derived(closing ? new Set(steps.filter((s) => s.ex && draft.timers[s.id]).map((s) => s.ex)).size : 0);
 
   // ── Nota sul colpo ──────────────────────────────────────────────────────
   /** L'ultimo esercizio fatto e il suo colpo principale, già pronti per la nota. */
@@ -448,115 +472,134 @@
   <div class="live" in:fly={{ y: 40, duration: 420, easing: cubicOut }} out:fade={{ duration: 180 }}>
     <header>
       <button class="icon-btn" onclick={leave} aria-label="Metti in pausa e chiudi"><X size={22} /></button>
-      <div class="steps" class:dense={steps.filter((x) => x.kind !== 'pause').length > 8} role="tablist" aria-label="Fasi">
+      <div class="steps" role="tablist" aria-label="Fasi">
         {#each steps as s, i (s.id)}
           {#if s.kind !== 'pause'}
-            <button class:on={i === draft.step} class:past={i < draft.step} onclick={() => goTo(i)} aria-label={s.name} role="tab" aria-selected={i === draft.step}></button>
+            <button
+              class:on={i === draft.step}
+              class:past={i < draft.step}
+              data-fam={stepFamily(s, app.catalog)}
+              style:flex-grow={s.minutes}
+              onclick={() => goTo(i)}
+              aria-label={s.name}
+              role="tab"
+              aria-selected={i === draft.step}
+            ></button>
           {/if}
         {/each}
-        <button class="end" class:on={closing} onclick={() => goTo(steps.length)} aria-label="Chiusura" role="tab" aria-selected={closing}>
-          <Check size={11} strokeWidth={3} />
-        </button>
       </div>
-      <span class="tag kind" data-color={draft.color}>{draft.title}</span>
+      <button class="end" class:on={closing} onclick={() => goTo(steps.length)} aria-label="Chiusura" role="tab" aria-selected={closing}>
+        <Check size={14} strokeWidth={3} />
+      </button>
     </header>
 
     <div class="scroll" bind:this={scroller}>
       {#key draft.step}
-        <div class="content" in:fly={{ x: 32 * dir, duration: 400, easing: cubicOut }}>
+        <div class="content" in:fly={{ x: 32 * dir, duration: 320, easing: cubicOut }}>
           {#if !closing}
             {#if flash}
-              <div class="turn" in:fly={{ y: -12, duration: 300 }} out:fade={{ duration: 300 }}>Cambio</div>
+              <div class="turn" in:fly={{ y: -12, duration: 260 }} out:fade={{ duration: 260 }}><Shuffle size={20} strokeWidth={2.6} /> Cambio</div>
             {/if}
-            <div class="clock">
-              <button class="time mono" class:over={remaining < 0} class:idle={!running} onclick={toggle} aria-label={running ? 'Pausa' : 'Avvia'}>
-                {remaining < 0 ? '+' : ''}{fmtClock(Math.abs(remaining))}
-              </button>
-              <button class="toggle" onclick={toggle} aria-hidden="true" tabindex="-1">
-                {#if running}<Pause size={22} fill="currentColor" strokeWidth={0} />{:else}<Play size={22} fill="currentColor" strokeWidth={0} />{/if}
-              </button>
-            </div>
-            <div class="bar" class:over={remaining < 0}><i style:width="{Math.min(100, (elapsed / total) * 100)}%"></i></div>
 
-            <div class="head">
-              {#if step.kind === 'exercise' && eyebrow(step)}
-                <span class="small muted">{eyebrow(step)}</span>
-              {/if}
-              <h1 class="display">{step.name}</h1>
-              {#if stepEx && (step.kind === 'exercise' || step.kind === 'serve')}
-                <div class="tools">
-                  <button class="chip mini" onclick={() => changeExercise(draft.step)}><Repeat size={14} /> Cambia esercizio</button>
-                  {#if strokeOf(stepEx)}
-                    <button class="chip mini note-btn" onclick={() => quickNote(stepEx)} aria-label="Nota sul colpo: {app.strokeName(strokeOf(stepEx))}" title="Nota sul colpo"><NotebookPen size={15} /></button>
-                  {/if}
-                </div>
-              {/if}
-            </div>
+            <!-- Il blocco in corso: grande, con il suo colore, il nome e il tempo. -->
+            <section class="now" class:rest={step.kind === 'pause'} data-fam={fam}>
+              <div class="now-top">
+                <span class="now-ico">
+                  {#if step.kind === 'pause'}<Coffee size={20} strokeWidth={2.4} />{:else}<FamIcon size={20} strokeWidth={2.4} />{/if}
+                </span>
+                <span class="now-eyebrow">{step.kind === 'exercise' ? (eyebrow(step) || FAMILY[stepEx?.family]?.name || '') : step.kind === 'pause' ? 'Bevi e riposa' : ''}</span>
+              </div>
+              <h1 class="now-name">{step.name}</h1>
+              <div class="clock">
+                <button class="time t-num" class:over={remaining < 0} class:idle={!running} onclick={toggle} aria-label={running ? 'Pausa' : 'Avvia'}>
+                  {remaining < 0 ? '+' : ''}{fmtClock(Math.abs(remaining))}
+                </button>
+                <button class="toggle raise" onclick={toggle} aria-hidden="true" tabindex="-1">
+                  {#if running}<Pause size={24} fill="currentColor" strokeWidth={0} />{:else}<Play size={24} fill="currentColor" strokeWidth={0} />{/if}
+                </button>
+              </div>
+              <div class="bar" class:over={remaining < 0}><i style:width="{Math.min(100, (elapsed / total) * 100)}%"></i></div>
+            </section>
+
+            {#if stepEx && (step.kind === 'exercise' || step.kind === 'serve')}
+              <div class="tools">
+                <button class="tool" onclick={() => changeExercise(draft.step)} aria-label="Cambia esercizio"><Shuffle size={20} /><span>Cambia</span></button>
+                {#if strokeOf(stepEx)}
+                  <button class="tool" onclick={() => quickNote(stepEx)} aria-label="Nota sul colpo: {app.strokeName(strokeOf(stepEx))}"><NotebookPen size={20} /><span>Nota</span></button>
+                {/if}
+                {#if step.kind === 'exercise'}
+                  <button class="tool" class:on={info} onclick={() => (info = !info)} aria-expanded={info} aria-label="Come si fa"><Info size={20} /><span>Come si fa</span></button>
+                {/if}
+              </div>
+            {/if}
 
             {#if canGoal}
               {@const v = draft.attempts?.[step.id]}
               {#if v && !v.closed}
                 <GoalPad exercise={stepEx} value={v} date={draft.date} onchange={(next) => (draft.attempts[step.id] = next)} onclose={() => closeGoal(step)} />
               {:else}
-                <button class="goal-btn" onclick={() => (v ? (v.closed = false) : openGoal(step))}>
-                  <Medal tier="O" on={false} size={20} />
+                {@const g = nextGoal(stepEx, app.medals[stepEx.id])}
+                <button class="goal-btn raise neutral" onclick={() => (v ? (v.closed = false) : openGoal(step))}>
+                  <MedalRing exercise={stepEx} medals={app.medals[stepEx.id]} size={52} />
                   <span class="grow">
                     <strong>{v ? 'Torna all’obiettivo' : 'Prova l’obiettivo'}</strong>
-                    {#if step.kind === 'serve'}<span class="small muted block">{stepEx.name}</span>{/if}
+                    <span class="small muted block">{g ? `${TIER[g.tier].name} · ${valueText(stepEx, g.goal, g.tier)}` : 'Tutte le medaglie prese'}</span>
                   </span>
-                  <ArrowRight size={18} />
+                  <ArrowRight size={20} />
                 </button>
               {/if}
             {/if}
 
             {#if step.kind === 'pause'}
               {@const after = steps[draft.step + 1]}
-              <p class="lead muted">Bevi e riposa. Allo zero si passa da soli al blocco dopo.</p>
               {#if after}
-                <section class="card stack g-8">
-                  <span class="small muted">Dopo la pausa · {after.minutes}′</span>
-                  <strong>{after.name}</strong>
-                </section>
+                <span class="t-caps muted">Dopo la pausa</span>
+                <Brick fam={stepFamily(after, app.catalog)} name={after.name} minutes={after.minutes} sub={after.block?.of > 1 ? `${after.block.n} di ${after.block.of}` : ''} />
               {/if}
-            {:else}
-              <StepBody
-                {step}
-                big
-                showGoal={!draft.attempts?.[step.id] || draft.attempts[step.id].closed}
-                part={matchPart}
-                onscheme={step.kind === 'match' ? (id) => pickScheme(draft.step, id) : null}
-                onmore={step.kind === 'match' ? () => moreSchemes(draft.step) : null}
-              />
+            {:else if step.kind !== 'exercise' || info}
+              <div class="body" in:fade={{ duration: 160 }}>
+                <StepBody
+                  {step}
+                  big
+                  showGoal={false}
+                  part={matchPart}
+                  onscheme={step.kind === 'match' ? (id) => pickScheme(draft.step, id) : null}
+                  onmore={step.kind === 'match' ? () => moreSchemes(draft.step) : null}
+                />
+              </div>
             {/if}
           {:else}
-            <div class="head">
-              <h1 class="display">Com’è andata?</h1>
+            <h1 class="t-title">Com’è andata?</h1>
+
+            <div class="stats">
+              <div class="stat"><Timer size={20} strokeWidth={2.4} /><b class="t-num">{doneMinutes}</b><span>minuti</span></div>
+              <div class="stat"><ListChecks size={20} strokeWidth={2.4} /><b class="t-num">{doneExercises}</b><span>{doneExercises === 1 ? 'esercizio' : 'esercizi'}</span></div>
+              <div class="stat"><Target size={20} strokeWidth={2.4} /><b class="t-num">{summary?.attempts.length ?? 0}</b><span>{summary?.attempts.length === 1 ? 'misura' : 'misure'}</span></div>
             </div>
 
             {#if summary?.won.length}
-              <section class="card flush list">
-                {#each summary.won as w (w.ex + w.tier + (w.half ? 'h' : ''))}
+              <section class="won-grid">
+                {#each summary.won as w, i (w.ex + w.tier + (w.half ? 'h' : ''))}
                   {@const ex = app.catalog.exercise(w.ex)}
-                  <div class="res won" data-tier={w.tier}>
-                    <Medal tier={w.tier} half={w.half} size={30} pop />
-                    <div class="grow">
-                      <strong>{w.half ? 'Metà oro' : TIER[w.tier].name}</strong>
-                      <p class="small muted">{ex?.name}</p>
-                    </div>
+                  <div class="won" data-medal={w.tier} style:animation-delay="{i * 90}ms">
+                    <span class="won-disc" class:half={w.half}></span>
+                    <strong>{w.half ? 'Metà oro' : TIER[w.tier].name}</strong>
+                    <span class="small muted">{ex?.name}</span>
                   </div>
                 {/each}
               </section>
             {/if}
 
             {#if summary?.attempts.length}
-              <section class="stack g-8">
-                <h2 class="heading">Misure di oggi</h2>
+              <section class="group">
+                <h2 class="t-caps muted">Misure di oggi</h2>
                 <div class="card flush list">
                   {#each summary.attempts as a, i (i)}
                     {@const ex = app.catalog.exercise(a.ex)}
-                    <div class="res">
+                    <div class="res" data-fam={ex?.family}>
+                      <i class="fam-dot"></i>
                       <span class="grow">{ex?.name}</span>
-                      <span class="mono small">{valueText(ex, a.tries.slice(0, ex?.measure?.type === 'fila' || ex?.measure?.type === 'tempo' ? 3 : 1).reduce((best, x) => (size(x) > size(best) ? x : best)), a.tier)}</span>
+                      <span class="t-num small">{valueText(ex, a.tries.slice(0, ex?.measure?.type === 'fila' || ex?.measure?.type === 'tempo' ? 3 : 1).reduce((best, x) => (size(x) > size(best) ? x : best)), a.tier)}</span>
                     </div>
                   {/each}
                 </div>
@@ -565,54 +608,57 @@
               <p class="muted">Nessuna misura registrata.</p>
             {/if}
 
-            {#if draft.mode === 'test'}
-              <button class="btn ghost self" onclick={addExercise}><Plus size={16} /> Aggiungi un esercizio</button>
+            {#if draft.mode === 'test' || canSave}
+              <div class="row g-8 wrap">
+                {#if draft.mode === 'test'}
+                  <button class="btn ghost small" onclick={addExercise}><Plus size={16} /> Aggiungi un esercizio</button>
+                {/if}
+                {#if canSave}
+                  <button class="btn ghost small" onclick={saveMine}><Save size={16} /> Salva come mio</button>
+                {/if}
+              </div>
             {/if}
 
-            {#if canSave}
-              <button class="btn ghost self" onclick={saveMine}><Save size={16} /> Salva come mio</button>
-            {/if}
-
-            <section class="stack g-12">
-              <h2 class="heading">Nota sul colpo</h2>
-              <button class="btn ghost self" onclick={addNote}>
-                <Plus size={16} /> {lastDone?.stroke ? app.strokeName(lastDone.stroke) : 'Aggiungi nota'}
-              </button>
-              {#if sessionNotes}<p class="small muted">{sessionNotes === 1 ? '1 nota salvata' : `${sessionNotes} note salvate`}</p>{/if}
-            </section>
-
-            <section class="stack g-12">
-              <h2 class="heading">Con chi ti sei allenato</h2>
-              <PartnerField value={draft.partner ?? null} onchange={(p) => (draft.partner = p)} />
-            </section>
-
-            <section class="stack g-12">
-              <h2 class="heading">Sensazione</h2>
+            <section class="group">
+              <h2 class="t-caps muted">Sensazione</h2>
               <div class="feel" role="radiogroup" aria-label="Sensazione">
                 {#each FEEL as label, i (label)}
                   <button
                     role="radio"
                     aria-checked={draft.feel === i + 1}
-                    class:on={draft.feel === i + 1}
-                    class:under={draft.feel != null && i + 1 < draft.feel}
+                    class:on={draft.feel != null && i + 1 <= draft.feel}
+                    style:--h="{30 + i * 14}%"
                     onclick={() => {
                       buzz();
                       draft.feel = draft.feel === i + 1 ? null : i + 1;
                     }}
                     aria-label={label}
-                  ></button>
+                  ><i></i></button>
                 {/each}
               </div>
               <p class="small muted feel-label">{draft.feel ? FEEL[draft.feel - 1] : ' '}</p>
             </section>
 
-            <section class="stack g-12">
-              <h2 class="heading">Da correggere la prossima volta</h2>
+            <section class="group">
+              <h2 class="t-caps muted">Con chi</h2>
+              <PartnerField value={draft.partner ?? null} onchange={(p) => (draft.partner = p)} />
+            </section>
+
+            <section class="group">
+              <h2 class="t-caps muted">Nota sul colpo</h2>
+              <button class="btn ghost self" onclick={addNote}>
+                <NotebookPen size={16} /> {lastDone?.stroke ? app.strokeName(lastDone.stroke) : 'Aggiungi nota'}
+              </button>
+              {#if sessionNotes}<p class="small muted">{sessionNotes === 1 ? '1 nota salvata' : `${sessionNotes} note salvate`}</p>{/if}
+            </section>
+
+            <section class="group">
+              <h2 class="t-caps muted">Da correggere la prossima volta</h2>
               <FocusEditor value={draft.focus} onchange={(v) => (draft.focus = v)} />
             </section>
 
-            <section class="stack g-12">
-              <h2 class="heading">Note</h2>
+            <section class="group">
+              <h2 class="t-caps muted">Note</h2>
               <textarea class="field" placeholder="Cosa ha funzionato, cosa no" bind:value={draft.note}></textarea>
             </section>
           {/if}
@@ -622,18 +668,20 @@
 
     <footer>
       {#if draft.step > 0}
-        <button class="icon-btn back" onclick={() => goTo(steps[draft.step - 1]?.kind === 'pause' ? draft.step - 2 : draft.step - 1)} aria-label="Fase precedente"><ArrowLeft size={20} /></button>
+        <button class="round back" onclick={() => goTo(steps[draft.step - 1]?.kind === 'pause' ? draft.step - 2 : draft.step - 1)} aria-label="Fase precedente"><ArrowLeft size={22} /></button>
       {/if}
       {#if closing}
-        <button class="btn accent grow" onclick={finish}><Check size={18} strokeWidth={2.4} /> Salva nel diario</button>
+        <button class="go raise accent grow" onclick={finish}><Check size={20} strokeWidth={2.6} /> Salva nel diario</button>
       {:else if draft.step === steps.length - 1}
-        <button class="btn primary grow" onclick={() => goTo(steps.length)}>Chiudi la sessione <ArrowRight size={18} /></button>
+        <button class="go raise grow" onclick={() => goTo(steps.length)}>Chiudi la sessione <ArrowRight size={20} /></button>
       {:else if step.kind === 'pause'}
-        <button class="btn primary grow" onclick={() => goTo(draft.step + 1)}>Salta la pausa <ArrowRight size={18} /></button>
+        <button class="go raise grow" onclick={() => goTo(draft.step + 1)}>Salta la pausa <ArrowRight size={20} /></button>
       {:else}
-        <button class="btn primary grow" onclick={() => goTo(draft.step + 1)}>
-          <span class="next">{nextBlock(draft.step)?.name}</span>
-          <ArrowRight size={18} />
+        {@const nb = nextBlock(draft.step)}
+        <button class="go raise grow" onclick={() => goTo(draft.step + 1)}>
+          <i class="next-dot" data-fam={stepFamily(nb, app.catalog)}></i>
+          <span class="next">{nb?.name}</span>
+          <ArrowRight size={20} />
         </button>
       {/if}
     </footer>
@@ -649,90 +697,58 @@
     flex-direction: column;
     background: var(--paper);
   }
+
+  /* ── In alto: chiudi, i blocchi come segmenti colorati, la chiusura ── */
   header {
     flex: none;
-    display: grid;
-    grid-template-columns: 48px 1fr auto;
-    align-items: center;
-    padding: calc(env(safe-area-inset-top) + 8px) 12px 8px;
-  }
-  header .tag {
-    justify-self: end;
-    margin-right: 6px;
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  header .tag.kind {
-    background: color-mix(in srgb, var(--c) 16%, var(--card));
-    color: var(--c);
-  }
-  .steps {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
+    gap: 8px;
+    padding: calc(env(safe-area-inset-top) + 8px) 14px 8px 8px;
+  }
+  .steps {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 36px;
   }
   .steps button {
-    width: 22px;
-    height: 22px;
-    display: grid;
-    place-items: center;
-    color: transparent;
-  }
-  .steps button::before {
-    content: '';
-    width: 8px;
+    flex-basis: 0;
+    min-width: 6px;
     height: 8px;
     border-radius: 4px;
-    background: var(--line-strong);
+    background: color-mix(in srgb, var(--f) 42%, var(--sunk));
     transition:
-      width 0.4s var(--spring),
-      background 0.3s var(--ease);
+      height var(--dur) var(--spring),
+      background var(--dur) var(--ease);
   }
-  .steps button.past::before {
-    background: var(--ink);
+  .steps button.past {
+    background: var(--f);
   }
-  .steps button.on::before {
-    width: 22px;
-    background: var(--accent);
-  }
-  /* Con tanti esercizi (i pacchetti) i pallini si stringono e vanno a capo, senza uscire dallo schermo. */
-  .steps {
-    min-width: 0;
-    flex-wrap: wrap;
-  }
-  .steps.dense {
-    gap: 0;
-  }
-  .steps.dense button {
-    width: 12px;
+  .steps button.on {
     height: 18px;
+    background: var(--f);
+    box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--f);
   }
-  .steps.dense button::before {
-    width: 6px;
-    height: 6px;
-  }
-  .steps.dense button.on::before {
-    width: 10px;
-  }
-  .steps .end::before {
-    display: none;
-  }
-  .steps .end {
-    width: 18px;
-    height: 18px;
+  .end {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
-    box-shadow: inset 0 0 0 1.5px var(--line-strong);
+    box-shadow: inset 0 0 0 2px var(--line-strong);
     color: var(--ink-3);
     transition:
-      background 0.3s var(--ease),
-      color 0.3s var(--ease);
+      background var(--dur) var(--ease),
+      color var(--dur) var(--ease);
   }
-  .steps .end.on {
+  .end.on {
     background: var(--accent);
     box-shadow: none;
-    color: #15171a;
+    color: #fff;
   }
 
   .scroll {
@@ -745,151 +761,314 @@
   .content {
     max-width: 560px;
     margin: 0 auto;
-    padding: 8px 24px 32px;
+    padding: 8px 20px 32px;
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 16px;
   }
 
   .turn {
-    align-self: center;
-    padding: 6px 18px;
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 64px);
+    left: 50%;
+    translate: -50% 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
     border-radius: 999px;
-    background: var(--accent);
-    color: #15171a;
-    font-weight: 650;
-    font-size: 18px;
-    margin-bottom: -8px;
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 800;
+    font-size: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  /* ── Il blocco in corso ── */
+  .now {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 18px 20px 20px;
+    border-radius: var(--r-brick);
+    background: var(--f);
+    color: var(--f-on);
+    box-shadow: 0 var(--edge) 0 var(--f-edge);
+  }
+  .now.rest {
+    background: var(--card);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    box-shadow: none;
+  }
+  .now-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 36px;
+  }
+  .now-ico {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--f-on) 16%, transparent);
+  }
+  .now.rest .now-ico {
+    background: var(--sunk);
+  }
+  .now-eyebrow {
+    font-size: 14px;
+    font-weight: 700;
+    opacity: 0.88;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .now-name {
+    margin: 2px 0 0;
+    font-size: clamp(26px, 7.4vw, 34px);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
   }
   .clock {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    margin-bottom: -12px;
+    gap: 12px;
+    margin-top: 6px;
   }
   .time {
-    font-size: clamp(64px, 21vw, 96px);
-    font-weight: 480;
+    font-size: clamp(64px, 22vw, 96px);
+    font-weight: 600;
     line-height: 1;
     letter-spacing: -0.06em;
-    transition:
-      color 0.3s var(--ease),
-      opacity 0.3s var(--ease);
+    color: inherit;
+    transition: opacity var(--dur) var(--ease);
   }
   .time.idle {
-    opacity: 0.45;
-  }
-  .time.over {
-    color: var(--accent);
+    opacity: 0.5;
   }
   .toggle {
+    --edge-c: color-mix(in srgb, var(--f-on) 40%, var(--f-edge));
     display: grid;
     place-items: center;
     flex: none;
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    background: var(--sunk);
-    color: var(--ink);
-    transition: transform 0.35s var(--spring);
+    background: var(--f-on);
+    color: var(--f);
   }
-  .toggle:active {
-    transform: scale(0.9);
+  .now.rest .toggle {
+    --edge-c: var(--line-strong);
+    background: var(--ink);
+    color: var(--paper);
   }
   .bar {
-    height: 4px;
-    border-radius: 2px;
-    background: var(--line);
+    height: 8px;
+    margin-top: 10px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--f-on) 22%, transparent);
     overflow: hidden;
+  }
+  .now.rest .bar {
+    background: var(--sunk);
   }
   .bar i {
     display: block;
     height: 100%;
-    border-radius: 2px;
-    background: var(--ink);
+    border-radius: 4px;
+    background: var(--f-on);
     transition: width 0.3s linear;
+  }
+  .now.rest .bar i {
+    background: var(--ink);
   }
   .bar.over i {
     background: var(--accent);
   }
 
-  .head {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .head .display {
-    font-size: clamp(30px, 8vw, 38px);
-  }
-
-  .self {
-    align-self: flex-start;
-  }
-  strong {
-    font-weight: 580;
-  }
-  .block {
-    display: block;
-  }
+  /* ── Strumenti dell'esercizio ── */
   .tools {
     display: flex;
-    flex-wrap: wrap;
     gap: 8px;
   }
-  .note-btn {
-    padding-inline: 12px;
+  .tool {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 4px 8px;
+    border-radius: 16px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    font-size: 12.5px;
+    font-weight: 650;
+    transition:
+      transform var(--dur-fast) var(--ease),
+      background var(--dur) var(--ease);
   }
+  .tool:active {
+    transform: scale(0.95);
+  }
+  .tool.on {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
   .goal-btn {
     display: flex;
     align-items: center;
     gap: 14px;
     width: 100%;
-    padding: 16px 18px;
-    border-radius: var(--r);
+    padding: 12px 18px 12px 12px;
+    border-radius: var(--r-card);
     border: 1px solid var(--line);
     background: var(--card);
     text-align: left;
-    transition:
-      transform 0.3s var(--spring),
-      border-color 0.2s var(--ease);
   }
-  .goal-btn:active {
-    transform: scale(0.98);
+  .goal-btn strong {
+    font-size: 18px;
+    font-weight: 750;
   }
-  .goal-btn :global(svg) {
+  .goal-btn :global(.lucide-arrow-right) {
     color: var(--ink-3);
   }
+  .body {
+    padding: 2px 2px 0;
+  }
 
+  /* ── Chiusura ── */
+  .t-title {
+    margin: 4px 0 0;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 14px 14px 12px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--accent-ink);
+  }
+  .stat b {
+    margin-top: 6px;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .stat span {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .won-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .won {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 16px 10px 14px;
+    border-radius: var(--r-card);
+    background: color-mix(in srgb, var(--md) 18%, var(--card));
+    border: 1.5px solid color-mix(in srgb, var(--md) 50%, var(--line));
+    text-align: center;
+    animation: rise 0.5s var(--ease-out) both;
+  }
+  .won strong {
+    font-size: 17px;
+    font-weight: 750;
+  }
+  .won-disc {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, color-mix(in srgb, #fff 50%, var(--md)), var(--md) 64%);
+    box-shadow: 0 3px 0 color-mix(in srgb, #000 22%, var(--md));
+    animation: medal-in 0.75s var(--spring) both;
+    animation-delay: inherit;
+  }
+  .won-disc.half {
+    background: linear-gradient(90deg, var(--md) 50%, var(--medal-none) 50%);
+  }
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .group h2 {
+    margin: 6px 0 0;
+  }
   .res {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 14px 18px;
-    animation: rise 0.5s var(--ease-out) both;
+    gap: 12px;
+    padding: 13px 16px;
   }
-  .res.won {
-    background: color-mix(in srgb, var(--m) 14%, var(--card));
+  .fam-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--f);
+    flex: none;
+  }
+  .wrap {
+    flex-wrap: wrap;
+  }
+  .self {
+    align-self: flex-start;
+  }
+  strong {
+    font-weight: 650;
+  }
+  .block {
+    display: block;
   }
 
   .feel {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
+    gap: 8px;
+    height: 64px;
   }
   .feel button {
-    height: 40px;
-    border-radius: 10px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 14px;
     background: var(--sunk);
-    transition:
-      background 0.25s var(--ease),
-      transform 0.35s var(--spring);
+    transition: transform var(--dur) var(--spring);
   }
-  .feel button.under {
-    background: color-mix(in srgb, var(--ink) 35%, var(--sunk));
+  .feel button i {
+    width: 100%;
+    height: var(--h);
+    border-radius: 6px;
+    background: var(--line-strong);
+    transition: background var(--dur) var(--ease);
   }
-  .feel button.on {
-    background: var(--ink);
+  .feel button.on i {
+    background: var(--accent);
   }
   .feel button:active {
     transform: scale(0.92);
@@ -899,6 +1078,7 @@
     min-height: 19px;
   }
 
+  /* ── In basso ── */
   footer {
     flex: none;
     display: flex;
@@ -907,19 +1087,43 @@
     max-width: 560px;
     width: 100%;
     margin: 0 auto;
-    padding: 12px 24px calc(env(safe-area-inset-bottom) + 16px);
-  }
-  footer .btn {
-    height: 56px;
-    font-size: 16px;
+    padding: 10px 20px calc(env(safe-area-inset-bottom) + 18px);
   }
   .back {
-    width: 56px;
-    height: 56px;
-    box-shadow: inset 0 0 0 1px var(--line-strong);
+    width: 60px;
+    height: 60px;
+  }
+  .go {
+    --edge-c: color-mix(in srgb, var(--ink) 55%, #000);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 60px;
+    padding: 0 20px;
+    border-radius: 20px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 17px;
+    font-weight: 700;
+    min-width: 0;
+  }
+  .go.accent {
+    --edge-c: color-mix(in srgb, var(--accent) 62%, #000);
+    background: var(--accent);
+    color: #fff;
+  }
+  .next-dot {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--f);
+    box-shadow: 0 0 0 2px var(--paper);
   }
   .next {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
 </style>

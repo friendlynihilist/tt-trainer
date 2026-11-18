@@ -25,7 +25,9 @@
   import { TIER, TIERS, TRIES_PER_DAY } from '../data/library.js';
   import { medalsFor, dayValues, valueText, size } from '../engine/medals.js';
   import { chime } from '../util/device.js';
+  import { celebrateMedal } from '../util/celebrate.js';
   import Medal from './Medal.svelte';
+  import MedalRing from './MedalRing.svelte';
   import TestPad from './TestPad.svelte';
   import Counter from './Counter.svelte';
 
@@ -49,10 +51,7 @@
   let celebrated = 0;
   $effect(() => {
     const n = gained.length + (halfNew ? 1 : 0);
-    if (n > celebrated) {
-      if (app.settings.sound) chime([784, 988, 1318, 1568]);
-      if (app.settings.haptics) buzz([30, 60, 30, 60, 80]);
-    }
+    if (n > celebrated) celebrateMedal(gained.at(-1) ?? 'O');
     celebrated = n;
   });
 
@@ -96,16 +95,16 @@
   const QUALITY = [0, 1, 2, 3, 4, 5];
 </script>
 
-<section class="card goal" data-tier={goal?.tier ?? 'O'}>
+<section class="card goal" data-medal={goal?.tier ?? 'P'}>
   <header>
     {#if goal}
-      <Medal tier={goal.tier} on={false} half={goal.half} size={26} />
+      <MedalRing {exercise} medals={after} size={48} />
       <div class="grow">
         <strong>Raggiungi {TIER[goal.tier].the}!</strong>
         <p class="small muted">{valueText(exercise, goal.goal, goal.tier)}{goal.half ? '. Ti manca un’altra seduta' : ''}</p>
       </div>
     {:else}
-      <Medal tier="P" size={26} />
+      <MedalRing {exercise} medals={after} size={48} />
       <div class="grow">
         <strong>Tutte le medaglie prese</strong>
         <p class="small muted">Misurati lo stesso: il record resta tuo.</p>
@@ -152,7 +151,6 @@
       <button class="btn primary" onclick={addTry} disabled={value.cur == null}>
         {per > 1 ? `Registra il ${value.tries.length + 1}° tentativo` : 'Registra'}
       </button>
-      {#if m.type === 'fila'}<p class="small faint">Se sbaglia il compagno, il tentativo non conta: ripetilo.</p>{/if}
     {:else if per > 1}
       <p class="small muted">Tre tentativi fatti: vale il migliore.</p>
     {/if}
@@ -161,13 +159,13 @@
   {#if pending}
     <div class="outcome">
       {#each gained as t (t)}
-        <div class="won" data-tier={t}>
+        <div class="won" data-tier={t} data-medal={t}>
           <Medal tier={t} size={40} pop />
           <strong>{TIER[t].name}!</strong>
         </div>
       {/each}
       {#if halfNew}
-        <div class="won" data-tier="O">
+        <div class="won" data-tier="O" data-medal="O">
           <Medal tier="O" half size={40} pop />
           <span><strong>Metà oro.</strong> Ti serve un’altra seduta, in un altro giorno.</span>
         </div>
@@ -196,7 +194,8 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
-    border-color: color-mix(in srgb, var(--m) 45%, var(--line));
+    border: 2px solid color-mix(in srgb, var(--md) 55%, var(--line));
+    border-radius: var(--r-card);
   }
   header {
     display: flex;
@@ -204,8 +203,9 @@
     gap: 12px;
   }
   header strong {
-    font-size: 17px;
-    font-weight: 600;
+    font-size: 19px;
+    font-weight: 750;
+    letter-spacing: -0.01em;
   }
   .result,
   .tries {
@@ -254,7 +254,7 @@
     gap: 14px;
     padding: 12px 14px;
     border-radius: var(--r-s);
-    background: color-mix(in srgb, var(--m) 16%, var(--card));
+    background: color-mix(in srgb, var(--md) 20%, var(--card));
     animation: rise 0.45s var(--ease-out) both;
   }
   .won strong {

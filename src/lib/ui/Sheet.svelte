@@ -5,7 +5,8 @@
   import { cubicOut } from 'svelte/easing';
   import X from '@lucide/svelte/icons/x';
 
-  let { title = '', onclose, children, footer = null, tall = false } = $props();
+  // sans: titolo in Geist, come nelle schermate rifatte (docs/design.md).
+  let { title = '', onclose, children, footer = null, tall = false, sans = false } = $props();
 
   let drag = $state(0);
   let dragging = $state(false);
@@ -46,7 +47,7 @@
     <span></span>
   </div>
   <header>
-    <h2 class="title">{title}</h2>
+    <h2 class={sans ? 't-title sheet-sans' : 'title'}>{title}</h2>
     <button class="icon-btn" onclick={onclose} aria-label="Chiudi"><X size={20} /></button>
   </header>
   <div class="body">
@@ -84,6 +85,10 @@
   }
   .sheet.tall {
     height: 92dvh;
+  }
+  .sheet-sans {
+    margin: 0;
+    font-size: 24px;
   }
   .grip {
     display: grid;
@@ -138,7 +143,11 @@
     .sheet.tall {
       height: min(760px, calc(100dvh - 64px));
     }
-    .grip {
+    .sheet-sans {
+    margin: 0;
+    font-size: 24px;
+  }
+  .grip {
       display: none;
     }
     header {

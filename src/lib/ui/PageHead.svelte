@@ -5,7 +5,7 @@
   import { app } from '../store/app.svelte.js';
   import Avatar from './Avatar.svelte';
 
-  let { eyebrow = '', title, sub = '', children = null, actions = true } = $props();
+  let { eyebrow = '', title, sub = '', children = null, actions = true, sans = false } = $props();
 </script>
 
 <header class="head">
@@ -20,12 +20,16 @@
       </span>
     {/if}
   </div>
-  <h1 class="display">{title}</h1>
+  <h1 class={sans ? 't-title big' : 'display'}>{title}</h1>
   {#if sub}<p class="lead muted sub">{sub}</p>{/if}
   {#if children}{@render children()}{/if}
 </header>
 
 <style>
+  .t-title.big {
+    font-size: 34px;
+    margin: 0;
+  }
   .top {
     display: flex;
     align-items: center;

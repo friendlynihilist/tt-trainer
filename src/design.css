@@ -1,0 +1,220 @@
+/* Terza palla: le regole grafiche del rifacimento (docs/design.md).
+   Colori delle famiglie e dei livelli, medaglie, rilievo, durate, caratteri.
+   Valgono per le schermate rifatte; le altre usano ancora app.css. */
+
+:root {
+  /* Famiglie di esercizi: pieno e testo sopra il pieno. */
+  --fam-servizio: #e9a800;
+  --fam-servizio-on: #2a1d00;
+  --fam-ricezione: #0e9f8e;
+  --fam-ricezione-on: #ffffff;
+  --fam-palleggio: #0a8fd6;
+  --fam-palleggio-on: #ffffff;
+  --fam-attacco: #e5383b;
+  --fam-attacco-on: #ffffff;
+  --fam-controllo: #8e44ec;
+  --fam-controllo-on: #ffffff;
+  --fam-taglio: #3d5afe;
+  --fam-taglio-on: #ffffff;
+  --fam-gambe: #23a047;
+  --fam-gambe-on: #ffffff;
+  --fam-schemi: #d63384;
+  --fam-schemi-on: #ffffff;
+  --fam-partita: #ec5b13;
+  --fam-partita-on: #ffffff;
+  --fam-libero: #6b7280;
+  --fam-libero-on: #ffffff;
+  /* Quanto scurire il pieno per scriverci sopra il testo su fondo chiaro. */
+  --ink-mix: 74%;
+
+  /* Livelli, come le cinture. */
+  --lv-principiante: #1f9d55;
+  --lv-intermedio: #1e6fe0;
+  --lv-avanzato: #7c3aed;
+  --lv-esperto: #dc2626;
+  --lv-pro: #16181d;
+  --lv-on-all: #ffffff;
+
+  /* Medaglie. */
+  --medal-B: #c27a3a;
+  --medal-A: #8c99a8;
+  --medal-O: #d99a00;
+  --medal-P: #2f9dbe;
+  --medal-none: #c9ccd1;
+
+  /* Movimento. */
+  --dur-fast: 120ms;
+  --dur: 220ms;
+  --dur-slow: 380ms;
+
+  --r-brick: 24px;
+  --r-card: 20px;
+  --edge: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --fam-servizio: #ffc83d;
+    --fam-servizio-on: #2a1d00;
+    --fam-ricezione: #2dd4bf;
+    --fam-ricezione-on: #052a25;
+    --fam-palleggio: #38bdf8;
+    --fam-palleggio-on: #04263a;
+    --fam-attacco: #ff6b6b;
+    --fam-attacco-on: #3a0707;
+    --fam-controllo: #c084fc;
+    --fam-controllo-on: #2a0b45;
+    --fam-taglio: #7b93ff;
+    --fam-taglio-on: #0b1240;
+    --fam-gambe: #4ade80;
+    --fam-gambe-on: #052e16;
+    --fam-schemi: #f472b6;
+    --fam-schemi-on: #3b0a24;
+    --fam-partita: #ff7a36;
+    --fam-partita-on: #2a1000;
+    --fam-libero: #9ca3af;
+    --fam-libero-on: #111317;
+    --ink-mix: 100%;
+    --lv-principiante: #4ade80;
+    --lv-intermedio: #60a5fa;
+    --lv-avanzato: #b794f6;
+    --lv-esperto: #f87171;
+    --lv-pro: #f4f4f5;
+    --lv-on-all: #0b0d10;
+    --medal-B: #e39a5e;
+    --medal-A: #cbd5e1;
+    --medal-O: #fcd34d;
+    --medal-P: #7dd3fc;
+    --medal-none: #3b4048;
+  }
+}
+
+:root[data-theme='dark'] {
+  --fam-servizio: #ffc83d;
+  --fam-servizio-on: #2a1d00;
+  --fam-ricezione: #2dd4bf;
+  --fam-ricezione-on: #052a25;
+  --fam-palleggio: #38bdf8;
+  --fam-palleggio-on: #04263a;
+  --fam-attacco: #ff6b6b;
+  --fam-attacco-on: #3a0707;
+  --fam-controllo: #c084fc;
+  --fam-controllo-on: #2a0b45;
+  --fam-taglio: #7b93ff;
+  --fam-taglio-on: #0b1240;
+  --fam-gambe: #4ade80;
+  --fam-gambe-on: #052e16;
+  --fam-schemi: #f472b6;
+  --fam-schemi-on: #3b0a24;
+  --fam-partita: #ff7a36;
+  --fam-partita-on: #2a1000;
+  --fam-libero: #9ca3af;
+  --fam-libero-on: #111317;
+  --ink-mix: 100%;
+  --lv-principiante: #4ade80;
+  --lv-intermedio: #60a5fa;
+  --lv-avanzato: #b794f6;
+  --lv-esperto: #f87171;
+  --lv-pro: #f4f4f5;
+  --lv-on-all: #0b0d10;
+  --medal-B: #e39a5e;
+  --medal-A: #cbd5e1;
+  --medal-O: #fcd34d;
+  --medal-P: #7dd3fc;
+  --medal-none: #3b4048;
+}
+
+/* ── Famiglie: --f pieno, --f-on testo sopra, --f-soft sfondo, --f-edge rilievo, --f-ink testo ── */
+
+[data-fam] {
+  --f: var(--fam-libero);
+  --f-on: var(--fam-libero-on);
+}
+[data-fam='servizio'] { --f: var(--fam-servizio); --f-on: var(--fam-servizio-on); }
+[data-fam='ricezione'] { --f: var(--fam-ricezione); --f-on: var(--fam-ricezione-on); }
+[data-fam='palleggio'] { --f: var(--fam-palleggio); --f-on: var(--fam-palleggio-on); }
+[data-fam='attacco'] { --f: var(--fam-attacco); --f-on: var(--fam-attacco-on); }
+[data-fam='controllo'] { --f: var(--fam-controllo); --f-on: var(--fam-controllo-on); }
+[data-fam='taglio'] { --f: var(--fam-taglio); --f-on: var(--fam-taglio-on); }
+[data-fam='gambe'] { --f: var(--fam-gambe); --f-on: var(--fam-gambe-on); }
+[data-fam='schemi'] { --f: var(--fam-schemi); --f-on: var(--fam-schemi-on); }
+[data-fam='partita'] { --f: var(--fam-partita); --f-on: var(--fam-partita-on); }
+[data-fam] {
+  --f-soft: color-mix(in srgb, var(--f) 15%, var(--card));
+  --f-edge: color-mix(in srgb, var(--f) 70%, #000);
+  --f-ink: color-mix(in srgb, var(--f) var(--ink-mix), #000);
+}
+
+/* ── Livelli ─────────────────────────────────────────────────────────────── */
+
+[data-level] { --lv: var(--lv-principiante); --lv-on: var(--lv-on-all); }
+[data-level='intermedio'] { --lv: var(--lv-intermedio); }
+[data-level='avanzato'] { --lv: var(--lv-avanzato); }
+[data-level='esperto'] { --lv: var(--lv-esperto); }
+[data-level='pro'] { --lv: var(--lv-pro); }
+
+/* ── Medaglie ────────────────────────────────────────────────────────────── */
+
+[data-medal] { --md: var(--medal-none); }
+[data-medal='B'] { --md: var(--medal-B); }
+[data-medal='A'] { --md: var(--medal-A); }
+[data-medal='O'] { --md: var(--medal-O); }
+[data-medal='P'] { --md: var(--medal-P); }
+
+/* ── Rilievo: le cose che si toccano hanno un bordo inferiore e scendono quando le premi ── */
+
+.raise {
+  --edge-c: var(--f-edge, color-mix(in srgb, var(--accent) 70%, #000));
+  box-shadow: 0 var(--edge) 0 var(--edge-c);
+  transform: translateY(0);
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.raise:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--edge-c);
+}
+.raise.neutral {
+  --edge-c: var(--line-strong);
+}
+
+/* ── Caratteri ───────────────────────────────────────────────────────────── */
+
+.t-title {
+  font-family: var(--sans);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+.t-name {
+  font-family: var(--sans);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+.t-caps {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.t-num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Icone tonde da toccare (senza testo: hanno sempre aria-label). */
+.round {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
