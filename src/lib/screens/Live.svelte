@@ -15,6 +15,7 @@
   import Repeat from '@lucide/svelte/icons/repeat-2';
   import Plus from '@lucide/svelte/icons/plus';
   import Save from '@lucide/svelte/icons/save';
+  import NotebookPen from '@lucide/svelte/icons/notebook-pen';
   import { app, newId } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
   import { loadLive, saveLive, clearLive } from '../store/live.js';
@@ -426,6 +427,17 @@
   });
   const sessionNotes = $derived(draft?.newId ? app.notes.filter((n) => n.eventId === draft.newId).length : 0);
 
+  /** Il colpo principale di un esercizio (il primo che esiste fra i colpi). */
+  function strokeOf(ex) {
+    return ex?.strokes?.find((id) => app.stroke(id)) ?? null;
+  }
+
+  /** Durante la sessione: una nota veloce (testo e sensazione) sul colpo dell'esercizio in corso. */
+  function quickNote(ex) {
+    draft.newId ??= draft.eventId ?? newId();
+    ui.open('note', { quick: true, draft: { stroke: strokeOf(ex), ex: ex.id, date: draft.date, eventId: draft.newId } });
+  }
+
   function addNote() {
     draft.newId ??= draft.eventId ?? newId();
     ui.open('note', { draft: { stroke: lastDone?.stroke ?? null, ex: lastDone?.ex ?? null, date: draft.date, eventId: draft.newId } });
@@ -474,6 +486,9 @@
               {#if stepEx && (step.kind === 'exercise' || step.kind === 'serve')}
                 <div class="tools">
                   <button class="chip mini" onclick={() => changeExercise(draft.step)}><Repeat size={14} /> Cambia esercizio</button>
+                  {#if strokeOf(stepEx)}
+                    <button class="chip mini note-btn" onclick={() => quickNote(stepEx)} aria-label="Nota sul colpo: {app.strokeName(strokeOf(stepEx))}" title="Nota sul colpo"><NotebookPen size={15} /></button>
+                  {/if}
                 </div>
               {/if}
             </div>
@@ -821,6 +836,9 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+  .note-btn {
+    padding-inline: 12px;
   }
   .goal-btn {
     display: flex;

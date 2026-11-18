@@ -16,7 +16,7 @@ export const CHANGELOG = [
     items: [
       { icon: 'pencil', text: 'Per ogni colpo scrivi come lo senti e cosa vuoi migliorare, con una sensazione da 1 a 5.' },
       { icon: 'gauge', text: 'Nella scheda del colpo trovi l’ultima sensazione e la media delle ultime cinque.' },
-      { icon: 'swords', text: 'A fine sessione aggiungi una nota al colpo dell’esercizio appena fatto.' },
+      { icon: 'swords', text: 'Durante la sessione, su ogni esercizio, scrivi subito una nota sul colpo che stai allenando.' },
       { icon: 'users', text: 'Le note sono solo tue. Le trovi anche nel CSV e nella copia completa.' }
     ]
   },

@@ -1,6 +1,7 @@
 <script>
   // Una nota sul colpo: come lo senti, cosa migliorare. Testo libero, sensazione da 1 a 5,
-  // e se vuoi l'esercizio in cui è nata.
+  // e se vuoi l'esercizio in cui è nata. Con `quick` (durante la sessione) solo testo e sensazione:
+  // colpo, esercizio e data sono già quelli dell'esercizio in corso.
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import Trash from '@lucide/svelte/icons/trash';
   import { app } from '../store/app.svelte.js';
@@ -11,7 +12,7 @@
   import { pickStroke, pickExercise } from '../ui/pickers.js';
   import Sheet from '../ui/Sheet.svelte';
 
-  let { id = null, draft = null, onsaved = null } = $props();
+  let { id = null, draft = null, onsaved = null, quick = false } = $props();
 
   const original = id ? (app.notes.find((n) => n.id === id) ?? null) : null;
   const base = original ?? { date: app.today, text: '', feel: null, ...draft };
@@ -47,12 +48,14 @@
   }
 </script>
 
-<Sheet title={original ? 'Modifica nota' : 'Nota sul colpo'} onclose={() => ui.close()} tall>
+<Sheet title={quick ? app.strokeName(stroke) : original ? 'Modifica nota' : 'Nota sul colpo'} onclose={() => ui.close()} tall={!quick}>
   <div class="stack g-16">
-    <button class="select" class:empty={!stroke} onclick={() => pickStroke({ value: stroke, onpick: (s) => s && (stroke = s) })}>
-      <span class="grow">{stroke ? app.strokeName(stroke) : 'Scegli il colpo'}</span>
-      <ChevronDown size={18} />
-    </button>
+    {#if !quick}
+      <button class="select" class:empty={!stroke} onclick={() => pickStroke({ value: stroke, onpick: (s) => s && (stroke = s) })}>
+        <span class="grow">{stroke ? app.strokeName(stroke) : 'Scegli il colpo'}</span>
+        <ChevronDown size={18} />
+      </button>
+    {/if}
 
     <textarea class="field big" placeholder="Come lo senti? Cosa vuoi migliorare?" bind:value={text}></textarea>
 
@@ -75,15 +78,17 @@
       <p class="small muted">{feel ? FEEL[feel - 1] : 'Sensazione'}</p>
     </div>
 
-    <button class="select" class:empty={!ex} onclick={() => pickExercise({ title: 'Esercizio', value: ex, other: true, onpick: (v) => (ex = v) })}>
-      <span class="grow">{ex ? exerciseLabel(ex, app.catalog) : 'Esercizio (facoltativo)'}</span>
-      <ChevronDown size={18} />
-    </button>
+    {#if !quick}
+      <button class="select" class:empty={!ex} onclick={() => pickExercise({ title: 'Esercizio', value: ex, other: true, onpick: (v) => (ex = v) })}>
+        <span class="grow">{ex ? exerciseLabel(ex, app.catalog) : 'Esercizio (facoltativo)'}</span>
+        <ChevronDown size={18} />
+      </button>
 
-    <div class="stack g-4">
-      <input class="field" type="date" bind:value={date} aria-label="Data" />
-      {#if date}<p class="small muted when">{fmtLong(date)}</p>{/if}
-    </div>
+      <div class="stack g-4">
+        <input class="field" type="date" bind:value={date} aria-label="Data" />
+        {#if date}<p class="small muted when">{fmtLong(date)}</p>{/if}
+      </div>
+    {/if}
 
     {#if original}
       <button class="btn plain danger del" onclick={remove}><Trash size={16} /> Elimina</button>
