@@ -1,139 +1,109 @@
 <script>
-  // Un percorso: i livelli, dove sei, e la storia dei test.
-  import Target from '@lucide/svelte/icons/target';
+  // Un percorso: la sequenza dei suoi esercizi, con le medaglie di ognuno. L'app propone il primo
+  // senza argento, ma ognuno si può fare quando vuoi. In fondo i test fatti con le versioni di prima.
   import Pencil from '@lucide/svelte/icons/pencil';
   import Copy from '@lucide/svelte/icons/copy';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { OUTCOME, testsToClimb } from '../engine/levels.js';
+  import { currentInSequence } from '../engine/player.js';
+  import { legacyTests } from '../engine/stats.js';
+  import { PLAYER_LEVEL } from '../data/library.js';
   import { fmtDay } from '../util/dates.js';
   import Sheet from '../ui/Sheet.svelte';
-  import TestBars from '../ui/TestBars.svelte';
+  import MedalRow from '../ui/MedalRow.svelte';
 
   let { id } = $props();
 
   const track = $derived(app.catalog.track(id));
-  const state = $derived(app.tracks[id]);
-  const recent = $derived([...state.history].reverse().slice(0, 8));
+  const sequence = $derived(app.catalog.sequence(id));
+  const current = $derived(currentInSequence(id, app.catalog, app.medals));
+  const old = $derived(legacyTests(app.events, app.catalog).find((x) => x.track === id)?.tests ?? []);
 
-  function setLevel() {
-    ui.open('pick', {
-      title: 'Imposta il livello',
-      value: state.started ? state.level : null,
-      groups: [{ options: track.levels.map((l) => ({ id: l.n, label: `Livello ${l.n}`, hint: l.name })) }],
-      onpick: (level) => {
-        app.setLevel(id, level);
-        ui.toast(`${track.short}: livello ${level}`);
-      }
-    });
+  function variant() {
+    ui.open('trackedit', { draft: { name: `${track.name} (variante)`, short: track.short, side: track.side, strokes: track.strokes, sequence } });
   }
 </script>
 
-{#if track && state}
-<Sheet title={track.short} onclose={() => ui.close()} tall>
-  <div class="stack g-24">
-    <div class="stack g-8">
+{#if track}
+  <Sheet title={track.short} onclose={() => ui.close()} tall>
+    <div class="stack g-24">
       <p class="muted">{track.name}</p>
-      {#if state.started}
-        <p>
-          {#if state.completed}
-            <span class="tag up">Completato</span>
-          {:else}
-            <span class="tag accent">Livello {state.level} di {state.max}</span>
-            <span class="small muted">
-              {testsToClimb(state) === 1 ? `ancora un test da ${app.rules.up} per salire` : `due test di fila da ${app.rules.up} per salire`}
-            </span>
-          {/if}
-        </p>
-      {:else}
-        <p><span class="tag">Da iniziare</span> <span class="small muted">lo stabilisce il test di partenza</span></p>
-      {/if}
-    </div>
 
-    {#if state.history.some((h) => h.score != null)}
-      <TestBars history={state.history} up={app.rules.up} down={app.rules.down} height={72} />
-    {/if}
-
-    <ol class="ladder">
-      {#each [...track.levels].reverse() as l (l.n)}
-        <li class:now={state.started && l.n === state.level && !state.completed} class:past={state.started && (l.n < state.level || state.completed)}>
-          <span class="n mono">{l.n}</span>
-          <div class="stack g-4">
-            <strong>{l.name}</strong>
-            <p class="small muted">{l.drill}</p>
-            <p class="small goal"><Target size={13} /> {l.goal}</p>
-            <p class="small faint">Test · {l.test}</p>
-          </div>
-        </li>
-      {/each}
-    </ol>
-
-    {#if recent.length}
       <section class="stack g-8">
-        <h3 class="heading">Storia</h3>
-        <div class="card flush list">
-          {#each recent as h (h.eventId + h.type + h.level)}
-            <button class="item" onclick={() => ui.open('event', { id: h.eventId })}>
-              <span class="small muted when">{fmtDay(h.date)}</span>
-              <span class="grow">L{h.level}{h.type === 'maint' ? ' · mantenimento' : h.type === 'placement' ? ' · partenza' : ''}</span>
-              {#if h.score != null}<span class="mono">{h.score}</span>{/if}
-              <span class="tag {OUTCOME[h.outcome].tone}">{OUTCOME[h.outcome].label}</span>
-            </button>
+        <h3 class="heading">Esercizi in ordine</h3>
+        <ol class="card flush list seq">
+          {#each sequence as exId, i (exId + i)}
+            {@const ex = app.catalog.exercise(exId)}
+            <li>
+              <button class="item" class:now={exId === current} onclick={() => ui.open('exercise', { id: exId })}>
+                <span class="n mono">{i + 1}</span>
+                <span class="grow">
+                  <strong>{ex.name}</strong>
+                  <span class="small muted block">{exId === current ? 'Proposto ora' : (PLAYER_LEVEL[ex.level]?.name ?? 'Tuo')}</span>
+                </span>
+                <MedalRow exercise={ex} medals={app.medals[exId]} />
+                <ChevronRight size={16} />
+              </button>
+            </li>
           {/each}
-        </div>
+        </ol>
+        <p class="small faint">L’app propone il primo esercizio senza argento. Puoi fare qualsiasi altro esercizio, in qualsiasi momento.</p>
       </section>
-    {/if}
 
-    <div class="stack g-8">
-      <button class="btn ghost" onclick={setLevel}>Imposta il livello a mano</button>
-      {#if track.custom}
-        <button class="btn plain" onclick={() => ui.open('trackedit', { id })}><Pencil size={16} /> Modifica il percorso</button>
-      {:else}
-        <button class="btn plain" onclick={() => ui.open('trackedit', { draft: { name: `${track.name} (variante)`, short: track.short, side: track.side, strokes: track.strokes, levels: track.levels } })}>
-          <Copy size={16} /> Crea una variante tua
-        </button>
+      {#if old.length}
+        <details class="old">
+          <summary class="heading">Test della versione 0.2 · {old.length}</summary>
+          <div class="card flush list">
+            {#each [...old].reverse() as t, i (t.eventId + i)}
+              <button class="item" onclick={() => ui.open('event', { id: t.eventId })}>
+                <span class="small muted when">{fmtDay(t.date)}</span>
+                <span class="grow">Livello {t.level}{t.type === 'maint' ? ' · mantenimento' : t.type === 'placement' ? ' · partenza' : ''}</span>
+                <span class="mono">{t.score}/10</span>
+              </button>
+            {/each}
+          </div>
+        </details>
       {/if}
+
+      <div class="stack g-8">
+        {#if track.custom}
+          <button class="btn plain" onclick={() => ui.open('trackedit', { id })}><Pencil size={16} /> Modifica il percorso</button>
+        {:else}
+          <button class="btn plain" onclick={variant}><Copy size={16} /> Crea una variante tua</button>
+        {/if}
+      </div>
     </div>
-  </div>
-</Sheet>
+  </Sheet>
 {/if}
 
 <style>
-  .ladder {
+  .seq {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
   }
-  .ladder li {
-    display: grid;
-    grid-template-columns: 34px 1fr;
-    gap: 12px;
-    padding: 14px;
-    border-radius: var(--r);
-    border: 1px solid var(--line);
-    transition: background 0.3s var(--ease);
+  .item {
+    padding: 12px 14px;
+  }
+  .item.now {
+    background: color-mix(in srgb, var(--accent) 12%, var(--card));
+  }
+  .item :global(svg) {
+    color: var(--ink-3);
+    flex: none;
   }
   .n {
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
+    flex: none;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     box-shadow: inset 0 0 0 1.5px var(--line-strong);
     color: var(--ink-2);
+    font-size: 13px;
     font-weight: 560;
-  }
-  .past .n {
-    background: var(--ink);
-    color: var(--paper);
-    box-shadow: none;
-  }
-  .now {
-    background: var(--card);
-    border-color: var(--accent);
   }
   .now .n {
     background: var(--accent);
@@ -143,21 +113,14 @@
   strong {
     font-weight: 580;
   }
-  .goal {
-    display: flex;
-    gap: 6px;
-    align-items: flex-start;
-  }
-  .goal :global(svg) {
-    flex: none;
-    margin-top: 3px;
-    color: var(--accent);
+  .block {
+    display: block;
   }
   .when {
     width: 52px;
   }
-  .item {
-    padding: 12px 16px;
-    font-size: 14px;
+  .old summary {
+    cursor: pointer;
+    margin-bottom: 8px;
   }
 </style>

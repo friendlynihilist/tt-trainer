@@ -7,7 +7,7 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { agenda, eventColor, eventTitle, itemColor, itemTitle } from '../engine/events.js';
-  import { byTime } from '../engine/levels.js';
+  import { byTime } from '../engine/events.js';
   import { monthGrid, monthKey, addMonths, fmtMonth, fmtLong, WEEKDAYS_MIN } from '../util/dates.js';
   import PageHead from '../ui/PageHead.svelte';
   import EventRow from '../ui/EventRow.svelte';

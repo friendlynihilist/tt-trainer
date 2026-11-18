@@ -1,15 +1,15 @@
 <script>
-  // Impostazioni: piano, soglie, preferenze, gruppo, dati.
+  // Impostazioni: piano, livello, preferenze, gruppo, dati.
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
-  import Minus from '@lucide/svelte/icons/minus';
-  import Plus from '@lucide/svelte/icons/plus';
   import X from '@lucide/svelte/icons/x';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { exerciseLabel } from '../data/catalog.js';
-  import { eventTitle, serveScore } from '../engine/events.js';
+  import { eventTitle, byTime } from '../engine/events.js';
+  import { attemptsOf } from '../engine/attempts.js';
+  import { valueText, size } from '../engine/medals.js';
   import { VERSION } from '../data/changelog.js';
-  import { byTime } from '../engine/levels.js';
+  import { PLAYER_LEVEL, TRIES_PER_DAY } from '../data/library.js';
   import { WEEKDAYS_SHORT, fmtLong } from '../util/dates.js';
   import PageHead from '../ui/PageHead.svelte';
   import Avatar from '../ui/Avatar.svelte';
@@ -26,21 +26,6 @@
   });
   let newEmail = $state('');
 
-  function setRule(key, delta) {
-    const next = { up: s.up, down: s.down, [key]: s[key] + delta };
-    // Le due soglie non possono incrociarsi.
-    if (next.up < 1 || next.up > 10 || next.down < 0 || next.down >= next.up) return;
-    app.patchSettings({ [key]: next[key] });
-  }
-
-  function pickPartner() {
-    ui.open('pick', {
-      title: 'Con chi ti alleni?',
-      value: s.partner,
-      groups: [{ options: [{ id: null, label: 'Nessuno' }, ...app.mates.map((m) => ({ id: m.id, label: m.name }))] }],
-      onpick: (id) => app.patchSettings({ partner: id })
-    });
-  }
 
   function addMember() {
     const email = newEmail.trim().toLowerCase();
@@ -66,11 +51,19 @@
 
   function exportCsv() {
     const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const rows = [['Data', 'Tipo', 'Minuti', 'Test', 'Servizi', 'Colpo da correggere', 'Errore', 'Esercizio', 'Note']];
+    const rows = [['Data', 'Tipo', 'Minuti', 'Misure', 'Colpo da correggere', 'Errore', 'Esercizio', 'Note']];
     for (const e of [...app.events].sort(byTime)) {
       if (e.kind === 'livello') continue;
-      const tests = (e.tests ?? []).filter((t) => t.score != null).map((t) => `${app.catalog.track(t.track)?.short ?? t.track} L${t.level}: ${t.score}`).join('; ');
-      rows.push([e.date, eventTitle(e, app.catalog), e.minutes ?? '', tests, serveScore(e) ?? '', app.strokeName(e.focus?.stroke), app.errorName(e.focus?.error), e.focus?.exercise ? exerciseLabel(e.focus.exercise, app.catalog) : '', e.note ?? '']);
+      // Le misure, comprese quelle delle versioni di prima convertite: «esercizio: valore».
+      const measures = attemptsOf(e, app.catalog)
+        .map((a) => {
+          const ex = app.catalog.exercise(a.ex);
+          const best = a.tries.slice(0, TRIES_PER_DAY[a.fmt] ?? 1).reduce((b, v) => (size(v) > size(b) ? v : b), a.tries[0]);
+          return ex ? `${ex.name}: ${valueText(ex, best, a.tier)}` : '';
+        })
+        .filter(Boolean)
+        .join('; ');
+      rows.push([e.date, eventTitle(e, app.catalog), e.minutes ?? '', measures, app.strokeName(e.focus?.stroke), app.errorName(e.focus?.error), e.focus?.exercise ? exerciseLabel(e.focus.exercise, app.catalog) : '', e.note ?? '']);
     }
     // Il BOM fa aprire bene gli accenti a Excel.
     download(`terza-palla-${app.today}.csv`, '﻿' + rows.map((r) => r.map(cell).join(';')).join('\n'), 'text/csv');
@@ -79,7 +72,7 @@
   function wipe() {
     ui.open('confirm', {
       title: 'Cancellare tutti i tuoi dati?',
-      text: 'Piano, sessioni, test e note. Non si può annullare: esporta prima una copia.',
+      text: 'Piano, sessioni, misure e note. Non si può annullare: esporta prima una copia.',
       action: 'Cancella tutto',
       danger: true,
       onconfirm: () => app.wipe()
@@ -116,18 +109,16 @@
   </section>
 
   <section class="section">
-    <h2 class="heading">Soglie dei test · su 10</h2>
+    <h2 class="heading">Il tuo livello</h2>
     <div class="card flush list">
-      {#each [['up', 'Per salire', 'due test di fila con almeno'], ['down', 'Per scendere', 'un test con al massimo']] as [key, label, hint] (key)}
-        <div class="item">
-          <span class="grow">{label}<span class="small muted block">{hint}</span></span>
-          <button class="icon-btn" onclick={() => setRule(key, -1)} aria-label="Meno"><Minus size={18} /></button>
-          <b class="mono val">{s[key]}</b>
-          <button class="icon-btn" onclick={() => setRule(key, 1)} aria-label="Più"><Plus size={18} /></button>
-        </div>
-      {/each}
+      <button class="item" onclick={() => ui.open('level')}>
+        <span class="grow">
+          <strong>{PLAYER_LEVEL[app.player.level].name}</strong>
+          <span class="small muted block">Serve solo a proporti esercizi: puoi fare tutto, a qualsiasi livello.</span>
+        </span>
+        <ChevronRight size={16} />
+      </button>
     </div>
-    <p class="small muted after">Cambiando le soglie i livelli si ricalcolano su tutta la storia.</p>
   </section>
 
   <section class="section">
@@ -157,18 +148,14 @@
       <h2 class="heading">Gruppo</h2>
       <div class="card stack g-16">
         <Toggle
-          label="Mostra i miei livelli"
-          hint="Nome e livelli. Mai diario, note o errori."
+          label="Mostrami nel gruppo"
+          hint="Solo il nome. Medaglie, livello, diario e note restano tuoi."
           checked={s.share}
           onchange={(share) => {
             app.patchSettings({ share });
             app.refreshProfile();
           }}
         />
-        <button class="spread row-btn" onclick={pickPartner}>
-          <span>Compagno di allenamento</span>
-          <span class="muted row g-4">{app.partner?.name ?? 'Nessuno'} <ChevronRight size={16} /></span>
-        </button>
       </div>
 
       {#if app.isAdmin}
@@ -259,18 +246,8 @@
   .item.danger {
     color: var(--down);
   }
-  .val {
-    width: 26px;
-    text-align: center;
-    font-size: 18px;
-    font-weight: 600;
-  }
   .after {
     margin-top: 10px;
-  }
-  .row-btn {
-    width: 100%;
-    text-align: left;
   }
   .links {
     display: flex;

@@ -1,21 +1,23 @@
 <script>
-  // Guida: il metodo in una pagina. È il foglio «Come si usa», riscritto per l'app.
+  // Guida: il metodo in una pagina.
   import { app } from '../store/app.svelte.js';
-  import { BLOCKS, CYCLE_BLOCKS, PHASES, TRACKS, GATE, VALID_ATTEMPT, NEXT_CYCLE, MATCH_TYPES, SCHEMES, PAUSE_MINUTES } from '../data/program.js';
+  import { BLOCKS, CYCLE_BLOCKS, PHASES, MATCH_TYPES, SCHEMES, PAUSE_MINUTES } from '../data/program.js';
+  import { LIBRARY, PLAYER_LEVELS, TIERS, TIER } from '../data/library.js';
   import PageHead from '../ui/PageHead.svelte';
-  import LevelDemo from '../ui/LevelDemo.svelte';
+  import Medal from '../ui/Medal.svelte';
 
   const STEPS = [
-    ['La prima volta', `Ogni esercizio parte con il test di partenza: livello 1, e con almeno ${app.rules.up} su 10 provi quello dopo. Il primo che non passi è il tuo.`],
-    ['Allenarsi', 'Apri Oggi e tocca Inizia: trovi l’allenamento in calendario, già composto al tuo livello, con il timer. Il modello si cambia al volo.'],
-    ['Misurarsi', 'Il test è un appuntamento a parte: fai 10 tentativi per ogni esercizio e segni ogni palla con un tocco. Quando capita nello stesso giorno di un allenamento, lo fai all’inizio di ogni esercizio.'],
-    ['Quando vuoi', 'Allenamenti in più, test, lezioni, partite: dal «+» o dal Diario, in qualsiasi giorno. Si sposta e si toglie tutto, solo quell’appuntamento.'],
-    ['Alla fine', 'Segna il colpo da correggere: l’app propone l’esercizio per lavorarci, te lo ricorda, e ne tiene conto quando compone le sessioni su misura.']
+    ['Il tuo livello', 'Scegli il livello che ti somiglia di più. Serve solo a proporti esercizi adatti: puoi fare qualsiasi esercizio, a qualsiasi livello.'],
+    ['Allenarsi', 'Apri Oggi e tocca Inizia: trovi l’allenamento in calendario, già composto con gli esercizi del mese, e il timer. Il modello e ogni esercizio si cambiano al volo.'],
+    ['Provare un obiettivo', 'Su ogni esercizio puoi toccare «Prova l’obiettivo»: l’app ti mostra il prossimo gradino da prendere, per esempio «Raggiungi l’argento! 10 di fila».'],
+    ['Misurarsi', 'Il test è un appuntamento a parte, solo per misurarsi. L’app propone gli esercizi da misurare e ti dice perché. Puoi aggiungerne altri.'],
+    ['Alla fine', 'Segna il colpo da correggere: l’app propone un esercizio per lavorarci e te lo ricorda.']
   ];
+  const example = LIBRARY.find((e) => e.id === 'top-d-block');
 </script>
 
 <div class="page enter">
-  <PageHead eyebrow="Guida" title="Come funziona" sub="Mesi a tema, gli allenamenti che vuoi, e un test che decide il livello. Si sale solo quando il test lo dice." actions={false} />
+  <PageHead eyebrow="Guida" title="Come funziona" sub="Mesi a tema, gli allenamenti che vuoi, e una medaglia per ogni traguardo. Niente è bloccato." actions={false} />
 
   <section class="section">
     <ol class="steps">
@@ -29,15 +31,40 @@
   </section>
 
   <section class="section">
-    <h2 class="heading">La regola dei livelli</h2>
+    <h2 class="heading">Le medaglie</h2>
     <div class="stack g-12">
-      <LevelDemo up={app.rules.up} />
+      <p>Ogni esercizio ha tre gradini, a volte quattro. Per esempio, nel top di dritto contro block:</p>
       <div class="card flush list">
-        <div class="item"><span class="tag up">Sali</span><span class="grow">Due test di fila allo stesso livello con almeno {app.rules.up} su 10.</span></div>
-        <div class="item"><span class="tag down">Scendi</span><span class="grow">Basta un test con {app.rules.down} o meno.</span></div>
-        <div class="item"><span class="tag stay">Resta</span><span class="grow">In tutti gli altri casi.</span></div>
+        {#each TIERS.filter((t) => example.goals[t]) as t (t)}
+          <div class="item" data-tier={t}>
+            <Medal tier={t} size={20} />
+            <span class="grow"><strong>{TIER[t].name}</strong><span class="small muted block">{example.goals[t]} di fila{t === 'O' ? ', in due giorni diversi' : ''}</span></span>
+          </div>
+        {/each}
       </div>
-      <p class="small muted">{VALID_ATTEMPT} Le soglie si cambiano in Impostazioni. Dove arrivi è il punto di partenza del ciclo dopo.</p>
+      <ul class="rules small muted">
+        <li>Quando conti quante di fila hai tre tentativi per seduta, e vale il migliore.</li>
+        <li>Quando conti su 10 o su 20 vale la prima serie del giorno: non si ripete finché esce il numero giusto.</li>
+        <li>L’oro chiede la soglia in due giorni diversi. Con un giorno solo hai «metà oro».</li>
+        <li>Le medaglie non si perdono. Se non misuri un esercizio da 90 giorni, l’app lo segna «da ripassare».</li>
+        <li>Puoi dare un voto alla qualità del colpo, da 0 a 5. Non cambia la medaglia.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="heading">Il livello</h2>
+    <div class="stack g-12">
+      <div class="card flush list">
+        {#each PLAYER_LEVELS as l (l.id)}
+          <div class="item lvl" class:me={l.id === app.player.level}>
+            <span class="grow"><strong>{l.name}</strong><span class="small muted block">{l.about}</span></span>
+          </div>
+        {/each}
+      </div>
+      <p class="small muted">
+        Ogni livello ha i suoi esercizi chiave. L’app ti propone il livello dopo quando hai l’argento nel 75% degli esercizi chiave (con almeno un argento in ogni famiglia), l’oro nel 40%, e queste misure vengono da almeno 4 sedute in almeno 14 giorni. Puoi dire di no: la proposta torna dopo 21 giorni, o prima se prendi 3 ori nuovi.
+      </p>
     </div>
   </section>
 
@@ -48,8 +75,8 @@
     </div>
     <div class="card flush list phases">
       <div class="item"><span class="mono min">10′</span><span class="grow"><strong>Riscaldamento</strong><span class="small muted block">Dritto e rovescio in diagonale, top su block. Dal mese 2 gli ultimi 5 minuti sono il mantenimento del mese prima.</span></span></div>
-      <div class="item"><span class="mono min">14′</span><span class="grow"><strong>Servizi e ricezione</strong><span class="small muted block">Metà tempo serve uno, metà l’altro: a metà suona il cambio. Chi non serve allena la ricezione del mese. Il punteggio non si segna, a meno che tu non tocchi «Misura i servizi».</span></span></div>
-      <div class="item"><span class="mono min">24′</span><span class="grow"><strong>Esercizio 1</strong><span class="small muted block">Il primo percorso del mese, al livello raggiunto. Nel giorno del test comincia con il test.</span></span></div>
+      <div class="item"><span class="mono min">14′</span><span class="grow"><strong>Servizi e ricezione</strong><span class="small muted block">Metà tempo serve uno, metà l’altro: a metà suona il cambio. Chi non serve allena la ricezione del mese.</span></span></div>
+      <div class="item"><span class="mono min">24′</span><span class="grow"><strong>Esercizio 1</strong><span class="small muted block">Il primo percorso del mese: l’app propone il primo esercizio della sequenza che non ha ancora l’argento.</span></span></div>
       <div class="item"><span class="mono min">24′</span><span class="grow"><strong>Esercizio 2</strong><span class="small muted block">Il secondo percorso del mese, come sopra.</span></span></div>
       <div class="item"><span class="mono min">14′</span><span class="grow"><strong>Partitella</strong><span class="small muted block">Metà tempo per tipo, a metà suona il cambio.</span><span class="small muted block"><strong>{MATCH_TYPES.risk.name}.</strong> {MATCH_TYPES.risk.text} {MATCH_TYPES.risk.why}</span><span class="small muted block"><strong>{MATCH_TYPES.scheme.name}.</strong> Si sceglie uno schema. {MATCH_TYPES.scheme.text}</span></span></div>
     </div>
@@ -65,25 +92,22 @@
           <span class="big mono">{b}</span>
           <div class="stack g-4">
             <strong>{block.theme}</strong>
-            <p class="small muted">{block.tracks.map((t) => TRACKS[t].name).join(' · ')}</p>
+            <p class="small muted">{block.tracks.map((t) => app.catalog.track(t).name).join(' · ')}</p>
             <p class="small">Schemi della partitella: {block.schemes.map((x) => SCHEMES[x].name.toLowerCase()).join(', ')}</p>
           </div>
         </div>
       {/each}
     </div>
-    <p class="small muted note">
-      Il mese 3 si comincia solo con l’apertura su taglio almeno al livello {GATE.minLevel}, di dritto e di rovescio. Se non ci sei, l’app propone una
-      settimana di recupero sulle due aperture. Una settimana saltata? Nel piano metti una pausa e tutto slitta.
-    </p>
+    <p class="small muted note">Ogni mese si comincia quando arriva. Una settimana saltata? Nel piano metti una pausa e tutto slitta.</p>
   </section>
 
   <section class="section">
     <h2 class="heading">Fatto su misura</h2>
     <div class="card flush list">
-      <div class="item"><span class="grow"><strong>Modelli</strong><span class="small muted block">La scaletta di un allenamento: riscaldamento, servizi, esercizi del mese o fissi, esercizi liberi, partitella. Ne crei quanti vuoi, ognuno col suo colore.</span></span></div>
-      <div class="item"><span class="grow"><strong>Percorsi</strong><span class="small muted block">Un esercizio con i suoi livelli (fino a 8) e il suo test su 10. Il livello si calcola come per quelli di base.</span></span></div>
+      <div class="item"><span class="grow"><strong>Esercizi</strong><span class="small muted block">{LIBRARY.length} esercizi in otto famiglie, con livello suggerito, formato, criterio di qualità, errori comuni e medaglie. Si filtrano per livello e per formato.</span></span></div>
+      <div class="item"><span class="grow"><strong>Modelli</strong><span class="small muted block">La scaletta di un allenamento: riscaldamento, servizi, esercizi del mese, esercizi fissi, esercizi liberi, partitella. Ne crei quanti vuoi, ognuno con il suo colore.</span></span></div>
+      <div class="item"><span class="grow"><strong>Percorsi</strong><span class="small muted block">Una sequenza di esercizi, dal più guidato al più libero. Puoi usare quelli della libreria o scriverne di tuoi.</span></span></div>
       <div class="item"><span class="grow"><strong>Mesi</strong><span class="small muted block">Un tema con fino a tre percorsi, il mantenimento, i servizi e lo schema della partitella. Li metti in fila quando crei un ciclo.</span></span></div>
-      <div class="item"><span class="grow"><strong>Su misura</strong><span class="small muted block">Il suggeritore compone una sessione dal tuo livello, dal mese, e da quello che segni da correggere; e ti dice quali percorsi è ora di misurare.</span></span></div>
     </div>
     <p class="small muted note">Tutto dalla Libreria. Si può anche importare un file preparato da un assistente.</p>
   </section>
@@ -92,17 +116,12 @@
     <h2 class="heading">I tuoi dati</h2>
     <div class="card stack g-12">
       {#if app.cloud}
-        <p>Diario, note ed errori li vedi solo tu. Il gruppo vede il nome e i livelli, se lo consenti: serve al compagno per sapere che esercizio farti fare.</p>
+        <p>Diario, note, medaglie e livello li vedi solo tu. Il gruppo vede solo il tuo nome, se lo consenti.</p>
         <p class="muted">Funziona anche senza rete: registra in palestra e sincronizza quando torna il segnale. Dal menu del browser puoi aggiungerla alla schermata Home.</p>
       {:else}
         <p>Modalità locale: i dati restano in questo browser. Da Impostazioni puoi esportarli.</p>
       {/if}
     </div>
-  </section>
-
-  <section class="section">
-    <h2 class="heading">Per il ciclo successivo</h2>
-    <div class="chips">{#each NEXT_CYCLE as n (n)}<span class="tag line">{n}</span>{/each}</div>
   </section>
 </div>
 
@@ -174,9 +193,14 @@
   .note {
     margin-top: 12px;
   }
-  .item .tag {
-    flex: none;
-    width: 62px;
-    justify-content: center;
+  .rules {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .lvl.me {
+    background: color-mix(in srgb, var(--accent) 10%, var(--card));
   }
 </style>

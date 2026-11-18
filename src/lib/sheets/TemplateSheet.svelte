@@ -1,11 +1,10 @@
 <script>
   // Un modello di allenamento: la scaletta, passo per passo. Quelli di base si guardano e si
-  // duplicano; quelli tuoi si modificano. «Componi tu» lascia fare al suggeritore.
+  // duplicano; quelli tuoi si modificano. Un passo può essere anche un esercizio fisso della libreria.
   import Plus from '@lucide/svelte/icons/plus';
   import Minus from '@lucide/svelte/icons/minus';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import X from '@lucide/svelte/icons/x';
-  import Sparkles from '@lucide/svelte/icons/sparkles';
   import Copy from '@lucide/svelte/icons/copy';
   import Trash from '@lucide/svelte/icons/trash';
   import Play from '@lucide/svelte/icons/play';
@@ -13,8 +12,7 @@
   import { ui, buzz } from '../store/ui.svelte.js';
   import { startItem, weekOf } from '../store/actions.js';
   import { COLORS, STEP_TYPES, templateMinutes } from '../data/templates.js';
-  import { suggestSession } from '../engine/suggest.js';
-  import { pickTrack } from '../ui/pickers.js';
+  import { pickTrack, pickExercise } from '../ui/pickers.js';
   import Sheet from '../ui/Sheet.svelte';
 
   let { id = null, draft = null } = $props();
@@ -25,7 +23,6 @@
   let name = $state(source?.name ?? '');
   let color = $state(source?.color ?? 'violet');
   let steps = $state((source?.steps ?? [{ type: 'warmup', minutes: 10 }, { type: 'focus', slot: 1, minutes: 25 }, { type: 'match', minutes: 15 }]).map((s, i) => ({ ...s, key: i })));
-  let target = $state(templateMinutes(source) || 90);
   let seq = steps.length;
 
   const total = $derived(steps.reduce((n, s) => n + (Number(s.minutes) || 0), 0));
@@ -38,6 +35,7 @@
       return t ? `${s.slot ?? 1}° del mese · ora ${t.short}` : `${s.slot ?? 1}° del mese · questo mese non c’è`;
     }
     if (s.type === 'track') return app.catalog.track(s.track)?.short ?? 'Scegli il percorso';
+    if (s.type === 'exercise') return app.catalog.exercise(s.ex)?.name ?? 'Scegli l’esercizio';
     if (s.type === 'free') return s.name || 'Esercizio libero';
     return STEP_TYPES[s.type].hint;
   }
@@ -62,24 +60,23 @@
     if (type === 'free') s.name = '';
     steps = [...steps, s];
     if (type === 'track') chooseTrack(s.key);
+    if (type === 'exercise') chooseExercise(s.key);
+  }
+  function chooseExercise(key) {
+    pickExercise({ onpick: (ex) => ex && update(key, { ex }) });
   }
   function chooseTrack(key) {
     pickTrack({ onpick: (track) => track && update(key, { track }) });
   }
 
-  function compose() {
-    const s = suggestSession({ week: weekOf(app.today), events: app.events, tracks: app.tracks, catalog: app.catalog, minutes: target });
-    steps = s.template.steps.map((x) => ({ ...x, key: seq++ }));
-    ui.toast(s.reasons[0] ?? 'Composto sul tuo livello e sul mese in corso');
-  }
-
-  const valid = $derived(name.trim() && steps.length && steps.every((s) => s.type !== 'track' || s.track));
+  const valid = $derived(name.trim() && steps.length && steps.every((s) => (s.type !== 'track' || s.track) && (s.type !== 'exercise' || s.ex)));
 
   function clean() {
     return steps.map(({ key: _k, ...s }) => {
       const o = { type: s.type, minutes: Number(s.minutes) || STEP_TYPES[s.type].minutes };
       if (s.type === 'focus') o.slot = s.slot ?? 1;
       if (s.type === 'track') o.track = s.track;
+      if (s.type === 'exercise') o.ex = s.ex;
       if (s.type === 'free') o.name = (s.name ?? '').trim() || 'Esercizio libero';
       if (s.text?.trim()) o.text = s.text.trim();
       return o;
@@ -161,6 +158,8 @@
               </div>
             {:else if s.type === 'track'}
               <button class="btn ghost small self" onclick={() => chooseTrack(s.key)}>{s.track ? 'Cambia percorso' : 'Scegli il percorso'}</button>
+            {:else if s.type === 'exercise'}
+              <button class="btn ghost small self" onclick={() => chooseExercise(s.key)}>{s.ex ? 'Cambia esercizio' : 'Scegli l’esercizio'}</button>
             {:else if s.type === 'free'}
               <input class="field" placeholder="Nome dell’esercizio" value={s.name ?? ''} oninput={(e) => update(s.key, { name: e.currentTarget.value })} />
               <textarea class="field" placeholder="Cosa si fa" value={s.text ?? ''} oninput={(e) => update(s.key, { text: e.currentTarget.value })}></textarea>
@@ -174,17 +173,6 @@
           {#each Object.entries(STEP_TYPES) as [type, t] (type)}
             <button class="chip mini" onclick={() => add(type)}><Plus size={13} /> {t.name}</button>
           {/each}
-        </div>
-      </section>
-
-      <section class="card stack g-12 auto">
-        <span class="row g-8"><Sparkles size={16} /><strong>Componi tu</strong></span>
-        <p class="small muted">Il suggeritore riempie i passi dal tuo livello, dal mese in corso e da quello che segni da correggere.</p>
-        <div class="row g-8 wrap">
-          {#each [45, 60, 90, 120] as m (m)}
-            <button class="chip mini" aria-pressed={target === m} onclick={() => (target = m)}>{m} min</button>
-          {/each}
-          <button class="btn ghost small" onclick={compose}>Componi</button>
         </div>
       </section>
     {/if}
@@ -290,12 +278,6 @@
   }
   .self {
     align-self: flex-start;
-  }
-  .wrap {
-    flex-wrap: wrap;
-  }
-  .auto {
-    background: color-mix(in srgb, var(--c-plum) 7%, var(--card));
   }
   .del {
     align-self: center;

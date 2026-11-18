@@ -1,23 +1,42 @@
 <script>
-  // Libreria: i modelli di allenamento, i mesi, i percorsi con i loro livelli e la tassonomia dei
-  // colpi. Quelli di base si guardano e si duplicano; quelli tuoi si creano, modificano, importano.
+  // Libreria: gli allenamenti (modelli, mesi, percorsi), gli esercizi con le loro medaglie e la
+  // tassonomia dei colpi. Gli esercizi si mostrano sempre tutti: il livello e il formato sono solo
+  // filtri che scegli tu, e di base sono spenti.
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Plus from '@lucide/svelte/icons/plus';
   import Download from '@lucide/svelte/icons/download';
   import { fly } from 'svelte/transition';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { CYCLE_BLOCKS, NEXT_CYCLE } from '../data/program.js';
   import { STEP_TYPES, templateMinutes } from '../data/templates.js';
   import { FAMILIES, BALLS, POINT_PHASES, ERROR_GROUPS } from '../data/taxonomy.js';
+  import { PLAYER_LEVELS, PLAYER_LEVEL, LEVEL_IDS, MODES, MODE } from '../data/library.js';
   import { weaknesses } from '../engine/stats.js';
+  import { currentInSequence } from '../engine/player.js';
   import PageHead from '../ui/PageHead.svelte';
   import Segmented from '../ui/Segmented.svelte';
-  import Dots from '../ui/Dots.svelte';
+  import MedalRow from '../ui/MedalRow.svelte';
 
-  const TABS = ['allenamenti', 'percorsi', 'colpi'];
-  let tab = $state(TABS.includes(ui.route.params[0]) ? ui.route.params[0] : 'allenamenti');
+  const TABS = ['allenamenti', 'esercizi', 'colpi'];
+  const asked = ui.route.params[0] === 'percorsi' ? 'allenamenti' : ui.route.params[0];
+  let tab = $state(TABS.includes(asked) ? asked : 'allenamenti');
   let side = $state('all');
+  let levelFilter = $state('all');
+  let modeFilter = $state('all');
+
+  // Gli esercizi per famiglia, in ordine di livello. I filtri li scegli tu: di base mostrano tutto.
+  const exerciseGroups = $derived.by(() => {
+    const all = app.catalog.activeExerciseIds
+      .map((id) => app.catalog.exercise(id))
+      .filter((e) => (levelFilter === 'all' || e.level === levelFilter) && (modeFilter === 'all' || e.modes?.includes(modeFilter)));
+    const byLevel = (a, b) => LEVEL_IDS.indexOf(a.level) - LEVEL_IDS.indexOf(b.level);
+    const groups = FAMILIES.map((f) => ({ ...f, list: all.filter((e) => e.family === f.id).sort(byLevel) })).filter((g) => g.list.length);
+    const mine = all.filter((e) => !FAMILIES.some((f) => f.id === e.family));
+    if (mine.length) groups.push({ id: 'mine', name: 'I tuoi esercizi', color: 'slate', list: mine });
+    return groups;
+  });
+  const shownCount = $derived(exerciseGroups.reduce((n, g) => n + g.list.length, 0));
+  const baseTracks = $derived(app.catalog.activeTrackIds.filter((id) => !app.catalog.track(id).custom));
 
   const counts = $derived(Object.fromEntries(weaknesses(app.events).strokes.map((s) => [s.id, s.count])));
   const families = $derived.by(() => {
@@ -33,7 +52,9 @@
   const archived = $derived(app.catalog.trackIds.filter((id) => app.catalog.track(id).archived));
 
   function summary(t) {
-    return t.steps.map((s) => (s.type === 'free' ? s.name : s.type === 'track' ? (app.catalog.track(s.track)?.short ?? '?') : STEP_TYPES[s.type].name)).join(' · ');
+    return t.steps
+      .map((s) => (s.type === 'free' ? s.name : s.type === 'track' ? (app.catalog.track(s.track)?.short ?? '?') : s.type === 'exercise' ? (app.catalog.exercise(s.ex)?.name ?? '?') : STEP_TYPES[s.type].name))
+      .join(' · ');
   }
 
   function addStroke() {
@@ -46,13 +67,13 @@
 </script>
 
 <div class="page enter">
-  <PageHead eyebrow="Libreria" title={tab === 'allenamenti' ? 'Allenamenti' : tab === 'percorsi' ? 'Percorsi' : 'Colpi'} />
+  <PageHead eyebrow="Libreria" title={tab === 'allenamenti' ? 'Allenamenti' : tab === 'esercizi' ? 'Esercizi' : 'Colpi'} />
 
   <div class="tabs">
     <Segmented
       options={[
         { id: 'allenamenti', label: 'Allenamenti' },
-        { id: 'percorsi', label: 'Percorsi' },
+        { id: 'esercizi', label: 'Esercizi' },
         { id: 'colpi', label: 'Colpi' }
       ]}
       value={tab}
@@ -101,69 +122,69 @@
           <p class="small faint after">I mesi si mettono in fila quando crei un ciclo, dal piano.</p>
         </section>
 
-        <button class="btn ghost import" onclick={() => ui.open('import')}><Download size={16} /> Importa percorsi, mesi e modelli</button>
-      {:else if tab === 'percorsi'}
-        {#each CYCLE_BLOCKS as bid (bid)}
-          {@const block = app.catalog.block(bid)}
-          <section class="section">
-            <h2 class="heading">{block.label} · {block.theme}</h2>
-            <div class="card flush list">
-              {#each block.tracks as id (id)}
-                {@const t = app.tracks[id]}
-                <button class="item" onclick={() => ui.open('track', { id })}>
-                  <span class="grow">
-                    <strong>{app.catalog.track(id).name}</strong>
-                    <span class="small muted block">{app.catalog.track(id).levels.map((l) => l.name).join(' → ')}</span>
-                  </span>
-                  <Dots level={t.level} max={t.max} started={t.started} completed={t.completed} />
-                  <ChevronRight size={16} />
-                </button>
-              {/each}
-              <div class="item static">
-                <span class="grow stack g-4">
-                  <strong>Servizi e ricezione</strong>
-                  <span class="small muted"><em>Chi serve</em> — {block.serve.server}</span>
-                  <span class="small muted"><em>Chi riceve</em> — {block.serve.receiver}</span>
-                  <span class="small faint">Test · {block.serve.test}</span>
-                </span>
-              </div>
-            </div>
-          </section>
-        {/each}
-
         <section class="section">
           <div class="spread head">
-            <h2 class="heading">I tuoi percorsi</h2>
+            <h2 class="heading">Percorsi</h2>
             <button class="btn ghost small" onclick={() => ui.open('trackedit')}><Plus size={16} /> Nuovo</button>
           </div>
-          {#if myTracks.length}
-            <div class="card flush list">
-              {#each myTracks as id (id)}
-                {@const t = app.tracks[id]}
-                <button class="item" onclick={() => ui.open('track', { id })}>
-                  <span class="grow">
-                    <strong>{app.catalog.track(id).name}</strong>
-                    <span class="small muted block clamp">{app.catalog.track(id).levels.map((l) => l.name).join(' → ')}</span>
-                  </span>
-                  <Dots level={t.level} max={t.max} started={t.started} completed={t.completed} />
-                  <ChevronRight size={16} />
-                </button>
-              {/each}
-            </div>
-          {:else}
-            <p class="muted">Un esercizio con i suoi livelli e il suo test: lo crei qui, lo importi, oppure duplichi uno di quelli sopra.</p>
-          {/if}
+          <div class="card flush list">
+            {#each [...baseTracks, ...myTracks] as id (id)}
+              {@const t = app.catalog.track(id)}
+              {@const now = currentInSequence(id, app.catalog, app.medals)}
+              <button class="item" onclick={() => ui.open('track', { id })}>
+                <span class="grow">
+                  <strong>{t.name}</strong>{#if t.custom}<span class="small muted"> · tuo</span>{/if}
+                  <span class="small muted block clamp">{t.sequence.length} esercizi{now ? ` · ora ${app.catalog.exercise(now)?.name}` : ''}</span>
+                </span>
+                <ChevronRight size={16} />
+              </button>
+            {/each}
+          </div>
           {#if archived.length}
             <p class="small faint after">Archiviati: {archived.map((id) => app.catalog.track(id).short).join(', ')}</p>
           {/if}
         </section>
 
-        <section class="section">
-          <h2 class="heading">Idee per il ciclo successivo</h2>
-          <div class="chips">
-            {#each NEXT_CYCLE as n (n)}<span class="tag line">{n}</span>{/each}
+        <button class="btn ghost import" onclick={() => ui.open('import')}><Download size={16} /> Importa esercizi, percorsi, mesi e modelli</button>
+      {:else if tab === 'esercizi'}
+        <div class="filters">
+          <div class="chips" role="group" aria-label="Livello">
+            <button class="chip mini" aria-pressed={levelFilter === 'all'} onclick={() => (levelFilter = 'all')}>Tutti i livelli</button>
+            {#each PLAYER_LEVELS as l (l.id)}
+              <button class="chip mini" aria-pressed={levelFilter === l.id} onclick={() => (levelFilter = levelFilter === l.id ? 'all' : l.id)}>
+                {l.name}{#if l.id === app.player.level}<i class="me" aria-label="il tuo livello"></i>{/if}
+              </button>
+            {/each}
           </div>
-        </section>
+          <div class="chips" role="group" aria-label="Formato">
+            <button class="chip mini" aria-pressed={modeFilter === 'all'} onclick={() => (modeFilter = 'all')}>Ogni formato</button>
+            {#each MODES as m (m.id)}
+              <button class="chip mini" aria-pressed={modeFilter === m.id} onclick={() => (modeFilter = modeFilter === m.id ? 'all' : m.id)}>{m.name}</button>
+            {/each}
+          </div>
+          <p class="small muted">{shownCount} esercizi. Il livello serve solo a orientarti: puoi fare qualsiasi esercizio.</p>
+        </div>
+
+        {#each exerciseGroups as g (g.id)}
+          <section class="section">
+            <h2 class="heading fam" data-color={g.color}><i class="pip"></i>{g.name}</h2>
+            <div class="card flush list">
+              {#each g.list as e (e.id)}
+                <button class="item" onclick={() => ui.open('exercise', { id: e.id })}>
+                  <span class="grow">
+                    <strong>{e.name}</strong>
+                    <span class="small muted block clamp">{[PLAYER_LEVEL[e.level]?.name, ...(e.modes ?? []).map((m) => MODE[m]?.name.toLowerCase())].filter(Boolean).join(' · ')}</span>
+                  </span>
+                  {#if app.medals[e.id]?.stale}<span class="tag stay">da ripassare</span>{/if}
+                  <MedalRow exercise={e} medals={app.medals[e.id]} />
+                  <ChevronRight size={16} />
+                </button>
+              {/each}
+            </div>
+          </section>
+        {:else}
+          <p class="muted empty">Nessun esercizio con questi filtri.</p>
+        {/each}
       {:else}
         <div class="filter">
           <Segmented
@@ -245,19 +266,45 @@
   .filter + :global(.section) {
     margin-top: 20px;
   }
+  .filters {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .filters .chips {
+    gap: 6px;
+  }
+  .chip.mini {
+    min-height: 30px;
+    padding: 4px 12px;
+    font-size: 13px;
+    gap: 6px;
+  }
+  .me {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .fam {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .fam .pip {
+    width: 9px;
+    height: 9px;
+  }
+  .empty {
+    margin-top: 24px;
+  }
   .item :global(svg) {
     color: var(--ink-3);
     flex: none;
   }
-  .item.static {
-    align-items: flex-start;
-  }
   strong {
     font-weight: 560;
-  }
-  em {
-    font-style: normal;
-    color: var(--ink-3);
   }
   .block {
     display: block;

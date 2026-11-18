@@ -1,5 +1,5 @@
 <script>
-  // Primo avvio: quattro schermate per capire il metodo e impostare il piano.
+  // Primo avvio: poche schermate per capire il metodo, scegliere il livello e impostare il piano.
   import { fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
@@ -10,13 +10,13 @@
   import { buzz } from '../store/ui.svelte.js';
   import { createPlan } from '../engine/plan.js';
   import { VERSION } from '../data/changelog.js';
-  import { BLOCKS, PHASES, TRACKS, LEVELS, CYCLE_BLOCKS, WEEKS_PER_BLOCK } from '../data/program.js';
+  import { PHASES } from '../data/program.js';
+  import { LIBRARY, DEFAULT_LEVEL } from '../data/library.js';
   import { addDays, mondayOf, fmtLong, WEEKDAYS, WEEKDAYS_MIN } from '../util/dates.js';
-  import Dots from '../ui/Dots.svelte';
   import Segmented from '../ui/Segmented.svelte';
-  import LevelDemo from '../ui/LevelDemo.svelte';
+  import LevelPicker from '../ui/LevelPicker.svelte';
 
-  const steps = app.cloud ? ['ciao', 'sessione', 'livelli', 'quando', 'gruppo'] : ['ciao', 'sessione', 'livelli', 'quando'];
+  const steps = app.cloud ? ['ciao', 'sessione', 'livello', 'quando', 'gruppo'] : ['ciao', 'sessione', 'livello', 'quando'];
 
   let i = $state(0);
   let dir = $state(1);
@@ -25,7 +25,7 @@
   let weekN = $state(2);
   let days = $state([2, 5]);
   let share = $state(true);
-  let startLevels = $state({});
+  let level = $state(null);
 
   const step = $derived(steps[i]);
   const sortedDays = $derived([...days].sort((a, b) => a - b));
@@ -35,11 +35,6 @@
     if (when === 'mid') return addDays(monday, -(weekN - 1) * 7);
     return monday;
   });
-  const currentBlock = $derived(when === 'mid' ? Math.ceil(weekN / WEEKS_PER_BLOCK) : 1);
-  // Chi è già a metà ciclo dichiara i livelli raggiunti: solo dei mesi già cominciati.
-  const knownTracks = $derived(
-    when === 'mid' ? CYCLE_BLOCKS.filter((b) => Number(b) <= currentBlock).flatMap((b) => BLOCKS[b].tracks) : []
-  );
   const canNext = $derived(step !== 'ciao' || name.trim().length > 0);
 
   function go(delta) {
@@ -54,16 +49,11 @@
     } else days = [...days, d];
   }
 
-  function setStart(track, level) {
-    buzz();
-    startLevels = { ...startLevels, [track]: startLevels[track] === level ? undefined : level };
-  }
-
   function finish() {
     const plan = createPlan({ start, days: sortedDays });
-    const tests = knownTracks.filter((t) => startLevels[t]).map((t) => ({ track: t, type: 'set', level: startLevels[t] }));
-    if (tests.length) app.saveEvent({ kind: 'livello', date: addDays(start, -1), tests });
+    const chosen = level ?? DEFAULT_LEVEL;
     app.patchMeta({
+      player: { level: chosen, since: app.today, history: [{ date: app.today, level: chosen, how: level ? 'scelto' : 'predefinito' }], declined: null },
       onboarded: true,
       seenVersion: VERSION,
       profile: { name: name.trim() },
@@ -85,7 +75,7 @@
       <section in:fly={{ x: 28 * dir, duration: 420, easing: cubicOut }}>
         {#if step === 'ciao'}
           <h1 class="display">{app.firstName ? `Ciao ${app.firstName}.` : 'Benvenuto.'}</h1>
-          <p class="lead muted">Tre mesi, quante sessioni vuoi. Ogni volta trovi l’allenamento già pronto, al tuo livello.</p>
+          <p class="lead muted">Tre mesi, quante sessioni vuoi. Ogni volta trovi l’allenamento già pronto.</p>
 
           {#if !app.user?.name}
             <input class="field" placeholder="Come ti chiami?" bind:value={name} autocomplete="given-name" />
@@ -101,13 +91,13 @@
               <span><strong>test a settimana</strong><br /><span class="muted">Allenarsi è una cosa, misurarsi un’altra</span></span>
             </li>
             <li>
-              <b class="mono">5</b>
-              <span><strong>livelli per esercizio</strong><br /><span class="muted">Dal più guidato al punto giocato</span></span>
+              <b class="mono">{LIBRARY.length}</b>
+              <span><strong>esercizi</strong><br /><span class="muted">Ognuno con le sue medaglie: bronzo, argento, oro</span></span>
             </li>
           </ul>
         {:else if step === 'sessione'}
           <h1 class="display">Novanta minuti, cinque fasi.</h1>
-          <p class="lead muted">Stessa struttura ogni volta. Cambia il contenuto, che segue il mese e il tuo livello. Fra una fase e l’altra, 1 minuto di pausa.</p>
+          <p class="lead muted">Stessa struttura ogni volta. Cambia il contenuto, che segue il mese. Fra una fase e l’altra, 1 minuto di pausa.</p>
 
           <div class="bar" role="img" aria-label="Le cinque fasi della sessione">
             {#each PHASES as p, n (p.id)}
@@ -121,14 +111,14 @@
           </ol>
 
           <div class="ab">
-            <div class="card" data-color="blue"><span class="letter">Allenamento</span><p>Gli esercizi del mese, al tuo livello. Scegli tu il tipo di allenamento, oppure lascia che lo prepari l’app.</p></div>
-            <div class="card" data-color="orange"><span class="letter">Test</span><p>10 tentativi per ogni esercizio: il risultato decide il livello. Puoi farlo da solo o durante un allenamento.</p></div>
+            <div class="card" data-color="blue"><span class="letter">Allenamento</span><p>Gli esercizi del mese. Su ogni esercizio, quando vuoi, provi a prendere una medaglia.</p></div>
+            <div class="card" data-color="orange"><span class="letter">Test</span><p>Un appuntamento a parte, solo per misurarti. L’app ti propone gli esercizi da misurare.</p></div>
           </div>
-        {:else if step === 'livelli'}
-          <h1 class="display">Sali quando lo dice il test.</h1>
-          <p class="lead muted">Due test di fila da almeno 8 su 10 e passi al livello dopo. Con 4 o meno torni indietro di uno.</p>
-          <LevelDemo />
-          <p class="small muted">Un tentativo vale se la palla entra e torni in posizione di attesa. Le soglie si cambiano nelle impostazioni.</p>
+        {:else if step === 'livello'}
+          <h1 class="display">Qual è il tuo livello?</h1>
+          <p class="lead muted">Serve solo a proporti esercizi adatti: puoi fare tutto, a qualsiasi livello. Lo cambi quando vuoi.</p>
+          <LevelPicker value={level} onchange={(v) => (level = v)} />
+          <p class="small muted">Se non sai cosa scegliere, vai avanti: parti da principiante. Quando sarai pronto per il livello dopo, te lo dirà l’app.</p>
         {:else if step === 'quando'}
           <h1 class="display">Quando ti alleni?</h1>
 
@@ -167,37 +157,19 @@
             {when === 'mid' ? 'Il ciclo è cominciato' : 'Si comincia'}
             {fmtLong(start)}. Modelli, giorni e mesi si cambiano quando vuoi.
           </p>
-
-          {#if knownTracks.length}
-            <div class="stack g-12" in:fly={{ y: 8, duration: 300 }}>
-              <p class="heading">A che livello sei arrivato?</p>
-              {#each knownTracks as t (t)}
-                <div class="lvl">
-                  <span class="grow">{TRACKS[t].short}</span>
-                  <span class="picks">
-                    {#each Array(LEVELS) as _, n (n)}
-                      <button class:on={startLevels[t] === n + 1} onclick={() => setStart(t, n + 1)} aria-label="Livello {n + 1}">{n + 1}</button>
-                    {/each}
-                  </span>
-                </div>
-              {/each}
-              <p class="small faint">Se non lo sai lascia vuoto: lo stabilisce il test di partenza.</p>
-            </div>
-          {/if}
         {:else if step === 'gruppo'}
           <h1 class="display">Ci si allena in due.</h1>
-          <p class="lead muted">Chi è nel gruppo può vedere a che livello sei, così sa quale esercizio farti fare. Diario, note ed errori restano solo tuoi.</p>
+          <p class="lead muted">Chi è nel gruppo vede solo il tuo nome. Medaglie, livello, diario e note restano tuoi.</p>
 
           <div class="card peek">
             <div class="row g-12">
               <span class="who">{(name.trim()[0] ?? 'T').toUpperCase()}</span>
-              <span class="grow"><strong>{name.trim().split(/\s+/)[0] || 'Tu'}</strong><br /><span class="small muted">Top di dritto · Diagonale fissa</span></span>
-              <Dots level={2} size={7} />
+              <span class="grow"><strong>{name.trim().split(/\s+/)[0] || 'Tu'}</strong></span>
             </div>
           </div>
 
           <label class="toggle">
-            <span>Mostra i miei livelli al gruppo</span>
+            <span>Mostra il mio nome al gruppo</span>
             <input type="checkbox" bind:checked={share} />
             <i aria-hidden="true"></i>
           </label>
@@ -409,35 +381,6 @@
     font-size: 10px;
     font-weight: 700;
     animation: pop 0.4s var(--spring) both;
-  }
-
-  .lvl {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 14px;
-  }
-  .picks {
-    display: flex;
-    gap: 4px;
-  }
-  .picks button {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--ink-2);
-    box-shadow: inset 0 0 0 1px var(--line-strong);
-    transition:
-      background 0.2s var(--ease),
-      color 0.2s var(--ease);
-  }
-  .picks button.on {
-    background: var(--accent);
-    color: #15171a;
-    box-shadow: none;
-    font-weight: 600;
   }
 
   .peek {

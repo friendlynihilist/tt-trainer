@@ -52,10 +52,13 @@ service cloud.firestore {
       }
     }
 
-    // Profilo visibile al gruppo: nome e livelli. Lo scrive solo il proprietario.
+    // Profilo visibile al gruppo: solo il nome. Medaglie, livello e diario restano personali.
+    // Lo scrive solo il proprietario, e non può aggiungere altri campi.
     match /profiles/{uid} {
       allow read: if isMember();
-      allow write: if isMember() && request.auth.uid == uid;
+      allow create, update: if isMember() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'updatedAt']);
+      allow delete: if isMember() && request.auth.uid == uid;
     }
   }
 }

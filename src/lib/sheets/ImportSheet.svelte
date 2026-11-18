@@ -1,5 +1,5 @@
 <script>
-  // Importa percorsi, mesi e modelli da un testo: per esempio preparato da un assistente con le
+  // Importa esercizi, percorsi, mesi e modelli da un testo: per esempio preparato da un assistente con le
   // istruzioni che si copiano da qui. Prima di salvare si vede cosa entra.
   import ClipboardCopy from '@lucide/svelte/icons/clipboard-copy';
   import { app } from '../store/app.svelte.js';
@@ -9,10 +9,11 @@
 
   let text = $state('');
   const result = $derived(text.trim() ? parseImport(text, app.catalog) : null);
-  const count = $derived(result ? result.tracks.length + result.blocks.length + result.templates.length : 0);
+  const count = $derived(result ? result.exercises.length + result.tracks.length + result.blocks.length + result.templates.length : 0);
   const existing = $derived.by(() => {
-    const ids = new Set([...(app.meta?.custom?.tracks ?? []), ...(app.meta?.custom?.blocks ?? []), ...(app.meta?.custom?.templates ?? [])].map((x) => x.id));
-    return result ? [...result.tracks, ...result.blocks, ...result.templates].filter((x) => ids.has(x.id)).length : 0;
+    const c = app.meta?.custom ?? {};
+    const ids = new Set([...(c.exercises ?? []), ...(c.tracks ?? []), ...(c.blocks ?? []), ...(c.templates ?? [])].map((x) => x.id));
+    return result ? [...result.exercises, ...result.tracks, ...result.blocks, ...result.templates].filter((x) => ids.has(x.id)).length : 0;
   });
 
   async function copyPrompt() {
@@ -25,7 +26,7 @@
   }
 
   function save() {
-    app.saveCustomMany({ tracks: result.tracks, blocks: result.blocks, templates: result.templates });
+    app.saveCustomMany({ exercises: result.exercises, tracks: result.tracks, blocks: result.blocks, templates: result.templates });
     ui.close();
     ui.toast(`Importati: ${count}`);
   }
@@ -35,11 +36,11 @@
   <div class="stack g-20">
     <div class="card stack g-8 how">
       <strong>Da un assistente</strong>
-      <p class="small muted">Copia le istruzioni e incollale in una chat con Claude, insieme alla tua richiesta. Per esempio: «Crea tre esercizi per il flip di dritto e un mese di allenamento dedicato al flip.» Poi incolla qui la risposta.</p>
+      <p class="small muted">Copia le istruzioni e incollale in una chat con Claude, insieme alla tua richiesta. Per esempio: «Crea tre esercizi per il flip di dritto, con le medaglie, e un mese di allenamento dedicato al flip.» Poi incolla qui la risposta.</p>
       <button class="btn ghost small self" onclick={copyPrompt}><ClipboardCopy size={16} /> Copia le istruzioni</button>
     </div>
 
-    <textarea class="field code" placeholder={'{ "percorsi": [ … ], "mesi": [ … ], "allenamenti": [ … ] }'} bind:value={text} spellcheck="false"></textarea>
+    <textarea class="field code" placeholder={'{ "esercizi": [ … ], "percorsi": [ … ], "mesi": [ … ], "allenamenti": [ … ] }'} bind:value={text} spellcheck="false"></textarea>
 
     {#if result}
       <div class="stack g-8">
@@ -47,8 +48,11 @@
         {#each result.warnings as w (w)}<p class="small warn">{w}</p>{/each}
         {#if count}
           <div class="card flush list">
+            {#each result.exercises as e (e.id)}
+              <div class="item"><span class="tag line">esercizio</span><span class="grow">{e.name}<span class="small muted block">{[e.level, e.family].filter(Boolean).join(' · ') || 'senza livello'}</span></span></div>
+            {/each}
             {#each result.tracks as t (t.id)}
-              <div class="item"><span class="tag line">percorso</span><span class="grow">{t.name}<span class="small muted block">{t.levels.length} livelli</span></span></div>
+              <div class="item"><span class="tag line">percorso</span><span class="grow">{t.name}<span class="small muted block">{t.sequence?.length ?? t.levels.length} esercizi</span></span></div>
             {/each}
             {#each result.blocks as b (b.id)}
               <div class="item"><span class="tag line">mese</span><span class="grow">{b.theme}</span></div>
