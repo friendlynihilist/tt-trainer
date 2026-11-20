@@ -10,8 +10,35 @@
   // sans: titolo in Geist, come nelle schermate rifatte (docs/design.md).
   let { title = '', onclose, children, footer = null, tall = false, sans = true } = $props();
 
-  // Finché il foglio è aperto la pagina sotto non scorre.
-  onMount(() => lockScroll());
+  let el = $state();
+  // Finché il foglio è aperto la pagina sotto non scorre. Il fuoco della tastiera entra nel foglio
+  // e, alla chiusura, torna al pulsante che l'aveva aperto.
+  onMount(() => {
+    const unlock = lockScroll();
+    const before = document.activeElement;
+    el?.focus({ preventScroll: true });
+    return () => {
+      unlock();
+      if (before instanceof HTMLElement && document.contains(before)) before.focus({ preventScroll: true });
+    };
+  });
+
+  /** Tab non esce dal foglio: dall'ultimo elemento torna al primo, e viceversa. */
+  function trap(e) {
+    if (e.key !== 'Tab' || !el) return;
+    const items = [...el.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter((x) => x.offsetParent !== null);
+    if (!items.length) return e.preventDefault();
+    const first = items[0];
+    const last = items[items.length - 1];
+    const at = document.activeElement;
+    if (e.shiftKey && (at === first || at === el)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && at === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 
   let drag = $state(0);
   let dragging = $state(false);
@@ -45,10 +72,13 @@
   role="dialog"
   aria-modal="true"
   aria-label={title}
+  tabindex="-1"
+  bind:this={el}
+  onkeydown={trap}
   style:--drag="{drag}px"
   transition:fly|global={{ y: 60, duration: 420, easing: cubicOut }}
 >
-  <div class="grip" onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up}>
+  <div class="grip" role="presentation" onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up}>
     <span></span>
   </div>
   <header>
@@ -84,6 +114,9 @@
     box-shadow: var(--shadow);
     translate: 0 var(--drag);
     transition: translate 0.35s var(--ease-out);
+  }
+  .sheet:focus {
+    outline: none;
   }
   .sheet.dragging {
     transition: none;

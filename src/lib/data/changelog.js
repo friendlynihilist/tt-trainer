@@ -10,6 +10,17 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.7.0',
+    date: '2026-11-20',
+    title: 'Indietro e copia dei dati',
+    items: [
+      { icon: 'swap', text: 'Il tasto «indietro» del telefono chiude il foglio aperto e mette in pausa l’allenamento. Prima usciva dall’app.' },
+      { icon: 'library', text: 'Da Impostazioni puoi ripristinare una copia completa dei tuoi dati.' },
+      { icon: 'pencil', text: 'Se elimini una voce del diario per sbaglio, tocca «Annulla».' },
+      { icon: 'trending', text: 'Un percorso archiviato si riprende dalla Libreria, in fondo ai percorsi.' }
+    ]
+  },
+  {
     version: '0.6.2',
     date: '2026-11-20',
     title: 'Pagine più semplici',

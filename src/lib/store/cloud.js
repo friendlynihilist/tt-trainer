@@ -1,6 +1,6 @@
 // Backend cloud: Firebase Authentication (Google) + Firestore.
 //
-//   config/access            chi può entrare: { admins: [email], emails: [email] }
+//   config/access            chi può entrare: { admins: [email], emails: [email] } (lo leggono solo gli amministratori)
 //   requests/{uid}           richieste di accesso in attesa
 //   users/{uid}              impostazioni e piano dell'utente
 //   users/{uid}/events/{id}  le sue attività (sessioni, test, note)
@@ -62,6 +62,18 @@ export function createCloudBackend(config, { emulator = false } = {}) {
   const eventsRef = (uid) => collection(db, 'users', uid, 'events');
   const notesRef = (uid) => collection(db, 'users', uid, 'notes');
 
+  /** Cancella tutte le voci e le note di un utente. I batch arrivano a 500 scritture. */
+  async function clear(uid) {
+    for (const ref of [eventsRef(uid), notesRef(uid)]) {
+      const snap = await getDocs(ref);
+      for (let i = 0; i < snap.docs.length; i += 400) {
+        const batch = writeBatch(db);
+        snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+  }
+
   return {
     mode: 'cloud',
     emulator,
@@ -106,6 +118,7 @@ export function createCloudBackend(config, { emulator = false } = {}) {
         if (known === 'admin' || known === 'member') return { role: known };
       }
 
+      // L'elenco di chi può entrare lo leggono solo gli amministratori (contiene le email di tutti).
       try {
         const snap = await getDoc(accessRef);
         if (snap.exists()) {
@@ -113,6 +126,13 @@ export function createCloudBackend(config, { emulator = false } = {}) {
         }
       } catch (err) {
         if (!denied(err)) throw err;
+        // Non è amministratore. Se può leggere i propri dati è un membro del gruppo.
+        try {
+          await getDoc(userRef(user.uid));
+          return { role: remember('member') };
+        } catch (err2) {
+          if (!denied(err2)) throw err2;
+        }
       }
 
       try {
@@ -149,7 +169,8 @@ export function createCloudBackend(config, { emulator = false } = {}) {
         // 0.5, il resto dell'app deve funzionare lo stesso (niente nuovo controllo dell'accesso).
         onSnapshot(notesRef(uid), (snap) => h.notes?.(list(snap)), (err) => console.warn('Note non disponibili', err?.code ?? err)),
         onSnapshot(collection(db, 'profiles'), (snap) => h.profiles?.(list(snap)), fail),
-        onSnapshot(accessRef, (snap) => h.access?.(snap.data() ?? null), fail)
+        // Solo gli amministratori leggono l'elenco: per gli altri il rifiuto è normale.
+        onSnapshot(accessRef, (snap) => h.access?.(snap.data() ?? null), (err) => (denied(err) ? h.access?.(null) : fail(err)))
       ];
       if (admin) subs.push(onSnapshot(collection(db, 'requests'), (snap) => h.requests?.(list(snap)), fail));
       return () => subs.forEach((off) => off());
@@ -158,7 +179,14 @@ export function createCloudBackend(config, { emulator = false } = {}) {
     // Le scritture non aspettano il server: Firestore aggiorna subito la cache locale
     // e le mette in coda se manca la rete.
     saveMeta(uid, patch) {
-      return setDoc(userRef(uid), patch, { merge: true });
+      if (!('plan' in patch)) return setDoc(userRef(uid), patch, { merge: true });
+      // Il piano si sostituisce intero (mergeFields rimpiazza il campo): un piano nuovo non eredita
+      // i campi di quello vecchio. Il resto si unisce come sempre, nella stessa scrittura.
+      const { plan, ...rest } = patch;
+      const batch = writeBatch(db);
+      if (Object.keys(rest).length) batch.set(userRef(uid), rest, { merge: true });
+      batch.set(userRef(uid), { plan }, { mergeFields: ['plan'] });
+      return batch.commit();
     },
     saveEvent(uid, ev) {
       return setDoc(doc(eventsRef(uid), ev.id), ev);
@@ -190,16 +218,22 @@ export function createCloudBackend(config, { emulator = false } = {}) {
       return deleteDoc(doc(db, 'requests', request.id));
     },
 
-    async wipe(uid) {
-      for (const ref of [eventsRef(uid), notesRef(uid)]) {
-        const snap = await getDocs(ref);
-        // I batch arrivano a 500 scritture.
-        for (let i = 0; i < snap.docs.length; i += 400) {
+    /** Sostituisce tutti i dati con quelli di una copia completa. */
+    async restore(uid, { meta, events, notes }) {
+      await clear(uid);
+      if (meta) await setDoc(userRef(uid), meta);
+      else await deleteDoc(userRef(uid));
+      for (const [ref, list] of [[eventsRef(uid), events ?? []], [notesRef(uid), notes ?? []]]) {
+        for (let i = 0; i < list.length; i += 400) {
           const batch = writeBatch(db);
-          snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+          list.slice(i, i + 400).forEach((x) => batch.set(doc(ref, x.id), x));
           await batch.commit();
         }
       }
+    },
+
+    async wipe(uid) {
+      await clear(uid);
       await deleteDoc(userRef(uid));
       await deleteDoc(doc(db, 'profiles', uid)).catch(() => {});
     }

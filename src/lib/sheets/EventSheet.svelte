@@ -166,13 +166,14 @@
   function remove() {
     ui.open('confirm', {
       title: 'Eliminare questa voce?',
-      text: filled.length || oldTests.length ? 'Le medaglie si ricalcolano senza le sue misure. Non si può annullare.' : 'Non si può annullare.',
+      text: filled.length || oldTests.length ? 'Le medaglie si ricalcolano senza le sue misure.' : '',
       action: 'Elimina',
       danger: true,
       onconfirm: () => {
+        const saved = app.rawEvents.find((e) => e.id === original.id);
         app.deleteEvent(original.id);
         ui.close();
-        ui.toast('Voce eliminata');
+        ui.toast('Voce eliminata', { action: saved ? { label: 'Annulla', run: () => app.saveEvent(saved) } : null });
       }
     });
   }

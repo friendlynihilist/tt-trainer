@@ -98,6 +98,13 @@
       .map((f) => ({ ...f, strokes: app.strokes.filter((s) => s.family === f.id && (side === 'all' || s.side === side || !s.side)) }))
       .filter((f) => f.strokes.length);
   });
+  /** Un percorso archiviato torna fra quelli da scegliere. */
+  function unarchive(id) {
+    const raw = (app.meta?.custom?.tracks ?? []).find((t) => t.id === id);
+    if (!raw) return;
+    app.saveCustom('tracks', { ...raw, archived: false });
+    ui.toast(`«${app.catalog.track(id).short}» è di nuovo fra i percorsi`);
+  }
   function removeError(e) {
     ui.open('confirm', {
       title: `Eliminare «${e.name}»?`,
@@ -224,7 +231,17 @@
               {/each}
               {@render addRow('Nuovo percorso', () => ui.open('trackedit'))}
             </div>
-            {#if archived.length}<p class="note">Archiviati: {archived.map((id) => app.catalog.track(id).short).join(', ')}</p>{/if}
+            {#if archived.length}
+              <p class="note">Archiviati</p>
+              <div class="card flush list arch">
+                {#each archived as id (id)}
+                  <div class="item">
+                    <span class="grow muted">{app.catalog.track(id).short}</span>
+                    <button class="btn ghost small" onclick={() => unarchive(id)}>Riprendi</button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </Collapse>
         </div>
 
@@ -392,6 +409,9 @@
     font-size: 12px;
     font-weight: 650;
     color: var(--ink-2);
+  }
+  .arch {
+    margin-top: 6px;
   }
   .note {
     margin: 10px 4px 0;

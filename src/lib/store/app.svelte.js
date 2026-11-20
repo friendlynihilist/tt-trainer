@@ -134,6 +134,11 @@ class AppState {
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) this.today = today();
     });
+    // E se resta in primo piano a cavallo della mezzanotte, un controllo al minuto.
+    setInterval(() => {
+      const now = today();
+      if (now !== this.today) this.today = now;
+    }, 60000);
   }
 
   async #onAuth(user, fresh = false) {
@@ -382,6 +387,11 @@ class AppState {
   removeCustom(list, id) {
     const current = this.meta?.custom?.[list] ?? [];
     this.patchMeta({ custom: { [list]: current.filter((x) => x.id !== id) } });
+  }
+
+  /** Sostituisce tutti i dati con quelli di una copia completa (vedi engine/export.js, parseBackup). */
+  async restore({ meta, events, notes }) {
+    await this.#backend.restore(this.user.uid, clean({ meta, events, notes }));
   }
 
   async wipe() {

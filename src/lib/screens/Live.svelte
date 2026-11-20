@@ -227,6 +227,8 @@
     }
     const release = keepAwake();
     const unlock = lockScroll();
+    // Il tasto «indietro» del telefono mette in pausa e chiude, come la ×.
+    const unhold = ui.hold(leave);
     unlockAudio();
     if (!resumed && !closing && step) play(step.id);
     const tick = setInterval(() => {
@@ -238,6 +240,7 @@
       clearInterval(tick);
       release();
       unlock();
+      unhold();
     };
   });
 

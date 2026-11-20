@@ -82,7 +82,10 @@ export function createLocalBackend() {
     },
 
     async saveMeta(_uid, patch) {
-      data.meta = merge(data.meta, patch);
+      // Il piano si sostituisce intero: un piano nuovo non eredita i campi di quello vecchio.
+      const { plan, ...rest } = patch;
+      data.meta = merge(data.meta, rest);
+      if ('plan' in patch) data.meta = { ...data.meta, plan };
       write();
       emit();
     },
@@ -112,6 +115,14 @@ export function createLocalBackend() {
     async setMembers() {},
     async approve() {},
     async reject() {},
+
+    /** Sostituisce tutti i dati con quelli di una copia completa. */
+    async restore(_uid, { meta, events, notes }) {
+      const byId = (list) => Object.fromEntries((list ?? []).map((x) => [x.id, x]));
+      data = { session: data.session, meta: meta ?? null, events: byId(events), notes: byId(notes) };
+      write();
+      emit();
+    },
 
     async wipe() {
       data = { session: data.session };

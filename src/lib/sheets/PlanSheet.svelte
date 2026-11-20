@@ -251,8 +251,8 @@
     color: var(--accent-ink);
   }
   .icon-btn {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
   }
   .done {
     margin-left: 34px;
@@ -264,7 +264,7 @@
     margin-left: 34px;
   }
   .lengths button {
-    height: 34px;
+    height: 40px;
     padding: 0 12px;
     border-radius: 999px;
     background: var(--sunk);

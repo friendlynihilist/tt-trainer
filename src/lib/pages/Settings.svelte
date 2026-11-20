@@ -13,6 +13,7 @@
   import Users from '@lucide/svelte/icons/users';
   import FileSpreadsheet from '@lucide/svelte/icons/file-spreadsheet';
   import FileJson from '@lucide/svelte/icons/file-json';
+  import Upload from '@lucide/svelte/icons/upload';
   import Trash from '@lucide/svelte/icons/trash-2';
   import Sparkles from '@lucide/svelte/icons/sparkles';
   import BookOpen from '@lucide/svelte/icons/book-open';
@@ -21,7 +22,7 @@
   import LevelBadge from '../ui/LevelBadge.svelte';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { backup, diaryCsv } from '../engine/export.js';
+  import { backup, diaryCsv, parseBackup } from '../engine/export.js';
   import { VERSION } from '../data/changelog.js';
   import { PLAYER_LEVEL } from '../data/library.js';
   import { WEEKDAYS_SHORT, fmtLong } from '../util/dates.js';
@@ -60,7 +61,39 @@
   }
 
   function exportJson() {
-    download(`terza-palla-${app.today}.json`, JSON.stringify(backup({ meta: app.meta, events: app.events, notes: app.notes }), null, 2), 'application/json');
+    // Le voci come sono salvate, comprese quelle in programma: la copia deve poter tornare uguale.
+    download(`terza-palla-${app.today}.json`, JSON.stringify(backup({ meta: app.meta, events: app.rawEvents, notes: app.notes }), null, 2), 'application/json');
+  }
+
+  let fileInput = $state();
+  const count = (n, one, many) => (n === 1 ? one : `${n} ${many}`);
+  /** Legge la copia scelta, dice cosa contiene e, dopo la conferma, la mette al posto dei dati di adesso. */
+  async function pickedBackup(e) {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = '';
+    if (!file) return;
+    let data;
+    try {
+      data = parseBackup(await file.text());
+    } catch (err) {
+      return ui.toast(err.message, { tone: 'error', ms: 6000 });
+    }
+    const when = data.exportedAt ? ` del ${fmtLong(data.exportedAt.slice(0, 10))}` : '';
+    ui.open('confirm', {
+      title: 'Ripristinare questa copia?',
+      text: `La copia${when} contiene ${count(data.events.length, 'una voce', 'voci')} e ${count(data.notes.length, 'una nota', 'note')}. Prende il posto di tutti i dati di adesso: non si può annullare.`,
+      action: 'Ripristina',
+      danger: true,
+      onconfirm: async () => {
+        try {
+          await app.restore(data);
+          ui.toast('Copia ripristinata');
+        } catch (err) {
+          console.error(err);
+          ui.toast('Non sono riuscito a ripristinare la copia. Riprova.', { tone: 'error' });
+        }
+      }
+    });
   }
 
   function exportCsv() {
@@ -71,7 +104,7 @@
   function wipe() {
     ui.open('confirm', {
       title: 'Cancellare tutti i tuoi dati?',
-      text: 'Piano, sessioni, misure e note. Non si può annullare: esporta prima una copia.',
+      text: 'Piano, allenamenti, misure e note. Non si può annullare: scarica prima una copia completa, che poi puoi ripristinare.',
       action: 'Cancella tutto',
       danger: true,
       onconfirm: () => app.wipe()
@@ -202,10 +235,13 @@
     <h2 class="heading">Dati</h2>
     <div class="card flush list">
       {@render row(FileSpreadsheet, 'Esporta il diario', 'Un file CSV, per Excel o Fogli', exportCsv)}
-      {@render row(FileJson, 'Copia completa', 'Un file JSON con piano, sessioni e note', exportJson)}
+      {@render row(FileJson, 'Copia completa', 'Un file JSON con piano, allenamenti e note', exportJson)}
+      {@render row(Upload, 'Ripristina una copia', 'Rimette i dati di una copia completa', () => fileInput.click())}
       {@render row(Trash, 'Cancella tutti i miei dati', '', wipe, null, true)}
     </div>
   </section>
+
+  <input class="sr-only" type="file" accept="application/json,.json" bind:this={fileInput} onchange={pickedBackup} tabindex="-1" aria-hidden="true" />
 
   <section class="section">
     <h2 class="heading">Informazioni</h2>

@@ -362,8 +362,8 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 32px;
-    padding: 0 8px;
+    min-height: 40px;
+    padding: 0 10px;
     border-radius: 8px;
     font-size: 13px;
     font-weight: 600;

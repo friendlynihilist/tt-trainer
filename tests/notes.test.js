@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { makeNote, isValidNote, notesOf, feelSummary, notesForExercise, feelSeries, fmtFeel } from '../src/lib/engine/notes.js';
-import { diaryRows, diaryCsv, backup, CSV_HEADER } from '../src/lib/engine/export.js';
+import { diaryRows, diaryCsv, backup, parseBackup, CSV_HEADER } from '../src/lib/engine/export.js';
 import { createLocalBackend } from '../src/lib/store/local.js';
 import { LIBRARY_BY_ID } from '../src/lib/data/library.js';
 import { STROKE } from '../src/lib/data/taxonomy.js';
@@ -122,5 +122,37 @@ describe('esportazione', () => {
     expect(b.notes.map((x) => x.date)).toEqual(['2026-11-01', '2026-11-05']);
     expect(b.events).toHaveLength(1);
     expect(b.exportedAt).toBe('2026-11-20T10:00:00.000Z');
+  });
+});
+
+describe('ripristino della copia completa', () => {
+  const events = [
+    { id: 'e1', kind: 'training', template: 'completo', date: '2026-11-04', minutes: 90, createdAt: 1 },
+    { id: 'p1', kind: 'test', date: '2026-11-30', planned: true, adhoc: true, createdAt: 2 }
+  ];
+  const notes = [note('2026-11-05', 'ap-d', 3, 'Polso rigido')];
+
+  it('rilegge quello che la copia ha scritto, comprese le voci in programma', () => {
+    const text = JSON.stringify(backup({ meta: { onboarded: true, plan: { id: 'p' } }, events, notes, now: new Date('2026-11-20T10:00:00Z') }));
+    const r = parseBackup(text);
+    expect(r.meta).toEqual({ onboarded: true, plan: { id: 'p' } });
+    expect(r.events).toEqual(events);
+    expect(r.notes).toEqual(notes);
+    expect(r.exportedAt).toBe('2026-11-20T10:00:00.000Z');
+    expect(r.skipped).toBe(0);
+  });
+
+  it('scarta le righe rotte e tiene una sola voce per id', () => {
+    const r = parseBackup(JSON.stringify({ meta: null, events: [events[0], { id: 'x' }, null, { ...events[0], minutes: 60 }, { id: 'y', date: 'ieri', kind: 'test' }], notes: [{ id: 'n', date: '2026-11-05' }] }));
+    expect(r.events).toEqual([{ ...events[0], minutes: 60 }]);
+    expect(r.notes).toEqual([]);
+    expect(r.meta).toBe(null);
+    expect(r.skipped).toBe(5);
+  });
+
+  it('rifiuta un file che non è una copia', () => {
+    expect(() => parseBackup('ciao')).toThrow(/non è una copia/);
+    expect(() => parseBackup('{"esercizi": []}')).toThrow(/non è una copia/);
+    expect(() => parseBackup('[]')).toThrow(/non è una copia/);
   });
 });

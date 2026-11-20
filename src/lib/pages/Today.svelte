@@ -127,6 +127,10 @@
   });
 
   let sheet = $state(false);
+  // Il tasto «indietro» del telefono chiude il foglio dell'allenamento.
+  $effect(() => {
+    if (sheet) return ui.hold(() => (sheet = false));
+  });
 
   const dateLabel = $derived(fmtLong(app.today));
 

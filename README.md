@@ -78,6 +78,7 @@ tentativi sugli esercizi corrispondenti, in lettura (`src/lib/engine/attempts.js
 npm install
 npm run dev      # http://localhost:5173
 npm test
+npm run test:rules   # le regole di Firestore nell'emulatore (serve Java)
 npm run build
 ```
 
@@ -104,7 +105,7 @@ Nel repository: **Settings → Pages → Source: GitHub Actions**.
 Scritto e provato nel browser in modalità locale (`VITE_LOCAL=1 npm run dev` forza la modalità locale anche
 con Firebase configurato), anche a 390 px: wizard, Oggi, sessione dal vivo con obiettivi e medaglie, test,
 diario, progressi, libreria, livello, pacchetti, editor degli allenamenti, e il passaggio dei dati della
-prima versione, della 0.2 e dei modelli personali. Il motore ha 100 test.
+prima versione, della 0.2 e dei modelli personali. Il motore ha 103 test.
 
 Non ancora provato: il backend cloud (`src/lib/store/cloud.js`) e le regole Firestore, che richiedono un
 progetto Firebase o gli emulatori (`VITE_EMULATOR=1 npm run dev` insieme a `npm run emulators`).
