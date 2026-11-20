@@ -13,8 +13,10 @@
   import EventRow from '../ui/EventRow.svelte';
   import PlannedRow from '../ui/PlannedRow.svelte';
 
-  let month = $state(monthKey(app.today));
-  let selected = $state(app.today);
+  // Da Oggi si arriva anche su un giorno preciso: #/calendario/2026-11-20.
+  const asked = /^\d{4}-\d{2}-\d{2}$/.test(ui.route.params[0] ?? '') ? ui.route.params[0] : null;
+  let month = $state(monthKey(asked ?? app.today));
+  let selected = $state(asked ?? app.today);
 
   const grid = $derived(monthGrid(month));
   const days = $derived(agenda(app.plan, app.events, app.planned, grid[0][0], grid[grid.length - 1][6], app.catalog));

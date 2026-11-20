@@ -1,9 +1,11 @@
 <script>
-  // «Oggi»: un solo pulsante grande con l'allenamento di oggi (o la sessione da riprendere), sotto
-  // la settimana e le medaglie. I blocchi della sessione stanno in un foglio che si apre dalla
-  // striscia colorata: lì si cambia ogni esercizio. Niente è bloccato e tutto si può cambiare.
+  // «Oggi», dal generale al particolare: in alto il mese («Dritto», il dettaglio in un foglio), poi
+  // l'allenamento di oggi con un solo pulsante grande, la settimana o il mese, le medaglie (quelle
+  // prese oggi e una da prendere). I blocchi della sessione stanno in un foglio: lì si cambia ogni
+  // esercizio. Niente è bloccato e tutto si può cambiare.
   import Coffee from '@lucide/svelte/icons/coffee';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Shuffle from '@lucide/svelte/icons/shuffle';
   import ListIcon from '@lucide/svelte/icons/list';
   import PencilLine from '@lucide/svelte/icons/pencil-line';
@@ -23,19 +25,20 @@
   import { composeSession, templateWithOverrides } from '../engine/compose.js';
   import { packagesOf } from '../data/packages.js';
   import { pickExercise, pickTemplate } from '../ui/pickers.js';
-  import { nearGoals } from '../engine/player.js';
-  import { nextGoal, shortValue, measureLabel } from '../engine/medals.js';
+  import { nearGoals, currentInSequence } from '../engine/player.js';
+  import { nextGoal, shortValue, measureLabel, goalText } from '../engine/medals.js';
   import { lastFocus } from '../engine/stats.js';
   import { exerciseLabel } from '../data/catalog.js';
   import { PLAYER_LEVEL, TIER, TIERS } from '../data/library.js';
   import { addDays, fmtLong, fmtRelative, fmtShort } from '../util/dates.js';
-  import { sessionBlocks, stepFamily, FAMILY_ICON, MEASURE_ICON } from '../ui/design.js';
+  import { sessionBlocks, stepFamily, MEASURE_ICON } from '../ui/design.js';
   import PageHead from '../ui/PageHead.svelte';
   import PlannedRow from '../ui/PlannedRow.svelte';
   import EventRow from '../ui/EventRow.svelte';
   import BigButton from '../ui/BigButton.svelte';
   import Brick from '../ui/Brick.svelte';
   import MedalRing from '../ui/MedalRing.svelte';
+  import MedalBadge from '../ui/MedalBadge.svelte';
   import LevelBadge from '../ui/LevelBadge.svelte';
   import WeekDays from '../ui/WeekDays.svelte';
   import Sheet from '../ui/Sheet.svelte';
@@ -75,20 +78,37 @@
   const offer = $derived(app.levelOffer);
   const inCalendar = $derived(Boolean(trainingToday) && !chosen);
 
-  // Le medaglie: prima gli obiettivi vicini, poi gli esercizi con la medaglia più recente.
-  const near = $derived(nearGoals({ medals: app.medals, catalog: app.catalog }));
-  const tiles = $derived.by(() => {
-    const out = near.map((n) => n.ex);
-    const lastMedal = (m) => [...TIERS.map((t) => m[t]), m.half].filter(Boolean).sort().pop() ?? m.lastDate ?? '';
-    const recent = Object.entries(app.medals)
-      .filter(([id]) => app.catalog.exercise(id))
-      .sort(([, a], [, b]) => (lastMedal(a) < lastMedal(b) ? 1 : -1))
-      .map(([id]) => id);
-    for (const id of recent) {
-      if (out.length >= 6) break;
-      if (!out.includes(id)) out.push(id);
+  // Le medaglie prese oggi: per ogni esercizio la più alta.
+  const wonToday = $derived.by(() => {
+    const out = [];
+    for (const [id, m] of Object.entries(app.medals)) {
+      const ex = app.catalog.exercise(id);
+      if (!ex) continue;
+      const tier = [...TIERS].reverse().find((t) => m[t] === app.today);
+      if (tier) out.push({ ex, tier, half: false });
+      else if (m.half === app.today && !m.O) out.push({ ex, tier: 'O', half: true });
     }
     return out;
+  });
+
+  // Una medaglia da prendere, con il perché: prima una vicina che è nell'allenamento di oggi, poi
+  // una vicina dei percorsi del mese, poi la più vicina, poi l'esercizio del mese.
+  const near = $derived(nearGoals({ medals: app.medals, catalog: app.catalog, max: 10 }));
+  const sessionExs = $derived(new Set((session?.steps ?? []).filter((s) => s.ex).map((s) => s.ex)));
+  const monthExs = $derived((week?.focusBlock?.tracks ?? []).map((t) => currentInSequence(t, app.catalog, app.medals)).filter(Boolean));
+  const suggested = $derived.by(() => {
+    const monthSeq = new Set((week?.focusBlock?.tracks ?? []).flatMap((t) => app.catalog.sequence(t)));
+    const pick =
+      near.find((n) => sessionExs.has(n.ex)) ??
+      near.find((n) => monthSeq.has(n.ex)) ??
+      near[0] ??
+      (monthExs[0] ? { ex: monthExs[0] } : null);
+    const ex = pick && app.catalog.exercise(pick.ex);
+    const goal = ex && nextGoal(ex, app.medals[ex.id]);
+    if (!goal) return null;
+    const inSession = sessionExs.has(ex.id);
+    const why = inSession ? 'È nell’allenamento di oggi' : near.some((n) => n.ex === ex.id) ? 'Ti manca poco' : 'È l’esercizio del mese';
+    return { ex, goal, inSession, why, best: app.medals[ex.id]?.best ?? null };
   });
 
   let draft = $state(null);
@@ -99,13 +119,18 @@
 
   let sheet = $state(false);
 
-  const title = $derived.by(() => {
-    if (!plan) return 'Oggi';
-    if (app.phase === 'before') return 'Si comincia';
-    if (app.phase === 'done') return 'Ciclo completato';
-    if (week.kind === 'P') return 'Settimana di pausa';
-    if (week.kind === 'R') return 'Recupero';
-    return `Settimana ${week.number}`;
+  const title = $derived(fmtLong(app.today).replace(/^./, (c) => c.toUpperCase()));
+
+  // Il mese in corso, in breve: il tema, la settimana del mese, i percorsi. Il resto nel foglio.
+  const monthInfo = $derived.by(() => {
+    if (!plan || !week || app.phase === 'done' || (app.phase === 'active' && week.kind === 'P')) return null;
+    const block = week.focusBlock;
+    if (!block) return null;
+    const tracks = block.tracks.map((id) => app.catalog.track(id)?.short).filter(Boolean).join(' · ');
+    if (app.phase === 'before') return { label: `Da ${fmtLong(plan.start)}`, theme: block.theme, sub: tracks };
+    const same = plan.weeks.map((k, i) => [k, i]).filter(([k]) => k === week.kind);
+    const n = same.findIndex(([, i]) => i === week.idx) + 1;
+    return { label: week.kind === 'R' ? 'Settimana di recupero' : 'Questo mese', theme: block.theme, sub: `Settimana ${n} di ${same.length} · ${tracks}` };
   });
 
   function choose(id) {
@@ -150,24 +175,24 @@
     clearLive(app.user.uid);
     draft = null;
   }
-
-  /** «Oro · 20», «Argento · 9/10»: il gradino dopo, in breve. */
-  function nextShort(ex) {
-    const g = nextGoal(ex, app.medals[ex.id]);
-    if (!g) return 'tutte prese';
-    return `${TIER[g.tier].name} · ${shortValue(ex, g.goal)}`;
-  }
 </script>
 
 <div class="page enter today">
-  <PageHead eyebrow={fmtLong(app.today)} {title} sans>
-    <div class="lvrow">
-      <LevelBadge level={app.player.level} onclick={() => ui.open('level')} />
-      {#if plan && week?.block && app.phase === 'active' && week.kind !== 'P'}
-        <span class="theme">{week.block.theme}</span>
-      {/if}
-    </div>
-  </PageHead>
+  <PageHead eyebrow="Oggi" {title} sans />
+
+  <!-- Il mese: il tema in grande, come un promemoria. Il dettaglio si apre toccandolo. -->
+  {#if monthInfo}
+    <section class="mantra">
+      <button class="m-main" onclick={() => ui.open('month')}>
+        <span class="t-caps m-label">{monthInfo.label}</span>
+        <span class="m-theme">{monthInfo.theme}<ChevronRight size={26} strokeWidth={2.6} /></span>
+        <span class="m-sub">{monthInfo.sub}</span>
+      </button>
+      <span class="m-level"><LevelBadge level={app.player.level} small onclick={() => ui.open('level')} /></span>
+    </section>
+  {:else}
+    <div class="lvrow"><LevelBadge level={app.player.level} onclick={() => ui.open('level')} /></div>
+  {/if}
 
   {#if offer}
     <section class="offer" data-level={offer.level}>
@@ -227,10 +252,7 @@
       <BigButton verb="Inizia" sub={template.name} minutes={session.minutes} onclick={startTraining} />
       <button class="strip" onclick={() => (sheet = true)} aria-label="Blocchi della sessione">
         {#each blocks as b (b.key)}
-          {@const Icon = FAMILY_ICON[b.fam] ?? FAMILY_ICON.libero}
-          <span class="seg" data-fam={b.fam} style:flex-grow={b.minutes}>
-            {#if b.minutes >= 8}<Icon size={16} strokeWidth={2.4} />{/if}
-          </span>
+          <span class="seg" data-fam={b.fam} style:flex-grow={b.minutes}></span>
         {/each}
       </button>
       <div class="tools">
@@ -287,28 +309,47 @@
   {/if}
 
   <section class="section">
-    <WeekDays onclick={() => ui.go('calendario')} />
+    <WeekDays />
   </section>
 
   <section class="section">
     <div class="sec-head">
       <h2 class="t-name">Medaglie</h2>
-      {#if near.length && !testToday}
-        <button class="btn ghost small" onclick={() => startTest(near.map((n) => n.ex))}><Target size={16} /> Prova</button>
-      {/if}
+      <button class="more" onclick={() => ui.go('progressi')}>Tutte <ChevronRight size={16} /></button>
     </div>
-    {#if tiles.length}
-      <div class="medals">
-        {#each tiles as id (id)}
-          {@const ex = app.catalog.exercise(id)}
-          <button class="tile" onclick={() => ui.open('exercise', { id })}>
-            <MedalRing exercise={ex} medals={app.medals[id]} size={72} />
-            <span class="tile-name">{ex.name}</span>
-            <span class="tile-next" class:near={near.some((n) => n.ex === id)}>{nextShort(ex)}</span>
+
+    {#if wonToday.length}
+      <div class="won">
+        <span class="t-caps won-label">Prese oggi</span>
+        {#each wonToday as w (w.ex.id)}
+          <button class="won-row" onclick={() => ui.open('exercise', { id: w.ex.id })}>
+            <MedalBadge tier={w.tier} half={w.half} size={40} label={false} />
+            <span class="grow">
+              <strong>{w.half ? 'Metà oro' : TIER[w.tier].name}</strong>
+              <span class="small muted block">{w.ex.name}</span>
+            </span>
           </button>
         {/each}
       </div>
-    {:else}
+    {/if}
+
+    {#if suggested}
+      {@const s = suggested}
+      <div class="suggest" data-medal={s.goal.tier}>
+        <button class="s-main" onclick={() => ui.open('exercise', { id: s.ex.id })}>
+          <MedalRing exercise={s.ex} medals={app.medals[s.ex.id]} size={76} />
+          <span class="grow">
+            <span class="t-caps s-why">{s.why}</span>
+            <strong class="t-name block">{s.ex.name}</strong>
+            <span class="small block">{goalText(s.ex, s.goal)}{s.goal.half ? ', per la seconda volta' : ''}</span>
+            {#if s.best != null}<span class="small muted block">Il tuo record: {shortValue(s.ex, s.best)}</span>{/if}
+          </span>
+        </button>
+        {#if !s.inSession && !testToday}
+          <button class="btn ghost small s-try" onclick={() => startTest([s.ex.id])}><Target size={16} /> Provala ora</button>
+        {/if}
+      </div>
+    {:else if !wonToday.length}
       <p class="muted small">In sessione tocca «Prova l’obiettivo»: arriva la prima medaglia.</p>
     {/if}
   </section>
@@ -368,19 +409,57 @@
     margin-bottom: 4px;
   }
   .lvrow {
+    margin-top: 12px;
+  }
+
+  /* ── Il mese ── */
+  .mantra {
+    position: relative;
+    margin-top: 16px;
+  }
+  .m-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    padding: 16px 18px 18px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    border: 1px solid var(--line);
+    text-align: left;
+    color: var(--ink);
+    transition: transform var(--dur-fast) var(--ease);
+  }
+  .m-main:active {
+    transform: scale(0.985);
+  }
+  .m-label {
+    color: var(--ink-3);
+    min-height: 30px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-top: 12px;
-    min-width: 0;
   }
-  .theme {
+  .m-theme {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+  .m-theme :global(svg) {
+    color: var(--ink-3);
+    margin-top: 4px;
+  }
+  .m-sub {
     font-size: 14px;
-    font-weight: 600;
     color: var(--ink-2);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  }
+  .m-level {
+    position: absolute;
+    top: 16px;
+    right: 16px;
   }
 
   section,
@@ -403,24 +482,21 @@
   }
   .strip {
     display: flex;
+    align-items: center;
     gap: 4px;
     width: 100%;
-    height: 40px;
-    margin-top: 4px;
+    height: 32px;
+    margin: -4px 0;
   }
   .seg {
     display: grid;
     place-items: center;
     flex-basis: 0;
-    min-width: 14px;
-    border-radius: 10px;
+    min-width: 10px;
+    height: 14px;
+    border-radius: 7px;
     background: var(--f);
     color: var(--f-on);
-    box-shadow: 0 3px 0 var(--f-edge);
-    transition: transform var(--dur-fast) var(--ease);
-  }
-  .strip:active .seg {
-    transform: translateY(2px);
   }
   .tools {
     display: flex;
@@ -546,44 +622,61 @@
   .sec-head h2 {
     margin: 0;
   }
-  .medals {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+  .more {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-height: 44px;
+    padding-left: 12px;
+    font-size: 14px;
+    font-weight: 650;
+    color: var(--ink-2);
   }
-  .tile {
+  .won {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 14px 8px 12px;
+    gap: 4px;
+    padding: 12px 14px 8px;
+    margin-bottom: 12px;
     border-radius: var(--r-card);
     background: var(--card);
     border: 1px solid var(--line);
-    text-align: center;
-    transition: transform var(--dur-fast) var(--ease);
   }
-  .tile:active {
-    transform: scale(0.96);
-  }
-  .tile-name {
-    font-size: 13px;
-    font-weight: 650;
-    line-height: 1.25;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    min-height: 2.5em;
-  }
-  .tile-next {
-    font-size: 12px;
-    font-weight: 600;
+  .won-label {
     color: var(--ink-3);
   }
-  .tile-next.near {
-    color: var(--accent-ink);
+  .won-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    text-align: left;
+    color: var(--ink);
+  }
+  .suggest {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-radius: var(--r-card);
+    background: color-mix(in srgb, var(--md) 12%, var(--card));
+    border: 1.5px solid color-mix(in srgb, var(--md) 45%, var(--line));
+  }
+  .s-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    text-align: left;
+    color: var(--ink);
+  }
+  .s-main .t-name {
+    margin: 2px 0 4px;
+  }
+  .s-why {
+    color: var(--ink-2);
+  }
+  .s-try {
+    align-self: flex-start;
   }
 
   /* ── Foglio dei blocchi ── */

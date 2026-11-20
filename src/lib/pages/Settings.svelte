@@ -121,7 +121,7 @@
       </div>
       <Toggle label="Suoni" hint="Fine fase e cambio al servizio" checked={s.sound} onchange={(sound) => app.patchSettings({ sound })} />
       <Toggle label="Vibrazione" checked={s.haptics} onchange={(haptics) => app.patchSettings({ haptics })} />
-      <Toggle label="Cambio ogni 5 minuti" hint="Negli esercizi, per alternarvi" checked={s.turns} onchange={(turns) => app.patchSettings({ turns })} />
+      <Toggle label="Cambio a metà esercizio" hint="Un bip, e il riquadro del tempo cambia colore quando tocca al compagno" checked={s.turns} onchange={(turns) => app.patchSettings({ turns })} />
       <Toggle label="Sono mancino" hint="Scambia i lati nel disegno del tavolo" checked={Boolean(s.lefty)} onchange={(lefty) => app.patchSettings({ lefty })} />
     </div>
   </section>

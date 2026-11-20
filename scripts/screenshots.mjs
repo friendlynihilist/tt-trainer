@@ -56,7 +56,9 @@ function seed(theme) {
     ev(7, { kind: 'lezione', minutes: 60, note: 'Lezione sul servizio' }),
     ev(5, { kind: 'training', template: 'pkg-intermedio-60', minutes: 60, feel: 4, attempts: [{ ex: 'top-r-block', fmt: 'fila', tries: [6, 11] }, { ex: 'ric-taglio-corto', fmt: 'su', tries: [6] }] }),
     ev(2, { kind: 'test', minutes: 20, attempts: [{ ex: 'ap-d', fmt: 'su', tries: [9] }, { ex: 'srv-pendolo', fmt: 'su', tries: [7] }] }),
-    ev(1, { kind: 'partite', minutes: 90 })
+    ev(1, { kind: 'partite', minutes: 90 }),
+    // Stamattina un test veloce: metà oro sul pendolo, così in Oggi c'è una medaglia presa oggi.
+    ev(0, { kind: 'test', minutes: 15, attempts: [{ ex: 'srv-pendolo', fmt: 'su', tries: [8] }] })
   ];
   const notes = [
     { id: 'n1', stroke: 'ap-d', family: 'attacco', date: daysAgo(9), text: 'Il polso parte troppo presto.', feel: 2, createdAt: 1, updatedAt: 1 },
@@ -125,7 +127,11 @@ const SHOTS = [
   { name: 'sessione-chiusura', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/'), `document.querySelector('[role=tab][aria-label=Chiusura]').click()`], viewport: true },
   // Dopo il rifacimento: il foglio dei blocchi, l'inizio della sessione, una medaglia presa e la chiusura con la medaglia.
   { name: 'oggi-blocchi', hash: 'oggi', steps: [click('/^Blocchi/')], viewport: true },
+  { name: 'oggi-mese', hash: 'oggi', steps: [click('/^Questo mese/')], viewport: true },
+  { name: 'oggi-vista-mese', hash: 'oggi', steps: [click('/^Mese$/'), `document.querySelector('.week').scrollIntoView({ block: 'center' })`], viewport: true },
   { name: 'sessione-inizio', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/')], viewport: true },
+  // Il cambio: a metà esercizio tocca al compagno e il riquadro diventa scuro (qui con l'inversione a mano).
+  { name: 'sessione-cambio', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/'), `document.querySelectorAll('[role=tab]')[2].click()`, click('/^Tocca a te/')], viewport: true },
   { name: 'sessione-medaglia', hash: 'oggi', steps: [...MEDAL], viewport: true },
   { name: 'sessione-chiusura-medaglia', hash: 'oggi', steps: [...MEDAL, `document.querySelector('[role=tab][aria-label=Chiusura]').click()`], viewport: true }
 ];

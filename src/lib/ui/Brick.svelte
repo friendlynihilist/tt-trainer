@@ -1,14 +1,12 @@
 <script>
-  // Il mattoncino di un blocco: colore pieno della famiglia, icona, nome, durata grande.
-  // Con più esercizi, una fila di tacche con i colori di ognuno.
-  import { FAMILY_ICON } from './design.js';
+  // Il mattoncino di un blocco: colore pieno della famiglia, nome, durata grande.
+  // Con più esercizi, una fila di tacche con i colori di ognuno. Niente icona della famiglia:
+  // quelle generiche (aereo di carta, fulmine, spade) confondono più che aiutare.
 
   let { fam = 'libero', name, sub = '', minutes, fams = [], onclick = null, children = null } = $props();
-  const Icon = $derived(FAMILY_ICON[fam] ?? FAMILY_ICON.libero);
 </script>
 
 <svelte:element this={onclick ? 'button' : 'div'} class="brick" class:raise={onclick} data-fam={fam} {onclick} role={onclick ? undefined : 'group'}>
-  <span class="ico"><Icon size={22} strokeWidth={2.4} /></span>
   <span class="txt">
     <span class="name">{name}</span>
     {#if sub}<span class="sub">{sub}</span>{/if}
@@ -29,20 +27,11 @@
     gap: 14px;
     width: 100%;
     min-height: 76px;
-    padding: 12px 18px 12px 12px;
+    padding: 12px 18px;
     border-radius: var(--r-brick);
     background: var(--f);
     color: var(--f-on);
     text-align: left;
-  }
-  .ico {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 48px;
-    height: 48px;
-    border-radius: 16px;
-    background: color-mix(in srgb, var(--f-on) 16%, transparent);
   }
   .txt {
     flex: 1;

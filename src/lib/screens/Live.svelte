@@ -4,7 +4,7 @@
   // diventa una voce del diario solo alla fine. Niente è bloccato: ogni esercizio si cambia e ogni
   // obiettivo si prova, con qualsiasi medaglia.
   import { onMount } from 'svelte';
-  import { fly, fade } from 'svelte/transition';
+  import { fly, fade, scale } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import X from '@lucide/svelte/icons/x';
   import Play from '@lucide/svelte/icons/play';
@@ -17,8 +17,10 @@
   import Coffee from '@lucide/svelte/icons/coffee';
   import Timer from '@lucide/svelte/icons/timer';
   import ListChecks from '@lucide/svelte/icons/list-checks';
-  import Target from '@lucide/svelte/icons/target';
   import Plus from '@lucide/svelte/icons/plus';
+  import Repeat from '@lucide/svelte/icons/repeat';
+  import User from '@lucide/svelte/icons/user';
+  import Users from '@lucide/svelte/icons/users';
   import Save from '@lucide/svelte/icons/save';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
   import { app, newId } from '../store/app.svelte.js';
@@ -39,7 +41,7 @@
   import MedalRing from '../ui/MedalRing.svelte';
   import MedalBadge from '../ui/MedalBadge.svelte';
   import Brick from '../ui/Brick.svelte';
-  import { stepFamily, FAMILY_ICON } from '../ui/design.js';
+  import { stepFamily } from '../ui/design.js';
   import { celebrateFinish } from '../util/celebrate.js';
   import FocusEditor from '../ui/FocusEditor.svelte';
   import PartnerField, { lastPartner } from '../ui/PartnerField.svelte';
@@ -133,7 +135,6 @@
   const canGoal = $derived(Boolean(stepEx?.measure && Object.keys(stepEx.goals ?? {}).length));
   // Il colore e l'icona del blocco in corso: quelli della famiglia dell'esercizio.
   const fam = $derived(stepFamily(step, app.catalog) ?? 'libero');
-  const FamIcon = $derived(FAMILY_ICON[fam] ?? FAMILY_ICON.libero);
   // La descrizione dell'esercizio si apre con (i): durante la sessione basta il nome.
   let info = $state(false);
 
@@ -171,11 +172,6 @@
       t.rang = true;
       bell([880, 1318, 1760], [200, 100, 200]);
     }
-    if (step.kind === 'serve' && !t.half && sec >= step.minutes * 30) {
-      t.half = true;
-      bell([988], 200);
-      ui.toast('Cambio: ora serve l’altro');
-    }
     if (step.kind === 'match' && !t.half && sec >= matchHalves(step.minutes)[0] * 60) {
       t.half = true;
       bell([988], 200);
@@ -188,38 +184,38 @@
       bell([988], 200);
       ui.toast(`Ultimi ${step.maint.minutes} minuti: mantenimento`);
     }
-    if (step.kind === 'exercise' && app.settings.turns) checkTurn(sec);
+    // A metà esercizio (e a metà dei servizi) tocca al compagno: un bip e il riquadro cambia colore.
+    // Niente cambio negli ultimi 20 secondi: lì suona già la fine.
+    if (turnable && !t.turn && sec >= total / 2 && sec < total - 20) {
+      t.turn = true;
+      bell([1175, 1175], [120, 80, 120]);
+      flash = true;
+      clearTimeout(flashTimer);
+      flashTimer = setTimeout(() => (flash = false), 3200);
+    }
   }
 
   // ── Turni ─────────────────────────────────────────────────────────────────
-  // In un blocco di esercizi i due giocatori si alternano ogni 5 minuti. Conta il tempo passato nel
-  // blocco intero (tutti i suoi esercizi), non solo nell'esercizio in corso.
+  // Ogni esercizio a coppie si divide a metà: prima tocca a te, poi al compagno. Il riquadro del tempo
+  // cambia colore quando tocca al compagno. Se comincia lui, si tocca l'etichetta e i turni si invertono.
+  // Niente turni da soli, con il robot e nel palleggio, dove fate tutti e due la stessa cosa.
 
-  const TURN = 5 * 60;
   let flash = $state(false);
   let flashTimer = null;
 
-  function timerSec(id) {
-    const t = draft.timers[id];
-    return t ? t.acc + (t.since ? (Date.now() - t.since) / 1000 : 0) : 0;
-  }
+  const turnable = $derived.by(() => {
+    if (step?.kind === 'serve') return true;
+    if (step?.kind !== 'exercise' || !app.settings.turns || !stepEx) return false;
+    const modes = stepEx.modes ?? [];
+    return stepEx.family !== 'palleggio' && (modes.includes('compagno') || modes.includes('multiball'));
+  });
+  const partner = $derived(turnable && (elapsed >= total / 2) !== Boolean(draft?.swap?.[step?.id]));
+  const turnLabel = $derived(step?.kind === 'serve' ? (partner ? 'Serve il compagno' : 'Servi tu') : partner ? 'Tocca al compagno' : 'Tocca a te');
 
-  function checkTurn(sec) {
-    const same = step.block ? steps.filter((x) => x.kind === 'exercise' && x.block?.index === step.block.index) : [step];
-    const key = step.block ? `b${step.block.index}` : step.id;
-    const before = same.slice(0, same.indexOf(step)).reduce((n, x) => n + timerSec(x.id), 0);
-    const inBlock = before + sec;
-    const total = same.reduce((n, x) => n + x.minutes, 0) * 60;
-    const turns = Math.floor(inBlock / TURN);
-    draft.turns ??= {};
-    if (turns <= (draft.turns[key] ?? 0)) return;
-    draft.turns[key] = turns;
-    // Allo scadere del blocco suona già la fine: niente cambio negli ultimi secondi.
-    if (inBlock >= total - 30) return;
-    bell([988, 784], [120, 80, 120]);
-    flash = true;
-    clearTimeout(flashTimer);
-    flashTimer = setTimeout(() => (flash = false), 4000);
+  function swapTurns() {
+    buzz();
+    draft.swap ??= {};
+    draft.swap[step.id] = !draft.swap[step.id];
   }
 
   onMount(() => {
@@ -499,16 +495,22 @@
         <div class="content" in:fly={{ x: 32 * dir, duration: 320, easing: cubicOut }}>
           {#if !closing}
             {#if flash}
-              <div class="turn" in:fly={{ y: -12, duration: 260 }} out:fade={{ duration: 260 }}><Shuffle size={20} strokeWidth={2.6} /> Cambio</div>
+              <div class="turn" role="status" in:fly={{ y: -12, duration: 260 }} out:fade={{ duration: 260 }}><Repeat size={20} strokeWidth={2.6} /> Cambio</div>
             {/if}
 
             <!-- Il blocco in corso: grande, con il suo colore, il nome e il tempo. -->
-            <section class="now" class:rest={step.kind === 'pause'} data-fam={fam}>
+            <section class="now" class:rest={step.kind === 'pause'} class:partner data-fam={fam}>
               <div class="now-top">
-                <span class="now-ico">
-                  {#if step.kind === 'pause'}<Coffee size={20} strokeWidth={2.4} />{:else}<FamIcon size={20} strokeWidth={2.4} />{/if}
-                </span>
+                {#if step.kind === 'pause'}<span class="now-ico"><Coffee size={20} strokeWidth={2.4} /></span>{/if}
                 <span class="now-eyebrow">{step.kind === 'exercise' ? (eyebrow(step) || FAMILY[stepEx?.family]?.name || '') : step.kind === 'pause' ? 'Bevi e riposa' : ''}</span>
+                {#if turnable}
+                  {#key partner}
+                    <button class="who" onclick={swapTurns} aria-label="{turnLabel}. Tocca per invertire i turni" in:scale={{ start: 0.8, duration: 260 }}>
+                      {#if partner}<Users size={16} strokeWidth={2.6} />{:else}<User size={16} strokeWidth={2.6} />{/if}
+                      {turnLabel}
+                    </button>
+                  {/key}
+                {/if}
               </div>
               <h1 class="now-name">{step.name}</h1>
               <div class="clock">
@@ -519,7 +521,10 @@
                   {#if running}<Pause size={24} fill="currentColor" strokeWidth={0} />{:else}<Play size={24} fill="currentColor" strokeWidth={0} />{/if}
                 </button>
               </div>
-              <div class="bar" class:over={remaining < 0}><i style:width="{Math.min(100, (elapsed / total) * 100)}%"></i></div>
+              <div class="bar" class:over={remaining < 0}>
+                <i style:width="{Math.min(100, (elapsed / total) * 100)}%"></i>
+                {#if turnable}<b class="mid" aria-hidden="true"></b>{/if}
+              </div>
             </section>
 
             {#if stepEx && (step.kind === 'exercise' || step.kind === 'serve')}
@@ -575,7 +580,6 @@
             <div class="stats">
               <div class="stat"><Timer size={20} strokeWidth={2.4} /><b class="t-num">{doneMinutes}</b><span>minuti</span></div>
               <div class="stat"><ListChecks size={20} strokeWidth={2.4} /><b class="t-num">{doneExercises}</b><span>{doneExercises === 1 ? 'esercizio' : 'esercizi'}</span></div>
-              <div class="stat"><Target size={20} strokeWidth={2.4} /><b class="t-num">{summary?.attempts.length ?? 0}</b><span>{summary?.attempts.length === 1 ? 'misura' : 'misure'}</span></div>
             </div>
 
             {#if summary?.won.length}
@@ -593,7 +597,7 @@
 
             {#if summary?.attempts.length}
               <section class="group">
-                <h2 class="t-caps muted">Misure di oggi</h2>
+                <h2 class="t-caps muted">Risultati di oggi</h2>
                 <div class="card flush list">
                   {#each summary.attempts as a, i (i)}
                     {@const ex = app.catalog.exercise(a.ex)}
@@ -606,7 +610,7 @@
                 </div>
               </section>
             {:else if draft.mode === 'test'}
-              <p class="muted">Nessuna misura registrata.</p>
+              <p class="muted">Nessun risultato registrato.</p>
             {/if}
 
             {#if draft.mode === 'test' || canSave}
@@ -797,6 +801,72 @@
     color: var(--f-on);
     box-shadow: 0 var(--edge) 0 var(--f-edge);
   }
+  /* Tocca al compagno: il riquadro si rovescia (fondo scuro, bordo e barra del colore della
+     famiglia), così si vede anche da lontano, con il telefono appoggiato. */
+  .now {
+    transition:
+      background var(--dur-slow) var(--ease),
+      color var(--dur-slow) var(--ease),
+      box-shadow var(--dur-slow) var(--ease);
+  }
+  .now.partner {
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow:
+      inset 0 0 0 5px var(--f),
+      0 var(--edge) 0 var(--f-edge);
+    animation: flip var(--dur-slow) var(--ease);
+  }
+  @keyframes flip {
+    40% {
+      transform: scale(1.025);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .now.partner {
+      animation: none;
+    }
+  }
+  .who {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    margin-left: auto;
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--f-on) 18%, transparent);
+    color: inherit;
+    font-size: 14px;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+  .now.partner .who {
+    background: var(--f);
+    color: var(--f-on);
+  }
+  .now.partner .toggle {
+    --edge-c: var(--f-edge);
+    background: var(--f);
+    color: var(--f-on);
+  }
+  .now.partner .bar {
+    background: color-mix(in srgb, var(--paper) 22%, transparent);
+  }
+  .now.partner .bar i {
+    background: var(--f);
+  }
+  .mid {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    left: calc(50% - 1.5px);
+    width: 3px;
+    border-radius: 2px;
+    background: currentColor;
+    opacity: 0.7;
+  }
   .now.rest {
     background: var(--card);
     color: var(--ink);
@@ -871,11 +941,11 @@
     color: var(--paper);
   }
   .bar {
+    position: relative;
     height: 8px;
     margin-top: 10px;
     border-radius: 4px;
     background: color-mix(in srgb, var(--f-on) 22%, transparent);
-    overflow: hidden;
   }
   .now.rest .bar {
     background: var(--sunk);
@@ -952,7 +1022,7 @@
   }
   .stats {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
   .stat {

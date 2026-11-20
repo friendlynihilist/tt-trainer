@@ -23,19 +23,23 @@ Screenshot di partenza: `docs/design-shots/prima/` (390 px, tema scuro e chiaro,
 
 **Togli**: sparisce. **Accorpa**: due cose diventano una. **Icona**: un testo diventa un'icona (con l'etichetta per lo screen reader). **Altrove**: si sposta in un'altra pagina o nella Guida.
 
-### Oggi (passo 3)
-- **Togli**: la striscia delle 12 settimane; «Mese 1» nel sottotitolo (resta solo il tema, «Dritto», accanto al livello); l'elenco completo degli esercizi in fondo; il testo della partitella; le chip di tutti i modelli.
-- **Accorpa**: «In calendario oggi», la scelta del modello e «Inizia» diventano **un solo pulsante grande**; la sessione lasciata a metà diventa lo stesso pulsante con «Riprendi»; «Obiettivi vicini» e le medaglie diventano una sola fila **Medaglie**; il test di oggi diventa una pillola sotto il pulsante.
-- **Icona**: cambia allenamento (frecce incrociate), blocchi della sessione (elenco), registra senza sessione (matita), livello (badge colorato con 5 tacche).
-- **Altrove**: i blocchi della sessione in un foglio che si apre dalla striscia colorata o da «Blocchi» (con «cambia esercizio» e «Salva come mio»); le 12 settimane nel Diario.
-- **Resta, più corto**: «Da correggere» diventa una riga con icona sotto il pulsante.
+### Oggi (passo 3, rivisto il 20 novembre)
+Dal generale al particolare: prima il quadro d'insieme, il dettaglio solo quando lo chiedi. Dall'alto:
+1. **Il mese** («Questo mese · Dritto»), in grande come un promemoria, con la settimana del mese e i percorsi in una riga; a destra il badge del livello. Toccandolo si apre il **foglio del mese**: «Sei alla settimana 3 di 4 del mese» e sotto le settimane del ciclo come tacche numerate da 1 a 4 per ogni mese (piena quella di adesso, tenui le passate), il mese dopo, i percorsi con l'esercizio di adesso e la sua medaglia, i servizi, gli schemi della partitella. In fondo, «Modifica mesi e giorni» apre il piano.
+2. **In calendario oggi**: il pulsante grande, la striscia colorata dei blocchi (senza icone), Blocchi, Cambia, Registra. Sotto, se ci sono, il test di oggi e «Da correggere».
+3. **Allenamenti**, con la scelta fra **settimana** e **mese**; la scelta resta per la volta dopo. Nel mese, sotto ogni data, un pallino per attività con il colore del tipo (allenamento, test, lezione, partite…), pieno se fatta e vuoto se in programma, e sotto la legenda dei tipi presenti. Toccando un giorno si apre il Diario su quel giorno.
+4. **Medaglie**: quelle **prese oggi** (se ci sono) e **una medaglia da prendere**, con il motivo: è nell'allenamento di oggi, ti manca poco, oppure è l'esercizio del mese. «Tutte» porta a Progressi.
+
+- **Togli**: la striscia delle 12 settimane (ora nel foglio del mese); «Settimana 3» come titolo (il titolo è la data); le icone delle famiglie; la griglia di sei medaglie; l'elenco completo degli esercizi; il testo della partitella; le chip di tutti i modelli.
+- **Altrove**: i blocchi della sessione in un foglio (con «cambia esercizio» e «Salva come mio»).
 
 ### Sessione dal vivo (passo 3)
 - **Togli**: il nome del modello in alto; la descrizione e il criterio di qualità sempre aperti (si aprono con «Come si fa»); «Prossimo obiettivo» ripetuto due volte; il testo «Se sbaglia il compagno…» (ora nella Guida).
 - **Accorpa**: i pallini delle fasi e la barra del tempo diventano una barra a segmenti colorati, uno per blocco; obiettivo e anello della medaglia in una sola card.
 - **Icona**: cambia esercizio, nota sul colpo, dettagli dell'esercizio (i), pausa e avvio.
 - **Altrove**: le regole dei tentativi nella Guida.
-- **Chiusura**: medaglie e numeri in grande, con i coriandoli; compagno, sensazione, nota e «da correggere» in una sezione compatta.
+- **Cambio di turno**: negli esercizi a coppie e nei servizi, a metà tempo suona un doppio bip (con la vibrazione) e compare «Cambio». Il riquadro del tempo si rovescia: fondo scuro, bordo, pulsante e barra del colore della famiglia, e l'etichetta passa da «Tocca a te» a «Tocca al compagno» («Servi tu» / «Serve il compagno» nei servizi). Sulla barra una tacca segna la metà. Se comincia il compagno, si tocca l'etichetta e i turni si invertono. Niente cambio nel palleggio, negli esercizi da solo o con il robot, e negli ultimi 20 secondi. Si spegne in Impostazioni (sostituisce il vecchio cambio ogni 5 minuti).
+- **Chiusura**: minuti ed esercizi in grande, poi le medaglie con i coriandoli e i risultati di oggi; compagno, sensazione, nota e «da correggere» in una sezione compatta. Tolta la tessera «misure»: non si capiva.
 
 ### Diario
 - **Togli**: la legenda lunga sotto il calendario (i colori si leggono dalle icone).
@@ -73,7 +77,7 @@ Ogni colore ha tre usi: **pieno** (mattoncini, icone, barre), **tenue** (sfondo 
 
 **Famiglie di esercizi** (`--fam-*`, attributo `data-fam`):
 
-| Famiglia | Icona | Chiaro | Scuro | Testo sopra |
+| Famiglia | Icona (non usata) | Chiaro | Scuro | Testo sopra |
 |---|---|---|---|---|
 | Servizio | `send` | `#E9A800` | `#FFC83D` | scuro |
 | Ricezione | `reply` | `#0E9F8E` | `#2DD4BF` | bianco / scuro |
@@ -114,6 +118,7 @@ Il badge del livello ha sempre anche le tacche (da 1 a 5): il colore non è mai 
 
 - Una sola libreria: **Lucide** (licenza ISC), già nel progetto.
 - Dimensioni: 16 nelle chip, 20 nelle righe, 24 nei pulsanti, 28 nelle tessere grandi. Tratto 2; 2,4 sopra un colore pieno.
+- **Niente icone per le famiglie**: quelle generiche (aereo di carta per il servizio, fulmine per l'attacco, spade per la partitella) confondono. La famiglia si riconosce dal colore e dal nome. Se serviranno, si disegnano apposta, come gli scudi delle medaglie.
 - Parametri: `timer` minuti, `target` su 10 o su 20, `link` di fila, `hourglass` a tempo, `hash` conteggio, `medal` medaglia, `flame` settimane di fila.
 - Ogni icona senza testo ha `aria-label`.
 
@@ -146,7 +151,6 @@ Griglia da 4 px: 4, 8, 12, 16, 20, 24, 32, 40. Margine laterale 20. Tra le sezio
 
 ### Mattoncino del blocco (`Brick`)
 Un blocco della sessione. Tinta piena della famiglia, rilievo, arrotondamento 24.
-- A sinistra l'icona della famiglia in un quadrato più chiaro.
 - Al centro il nome del blocco, sotto gli esercizi in breve (o «×3»).
 - A destra la durata grande: `12` con `MIN` piccolo sotto.
 - Più esercizi nel blocco: una fila di tacche con i colori delle loro famiglie.
@@ -165,7 +169,8 @@ Pillola con il colore del livello, cinque tacche (piene fino al livello) e il no
 Tutta la larghezza, alto almeno 88, arancione con rilievo. A sinistra il cerchio con l'icona (play), poi il verbo grande («Inizia», «Riprendi») e sotto cosa parte («Intermedio · 60 min»). Sotto il testo, la fila dei blocchi come tacche colorate proporzionali alla durata.
 
 ### Altri
-- **Giorni della settimana** (`WeekDays`): sette cerchi; pieno con il colore dell'attività se fatta, anello se prevista, oggi in evidenza. Si tocca e porta al Diario.
+- **Allenamenti** (`WeekDays`): la settimana in sette cerchi o il mese intero con i numeri dei giorni; pieno se fatto, anello se previsto, oggi in evidenza. Ogni giorno si tocca e apre il Diario su quel giorno.
+- **Foglio del mese** (`MonthSheet`): il dettaglio del tema del mese, aperto da Oggi.
 - **Tessera numero** (`StatTile`): icona colorata, numero grande, etichetta corta.
 
 ---
