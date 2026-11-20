@@ -56,11 +56,23 @@ Appena entri: il mese, e sotto oggi se c'è qualcosa. Il resto si apre a richies
 ### Sezioni richiudibili (`Collapse`)
 Titolo, numero di voci, freccia che ruota; il contenuto scivola (280 ms, niente con «riduci movimento»). Con `key` lo stato si ricorda su questo dispositivo.
 
-### Progressi
-- **Togli**: «Verso avanzato: quando ci sono…», «Dalla prima all'ultima…», «Esercizi con almeno il bronzo, per famiglia».
-- **Accorpa**: «Il tuo livello» diventa una card con il badge e tre anelli (argento, oro, costanza); «Medaglie» ed «Esercizi recenti» diventano il **Medagliere** a griglia.
-- **Icona**: ore, misure, medaglie, settimane come tessere con icona e numero.
-- **Altrove**: le condizioni del livello nella Guida.
+### Progressi (rifatto)
+Dal generale al particolare:
+1. **Il livello**, in una card con il colore del livello, con in alto il badge (si tocca per cambiarlo).
+   - **Prima la costanza**: la **fiamma** (uno scudo come quelli delle medaglie, `fiamma.svg`) dentro un anello che si riempie verso la condizione del livello; accanto «3 settimane di fila» e sotto «✓ 4 sedute in 14 giorni» (o «Per il livello: 3 sedute su 4»). A destra, più piccoli, ore e attività.
+   - Sotto, separati da una riga, **gli anelli di argento e oro** negli esercizi chiave («6/8», «1/4»; pieni: la spunta) e una frase sola su cosa manca.
+   - **Esercizi chiave** in una sezione chiusa, ognuno con il suo anello della medaglia; in fondo «Come si passa di livello» porta alla Guida.
+   - Tolti «Verso avanzato» e la tessera «settimane di fila» (stava già nella costanza).
+2. **Medagliere** (aperto): le quattro medaglie con quante ne hai; quando entrano in vista, un riflesso le attraversa una volta (vedi sotto). Poi le **famiglie** in una fila che scorre (icona, nome, «Attacco 4/20»), che sono anche il filtro; sotto la **griglia** degli esercizi misurati, con l'anello e il gradino dopo, o «Da ripassare».
+3. **Le ultime 12 settimane** (aperto), **Da correggere**, **Il gruppo**, **I test della versione 0.2** (chiusi).
+
+### Riflessi delle medaglie (`MedalBadge shine`)
+Quando la medaglia entra in vista, una volta sola, ritagliato sulla forma dello scudo:
+- **Argento**: un bagliore e una fascia di luce tenue.
+- **Oro**: bagliore e fascia di luce piena, obliqua, dall'alto a destra al basso a sinistra.
+- **Platino**: bagliore e fascia arcobaleno.
+- **Fiamma**: un bagliore caldo. **Bronzo** e medaglie non prese: niente.
+- Con «riduci movimento»: niente.
 
 ### Libreria
 - **Allenamenti**: modelli e pacchetti come card con i mattoncini colorati e la durata; mesi e percorsi in una sezione compatta; «Importa» diventa un'icona in alto.

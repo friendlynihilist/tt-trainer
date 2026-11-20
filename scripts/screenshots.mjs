@@ -119,6 +119,18 @@ const SHOTS = [
   { name: 'oggi', hash: 'oggi' },
   { name: 'diario', hash: 'calendario' },
   { name: 'progressi', hash: 'progressi' },
+  // Gli esercizi chiave aperti e il medagliere filtrato sull'attacco.
+  // Il riflesso sulle medaglie del medagliere, fermato a metà corsa.
+  {
+    name: 'progressi-riflesso',
+    hash: 'progressi',
+    steps: [
+      `document.querySelector('.tiers').scrollIntoView({ block: 'center' })`,
+      `document.getAnimations().filter((a) => /sweep|glare/.test(a.animationName)).forEach((a) => { a.pause(); a.currentTime = a.effect.getTiming().delay + (/sweep/.test(a.animationName) ? 600 : 320); })`
+    ],
+    viewport: true
+  },
+  { name: 'progressi-dettagli', hash: 'progressi', steps: [click('/^Esercizi chiave/'), click('/^Attacco/', '.fam')] },
   { name: 'libreria-allenamenti', hash: 'libreria/allenamenti' },
   { name: 'libreria-esercizi', hash: 'libreria/esercizi' },
   { name: 'libreria-colpi', hash: 'libreria/colpi' },
