@@ -131,7 +131,7 @@ export function testProposal({ catalog = BASE, week = null, medals = {}, events 
     if (!ex?.measure || !Object.keys(ex.goals ?? {}).length || out.length >= max || out.some((o) => o.ex === id)) return;
     out.push({ ex: id, reason });
   };
-  for (const t of week?.focusBlock?.tracks ?? []) add(currentInSequence(t, catalog, medals), 'Esercizio del mese');
+  for (const t of week?.focusBlock?.tracks ?? []) add(currentInSequence(t, catalog, medals), 'Esercizio del tema');
   for (const [id, m] of Object.entries(medals)) if (m.half && !m.O) add(id, 'Metà oro: serve un’altra seduta');
   for (const n of nearGoals({ medals, catalog, max: 10 })) add(n.ex, `Vicino ${TIER[n.goal.tier].to}`);
   for (const [id, n] of Object.entries(trainedSince(events, medals)).sort((a, b) => b[1] - a[1])) {

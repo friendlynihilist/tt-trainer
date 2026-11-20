@@ -41,7 +41,7 @@ function mondayOf(d) {
   return iso(x);
 }
 
-function seed(theme) {
+function seed(theme, stages = null) {
   const today = new Date();
   today.setHours(12, 0, 0, 0);
   const weekday = ((today.getDay() + 6) % 7) + 1; // 1 lunedì … 7 domenica
@@ -75,6 +75,15 @@ function seed(theme) {
       id: 'p1',
       start: iso(start),
       weeks: ['1', '1', '1', '1', '2', '2', '2', '2', '3', '3', '3', '3'],
+      // Le tappe: Dritto 4 settimane, Rovescio per un allenamento, Primi colpi 2 settimane, una pausa,
+      // Rovescio 4 settimane. Le settimane si ricavano dalle tappe all'apertura.
+      stages: stages ?? [
+        { b: '1', n: 4, u: 'w' },
+        { b: '2', n: 1, u: 's' },
+        { b: '3', n: 2, u: 'w' },
+        { b: 'P', n: 1, u: 'w' },
+        { b: '2', n: 4, u: 'w' }
+      ],
       // Oggi un allenamento; gli altri appuntamenti in giorni diversi da oggi.
       slots: [
         { id: 't2', day: weekday, kind: 'training', template: 'pkg-intermedio-60' },
@@ -127,7 +136,23 @@ const SHOTS = [
   { name: 'sessione-chiusura', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/'), `document.querySelector('[role=tab][aria-label=Chiusura]').click()`], viewport: true },
   // Dopo il rifacimento: il foglio dei blocchi, l'inizio della sessione, una medaglia presa e la chiusura con la medaglia.
   { name: 'oggi-blocchi', hash: 'oggi', steps: [click('/^Blocchi/')], viewport: true },
-  { name: 'oggi-mese', hash: 'oggi', steps: [click('/^Questo mese/')], viewport: true },
+  { name: 'oggi-tappa', hash: 'oggi', steps: [click('/^Il tuo tema/')] },
+  { name: 'oggi-allenamento-solo-tappa', hash: 'oggi', stages: 'solo', steps: [click('/^Il tuo tema/')] },
+  { name: 'oggi-piano', hash: 'oggi', steps: [click('/^Il tuo tema/'), click('/^Modifica il piano/')] },
+  // Oggi un tema per un allenamento solo, in mezzo ad altri: Dritto 2 settimane, poi Rovescio,
+  // Primi colpi (oggi) e Dritto per un allenamento ciascuno, poi Rovescio 2 settimane.
+  {
+    name: 'oggi-allenamento-solo',
+    hash: 'oggi',
+    stages: [
+      { b: '1', n: 2, u: 'w' },
+      { b: '2', n: 1, u: 's' },
+      { b: '3', n: 1, u: 's' },
+      { b: '1', n: 1, u: 's' },
+      { b: '2', n: 2, u: 'w' }
+    ],
+    viewport: true
+  },
   { name: 'oggi-vista-mese', hash: 'oggi', steps: [click('/^Mese$/'), `document.querySelector('.week').scrollIntoView({ block: 'center' })`], viewport: true },
   { name: 'sessione-inizio', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/')], viewport: true },
   // Il cambio: a metà esercizio tocca al compagno e il riquadro diventa scuro (qui con l'inversione a mano).
@@ -188,7 +213,7 @@ try {
       await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: true });
       await send('Page.navigate', { url: BASE });
       await sleep(600);
-      await evaluate(`localStorage.clear(); localStorage.setItem('tt-trainer:v1', ${JSON.stringify(JSON.stringify(seed(theme)))}); localStorage.setItem('tt-trainer:theme', '${theme}'); true`);
+      await evaluate(`localStorage.clear(); localStorage.setItem('tt-trainer:v1', ${JSON.stringify(JSON.stringify(seed(theme, shot.stages === 'solo' ? SHOTS.find((x) => x.name === 'oggi-allenamento-solo').stages : shot.stages)))}); localStorage.setItem('tt-trainer:theme', '${theme}'); true`);
       await send('Page.navigate', { url: `${BASE}?t=${Date.now()}#/${shot.hash}` });
       await sleep(1600);
       for (const step of shot.steps ?? []) {

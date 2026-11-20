@@ -1,5 +1,5 @@
 <script>
-  // Un mese: il tema, i suoi percorsi (fino a tre), il mantenimento, i servizi, la partitella.
+  // Un tema: il nome, i suoi percorsi (fino a tre), il mantenimento, i servizi, la partitella.
   // I mesi di base si guardano e si duplicano; i tuoi si modificano e si mettono nel piano.
   import Plus from '@lucide/svelte/icons/plus';
   import X from '@lucide/svelte/icons/x';
@@ -54,7 +54,7 @@
   function save() {
     app.saveCustom('blocks', { id: source?.custom ? source.id : undefined, theme: theme.trim(), tracks, maint, serve, scheme });
     ui.close();
-    ui.toast(source?.custom ? 'Mese aggiornato' : 'Mese creato: lo trovi quando crei un ciclo');
+    ui.toast(source?.custom ? 'Tema aggiornato' : 'Tema creato: lo trovi nel piano');
   }
 
   function duplicate() {
@@ -65,7 +65,7 @@
   function remove() {
     ui.open('confirm', {
       title: `Eliminare «${source.theme}»?`,
-      text: inPlan ? 'È nel piano in corso: quelle settimane useranno il mese più vicino.' : 'Il diario non cambia.',
+      text: inPlan ? 'È nel piano in corso: quelle tappe useranno il tema più vicino.' : 'Il diario non cambia.',
       action: 'Elimina',
       danger: true,
       onconfirm: () => {
@@ -76,14 +76,14 @@
   }
 </script>
 
-<Sheet title={readonly ? `${source.label} · ${source.theme}` : source?.custom ? 'Modifica mese' : 'Nuovo mese'} onclose={() => ui.close()} tall>
+<Sheet title={readonly ? source.theme : source?.custom ? 'Modifica tema' : 'Nuovo tema'} onclose={() => ui.close()} tall>
   <div class="stack g-24">
     {#if !readonly}
       <input class="field" placeholder="Tema (es. Gioco corto)" bind:value={theme} maxlength="60" />
     {/if}
 
     <section class="stack g-8">
-      <h3 class="heading">Percorsi del mese</h3>
+      <h3 class="heading">Percorsi del tema</h3>
       <div class="card flush list">
         {#each tracks as t, i (t)}
           <div class="row-i">
@@ -96,7 +96,7 @@
       {#if !readonly && tracks.length < 3}
         <button class="btn ghost small self" onclick={addTrack}><Plus size={16} /> Percorso</button>
       {/if}
-      <p class="small faint">Nei modelli, «1° del mese» è il primo di questa lista, e così via.</p>
+      <p class="small faint">Nei modelli, «1° del tema» è il primo di questa lista, e così via.</p>
     </section>
 
     <section class="stack g-8">
@@ -141,7 +141,7 @@
     </section>
 
     {#if source?.custom && !draft}
-      <button class="btn plain danger del" onclick={remove}><Trash size={16} /> Elimina il mese</button>
+      <button class="btn plain danger del" onclick={remove}><Trash size={16} /> Elimina il tema</button>
     {/if}
   </div>
 

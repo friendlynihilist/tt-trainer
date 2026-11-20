@@ -12,7 +12,7 @@ import { BLOCKS } from '../data/program.js';
 import { KIND } from '../data/taxonomy.js';
 import { BASE } from '../data/catalog.js';
 import { LEGACY_TEMPLATE } from '../data/templates.js';
-import { weekAt, weekIndex, weekOccurrences } from './plan.js';
+import { weekAt, weekIndex, weekOccurrences, themedWeek } from './plan.js';
 
 /** Ordine cronologico stabile: data, poi momento di creazione. */
 export function byTime(a, b) {
@@ -95,7 +95,7 @@ export function occurrencesBetween(plan, events, from, to, catalog = BASE) {
   const last = Math.min(plan.weeks.length - 1, weekIndex(plan, to));
   for (let i = first; i <= last; i++) {
     const week = weekAt(plan, i, catalog);
-    const occ = weekOccurrences(plan, week).map((o) => ({ ...o, event: null }));
+    const occ = weekOccurrences(plan, week, catalog).map((o) => ({ ...o, event: null }));
     if (!occ.length) continue;
     const inWeek = events.filter((e) => !e.planned && e.date >= week.monday && e.date <= week.sunday).sort(byTime);
     matchWeek(occ, inWeek);
@@ -150,7 +150,7 @@ export function agenda(plan, events, planned, from, to, catalog = BASE) {
   }
   for (const p of planned) {
     if (p.date < from || p.date > to) continue;
-    day(p.date).todo.push({ source: 'event', key: p.id, eventId: p.id, date: p.date, kind: p.kind, template: p.template ?? null, week: plan ? weekAt(plan, weekIndex(plan, p.date), catalog) : null });
+    day(p.date).todo.push({ source: 'event', key: p.id, eventId: p.id, date: p.date, kind: p.kind, template: p.template ?? null, week: plan ? themedWeek(plan, weekAt(plan, weekIndex(plan, p.date), catalog), p.date, catalog) : null });
   }
   for (const e of events) {
     if (e.planned || e.kind === 'livello' || e.date < from || e.date > to) continue;

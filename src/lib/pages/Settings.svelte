@@ -80,7 +80,7 @@
         <span class="grow">
           {#if app.plan}
             <strong>{rhythm}</strong>
-            <span class="small muted block">Iniziato {fmtLong(app.plan.start)} · ritmo, mesi, pause, nuovo ciclo</span>
+            <span class="small muted block">Iniziato {fmtLong(app.plan.start)} · tappe, ritmo, pause, piano nuovo</span>
           {:else}
             <strong>Crea il piano</strong>
           {/if}

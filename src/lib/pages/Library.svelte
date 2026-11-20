@@ -120,21 +120,21 @@
 
         <section class="section">
           <div class="spread head">
-            <h2 class="heading">Mesi</h2>
+            <h2 class="heading">Temi</h2>
             <button class="btn ghost small" onclick={() => ui.open('block')}><Plus size={16} /> Nuovo</button>
           </div>
           <div class="card flush list">
             {#each blocks as b (b.id)}
               <button class="item" onclick={() => ui.open('block', { id: b.id })}>
                 <span class="grow">
-                  <strong>{b.custom ? b.theme : `${b.label} · ${b.theme}`}</strong>{#if b.custom}<span class="small muted"> · tuo</span>{/if}
+                  <strong>{b.theme}</strong>{#if b.custom}<span class="small muted"> · tuo</span>{/if}
                   <span class="small muted block">{b.tracks.map((id) => app.catalog.track(id)?.short).join(' · ')}</span>
                 </span>
                 <ChevronRight size={16} />
               </button>
             {/each}
           </div>
-          <p class="small faint after">I mesi si mettono in fila quando crei un ciclo, dal piano.</p>
+          <p class="small faint after">I temi si mettono in fila nel piano, ognuno per un allenamento o per una, due o quattro settimane.</p>
         </section>
 
         <section class="section">
@@ -160,7 +160,7 @@
           {/if}
         </section>
 
-        <button class="btn ghost import" onclick={() => ui.open('import')}><Download size={16} /> Importa esercizi, percorsi, mesi e modelli</button>
+        <button class="btn ghost import" onclick={() => ui.open('import')}><Download size={16} /> Importa esercizi, percorsi, temi e modelli</button>
       {:else if tab === 'esercizi'}
         <div class="filters">
           <div class="chips" role="group" aria-label="Livello">

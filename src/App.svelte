@@ -38,7 +38,7 @@
   import ExerciseSheet from './lib/sheets/ExerciseSheet.svelte';
   import LevelSheet from './lib/sheets/LevelSheet.svelte';
   import NoteSheet from './lib/sheets/NoteSheet.svelte';
-  import MonthSheet from './lib/sheets/MonthSheet.svelte';
+  import StageSheet from './lib/sheets/StageSheet.svelte';
 
   const PAGES = { oggi: Today, calendario: Calendar, progressi: Progress, libreria: Library, guida: Guide, impostazioni: Settings };
   const SHEETS = {
@@ -58,7 +58,7 @@
     exercise: ExerciseSheet,
     level: LevelSheet,
     note: NoteSheet,
-    month: MonthSheet
+    stage: StageSheet
   };
 
   onMount(() => {

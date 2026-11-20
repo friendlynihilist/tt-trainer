@@ -20,7 +20,7 @@
   import { ui } from '../store/ui.svelte.js';
   import { loadLive, clearLive } from '../store/live.js';
   import { startItem, logItem, weekOf, proposalFor } from '../store/actions.js';
-  import { weekAt, removeWeek } from '../engine/plan.js';
+  import { weekAt, removeWeek, stageInfo } from '../engine/plan.js';
   import { agenda } from '../engine/events.js';
   import { composeSession, templateWithOverrides } from '../engine/compose.js';
   import { packagesOf } from '../data/packages.js';
@@ -41,6 +41,7 @@
   import MedalBadge from '../ui/MedalBadge.svelte';
   import LevelBadge from '../ui/LevelBadge.svelte';
   import WeekDays from '../ui/WeekDays.svelte';
+  import StageProgress from '../ui/StageProgress.svelte';
   import Sheet from '../ui/Sheet.svelte';
 
   const plan = $derived(app.plan);
@@ -107,7 +108,7 @@
     const goal = ex && nextGoal(ex, app.medals[ex.id]);
     if (!goal) return null;
     const inSession = sessionExs.has(ex.id);
-    const why = inSession ? 'È nell’allenamento di oggi' : near.some((n) => n.ex === ex.id) ? 'Ti manca poco' : 'È l’esercizio del mese';
+    const why = inSession ? 'È nell’allenamento di oggi' : near.some((n) => n.ex === ex.id) ? 'Ti manca poco' : 'È l’esercizio del tema';
     return { ex, goal, inSession, why, best: app.medals[ex.id]?.best ?? null };
   });
 
@@ -121,16 +122,23 @@
 
   const title = $derived(fmtLong(app.today).replace(/^./, (c) => c.toUpperCase()));
 
-  // Il mese in corso, in breve: il tema, la settimana del mese, i percorsi. Il resto nel foglio.
+  // La tappa in corso, in breve: il tema, a che punto sei, i percorsi. Il resto nel foglio.
+  const stage = $derived(plan ? stageInfo(plan, app.today, app.catalog) : null);
   const monthInfo = $derived.by(() => {
-    if (!plan || !week || app.phase === 'done' || (app.phase === 'active' && week.kind === 'P')) return null;
-    const block = week.focusBlock;
+    if (!plan || !stage || app.phase === 'done') return null;
+    const trackNames = (block) => (block?.tracks ?? []).map((id) => app.catalog.track(id)?.short).filter(Boolean).join(' · ');
+    if (app.phase === 'before') {
+      const first = stage.stages.find((st) => st.block);
+      return first ? { label: 'Il tuo tema', theme: first.block.theme, sub: [`Da ${fmtLong(first.start ?? plan.start)}`, trackNames(first.block)].filter(Boolean).join(' · '), p: null } : null;
+    }
+    const now = stage.stages[stage.current];
+    if (!now || now.b === 'P') return null;
+    const block = now.block ?? week?.focusBlock;
     if (!block) return null;
-    const tracks = block.tracks.map((id) => app.catalog.track(id)?.short).filter(Boolean).join(' · ');
-    if (app.phase === 'before') return { label: `Da ${fmtLong(plan.start)}`, theme: block.theme, sub: tracks };
-    const same = plan.weeks.map((k, i) => [k, i]).filter(([k]) => k === week.kind);
-    const n = same.findIndex(([, i]) => i === week.idx) + 1;
-    return { label: week.kind === 'R' ? 'Settimana di recupero' : 'Questo mese', theme: block.theme, sub: `Settimana ${n} di ${same.length} · ${tracks}` };
+    const p = stage.progress;
+    const where =
+      p.unit === 's' ? (p.of === 1 ? (now.start === app.today ? 'Solo per l’allenamento di oggi' : `Un allenamento solo, ${fmtShort(now.start)}`) : `Allenamento ${p.pos} di ${p.of}`) : p.pos === 0 ? `Comincia ${fmtLong(p.startsOn)}` : `Settimana ${p.pos} di ${p.of}`;
+    return { label: 'Il tuo tema', theme: block.theme, sub: [where, trackNames(block)].filter(Boolean).join(' · '), p };
   });
 
   function choose(id) {
@@ -180,12 +188,13 @@
 <div class="page enter today">
   <PageHead eyebrow="Oggi" {title} sans />
 
-  <!-- Il mese: il tema in grande, come un promemoria. Il dettaglio si apre toccandolo. -->
+  <!-- La tappa: il tema in grande, come un promemoria. Il dettaglio si apre toccandolo. -->
   {#if monthInfo}
     <section class="mantra">
-      <button class="m-main" onclick={() => ui.open('month')}>
+      <button class="m-main" onclick={() => ui.open('stage')}>
         <span class="t-caps m-label">{monthInfo.label}</span>
         <span class="m-theme">{monthInfo.theme}<ChevronRight size={26} strokeWidth={2.6} /></span>
+        {#if monthInfo.p}<span class="m-prog"><StageProgress unit={monthInfo.p.unit} pos={monthInfo.p.pos} of={monthInfo.p.of} small /></span>{/if}
         <span class="m-sub">{monthInfo.sub}</span>
       </button>
       <span class="m-level"><LevelBadge level={app.player.level} small onclick={() => ui.open('level')} /></span>
@@ -412,7 +421,7 @@
     margin-top: 12px;
   }
 
-  /* ── Il mese ── */
+  /* ── La tappa ── */
   .mantra {
     position: relative;
     margin-top: 16px;
@@ -451,6 +460,10 @@
   .m-theme :global(svg) {
     color: var(--ink-3);
     margin-top: 4px;
+  }
+  .m-prog {
+    display: block;
+    margin: 6px 0 4px;
   }
   .m-sub {
     font-size: 14px;

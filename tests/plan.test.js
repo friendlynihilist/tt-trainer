@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createPlan, weekAt, weekIndex, insertWeek, removeWeek, weekOccurrences, planPhase, defaultSlots } from '../src/lib/engine/plan.js';
+import { createPlan, weekAt, weekIndex, weekFor, insertWeek, removeWeek, weekOccurrences, planPhase, defaultSlots, withStages, stageInfo, stagesOf, normalizePlan } from '../src/lib/engine/plan.js';
 import { composeSession, composeTest, matchHalves } from '../src/lib/engine/compose.js';
 import { drillsFor, weaknesses } from '../src/lib/engine/stats.js';
 import { BASE, buildCatalog, exerciseLabel, parseExercise, resolveExercise } from '../src/lib/data/catalog.js';
@@ -358,5 +358,62 @@ describe('versioni', () => {
     expect(unseen('0.4.0').map((c) => c.version)).toEqual([VERSION]);
     expect(unseen('0.1.0').map((c) => c.version)).toEqual(['0.5.0', '0.4.0', '0.3.0', '0.2.1', '0.2.0']); // la più recente prima
     expect(unseen(VERSION)).toEqual([]);
+  });
+});
+
+describe('tappe', () => {
+  // Lunedì 16 novembre 2026; allenamenti il martedì e il venerdì.
+  const base = { ...createPlan({ start: '2026-11-16', days: [2, 5] }), id: 'pt' };
+  const D = (n, u) => ({ b: '1', n, u });
+  const R = (n, u) => ({ b: '2', n, u });
+
+  it('il piano di base è fatto di tre tappe da quattro settimane', () => {
+    expect(base.stages).toEqual([D(4, 'w'), { b: '2', n: 4, u: 'w' }, { b: '3', n: 4, u: 'w' }]);
+    expect(base.weeks.join('')).toBe('111122223333');
+  });
+
+  it('una tappa da un allenamento occupa un allenamento della settimana', () => {
+    const p = withStages(base, [D(1, 's'), R(1, 's'), { b: '3', n: 2, u: 'w' }]);
+    expect(p.weeks).toEqual(['1+2', '3', '3']);
+    expect(weekFor(p, '2026-11-17').focusBlock.theme).toBe('Dritto');
+    expect(weekFor(p, '2026-11-20').focusBlock.theme).toBe('Rovescio');
+    const themes = weekOccurrences(p, weekAt(p, 0)).filter((o) => o.kind === 'training').map((o) => o.week.focusBlock.theme);
+    expect(themes).toEqual(['Dritto', 'Rovescio']);
+  });
+
+  it('gli allenamenti rimasti nella settimana anticipano la tappa dopo, che conta dal lunedì', () => {
+    const p = withStages(base, [D(1, 's'), R(2, 'w')]);
+    expect(p.weeks).toEqual(['1+2', '2', '2']);
+    const tue = stageInfo(p, '2026-11-17');
+    expect(tue.current).toBe(0);
+    expect(tue.progress).toMatchObject({ unit: 's', pos: 1, of: 1 });
+    const fri = stageInfo(p, '2026-11-20');
+    expect(fri.current).toBe(1);
+    expect(fri.progress).toMatchObject({ unit: 'w', pos: 0, of: 2, startsOn: '2026-11-23' });
+    expect(stageInfo(p, '2026-12-01').progress.pos).toBe(2);
+  });
+
+  it('a che punto sei in una tappa di quattro settimane', () => {
+    const info = stageInfo(base, '2026-12-02');
+    expect(info.current).toBe(0);
+    expect(info.progress).toMatchObject({ unit: 'w', pos: 3, of: 4 });
+    expect(info.stages.map((s) => s.state)).toEqual(['now', 'next', 'next']);
+    expect(info.stages[1].start).toBe('2026-12-14');
+  });
+
+  it('una pausa a metà tappa la divide in due; togliendola si ricompone', () => {
+    const p = insertWeek(base, 2, 'P');
+    expect(p.stages.slice(0, 3)).toEqual([D(2, 'w'), { b: 'P', n: 1, u: 'w' }, D(2, 'w')]);
+    expect(removeWeek(p, 2).stages).toEqual(base.stages);
+  });
+
+  it('i piani di prima: le tappe si ricavano dalle settimane', () => {
+    expect(stagesOf({ weeks: ['1', '1', 'P', '2'] })).toEqual([D(2, 'w'), { b: 'P', n: 1, u: 'w' }, R(1, 'w')]);
+  });
+
+  it('cambiando il ritmo gli allenamenti singoli si spostano', () => {
+    const p = withStages(base, [D(1, 's'), R(1, 's')]);
+    const one = normalizePlan({ ...p, slots: [{ id: 't', day: 3, kind: 'training' }] });
+    expect(one.weeks).toEqual(['1', '2']);
   });
 });

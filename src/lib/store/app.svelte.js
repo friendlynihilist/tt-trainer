@@ -4,7 +4,7 @@
 
 import { firebaseConfig } from '../../firebase.config.js';
 import { createLocalBackend } from './local.js';
-import { weekAt, weekIndex, planPhase, normalizePlan } from '../engine/plan.js';
+import { weekAt, weekIndex, planPhase, normalizePlan, themedWeek } from '../engine/plan.js';
 import { normalizeEvent } from '../engine/events.js';
 import { allAttempts } from '../engine/attempts.js';
 import { allMedals } from '../engine/medals.js';
@@ -77,7 +77,7 @@ class AppState {
   levelOffer = $derived(suggestLevel({ player: this.meta?.player, medals: this.medals, attempts: this.attempts, catalog: this.catalog, today: this.today }));
   plan = $derived(normalizePlan(this.meta?.plan));
   weekIdx = $derived(this.plan ? weekIndex(this.plan, this.today) : null);
-  week = $derived(this.plan ? weekAt(this.plan, this.weekIdx, this.catalog) : null);
+  week = $derived(this.plan ? themedWeek(this.plan, weekAt(this.plan, this.weekIdx, this.catalog), this.today, this.catalog) : null);
   phase = $derived(this.plan ? planPhase(this.plan, this.today) : 'none');
   onboarded = $derived(Boolean(this.meta?.onboarded));
 

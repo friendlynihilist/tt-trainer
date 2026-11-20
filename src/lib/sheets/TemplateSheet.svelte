@@ -42,15 +42,15 @@
   /** Il nome di un esercizio del blocco. */
   function itemLabel(it) {
     if (it.ex) return app.catalog.exercise(it.ex)?.name ?? 'Esercizio non più disponibile';
-    if (it.focus) return `${it.focus}° del mese · ${app.catalog.track(month.tracks[it.focus - 1])?.short ?? 'nessuno'}`;
+    if (it.focus) return `${it.focus}° del tema · ${app.catalog.track(month.tracks[it.focus - 1])?.short ?? 'nessuno'}`;
     if (it.track) return app.catalog.track(it.track)?.short ?? 'Percorso';
     if (it.free) return it.name || STEP_TYPES.free.name;
     return '';
   }
   /** Cosa c'è in un blocco, in breve (per la vista in sola lettura). */
   function describe(b) {
-    if (b.role === 'warmup') return 'Del mese';
-    if (b.role === 'serve') return 'Servizi del mese';
+    if (b.role === 'warmup') return 'Del tema';
+    if (b.role === 'serve') return 'Servizi del tema';
     if (b.role === 'match') return (b.schemes?.length ? b.schemes : month.schemes ?? []).map((x) => schemeOf(x, app.catalog)?.name).filter(Boolean).join(' · ');
     return b.items.map(itemLabel).join(' · ');
   }
@@ -215,7 +215,7 @@
 
         <div class="chips add">
           <button class="chip mini" onclick={() => addItem(addBlock({ name: '', minutes: 15, role: null, items: [] }).key)}><Plus size={13} /> Blocco</button>
-          <button class="chip mini" onclick={() => addBlock({ name: STEP_TYPES.focus.name, minutes: 20, role: null, items: [{ focus: 1 }] })}><Plus size={13} /> Del mese</button>
+          <button class="chip mini" onclick={() => addBlock({ name: STEP_TYPES.focus.name, minutes: 20, role: null, items: [{ focus: 1 }] })}><Plus size={13} /> Del tema</button>
           <button class="chip mini" onclick={() => addBlock({ name: STEP_TYPES.serve.name, minutes: 15, role: 'serve', items: [] })}><Plus size={13} /> Servizi</button>
           {#if !hasMatch}
             <button class="chip mini" onclick={() => addBlock({ name: STEP_TYPES.match.name, minutes: 15, role: 'match', items: [] })}><Plus size={13} /> Partitella</button>

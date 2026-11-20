@@ -25,7 +25,7 @@ Screenshot di partenza: `docs/design-shots/prima/` (390 px, tema scuro e chiaro,
 
 ### Oggi (passo 3, rivisto il 20 novembre)
 Dal generale al particolare: prima il quadro d'insieme, il dettaglio solo quando lo chiedi. Dall'alto:
-1. **Il mese** («Questo mese · Dritto»), in grande come un promemoria, con la settimana del mese e i percorsi in una riga; a destra il badge del livello. Toccandolo si apre il **foglio del mese**: «Sei alla settimana 3 di 4 del mese» e sotto le settimane del ciclo come tacche numerate da 1 a 4 per ogni mese (piena quella di adesso, tenui le passate), il mese dopo, i percorsi con l'esercizio di adesso e la sua medaglia, i servizi, gli schemi della partitella. In fondo, «Modifica mesi e giorni» apre il piano.
+1. **Il tuo tema** («Dritto»), in grande come un promemoria. Sotto, a che punto sei della tappa (tacche per le settimane, pallini per gli allenamenti) e una riga: «Settimana 3 di 4 · Top di dritto · Apertura di dritto», oppure «Solo per l’allenamento di oggi». A destra il badge del livello. Toccandolo si apre il **foglio della tappa** (`StageSheet`): a che punto sei, che cosa viene dopo, tutte le tappe del piano, i percorsi del tema con l'esercizio di adesso, i servizi, gli schemi della partitella. In fondo, «Modifica il piano».
 2. **In calendario oggi**: il pulsante grande, la striscia colorata dei blocchi (senza icone), Blocchi, Cambia, Registra. Sotto, se ci sono, il test di oggi e «Da correggere».
 3. **Allenamenti**, con la scelta fra **settimana** e **mese**; la scelta resta per la volta dopo. Nel mese, sotto ogni data, un pallino per attività con il colore del tipo (allenamento, test, lezione, partite…), pieno se fatta e vuoto se in programma, e sotto la legenda dei tipi presenti. Toccando un giorno si apre il Diario su quel giorno.
 4. **Medaglie**: quelle **prese oggi** (se ci sono) e **una medaglia da prendere**, con il motivo: è nell'allenamento di oggi, ti manca poco, oppure è l'esercizio del mese. «Tutte» porta a Progressi.
@@ -68,6 +68,18 @@ Dal generale al particolare: prima il quadro d'insieme, il dettaglio solo quando
 - **Impostazioni**: righe con icona a sinistra; tolti i sottotitoli ovvi.
 
 ---
+
+### Il piano a tappe
+Il piano è una fila di **tappe**: un tema (o una pausa) e una durata. Le durate sono quattro, ognuna con la sua vista:
+
+| Durata | Vista |
+|---|---|
+| 1 allenamento | nessuna barra: «Solo per l’allenamento di oggi» |
+| 1 settimana | tacca unica «1» |
+| 2 settimane | tacche numerate 1–2 |
+| 4 settimane | tacche numerate 1–4 |
+
+Una tappa da un allenamento occupa un allenamento del ritmo; più tappe brevi di fila riempiono la settimana nell'ordine dei giorni. Se una settimana resta a metà, gli allenamenti rimasti anticipano la tappa dopo, che comincia a contare dal lunedì seguente. I piani di prima (a settimane) si leggono come tappe da N settimane. Il piano di base resta: Dritto, Rovescio, Primi colpi, quattro settimane ciascuno. Nell'app «mese» non indica più il tema: si dice **tema**.
 
 ## 3. Regole
 
