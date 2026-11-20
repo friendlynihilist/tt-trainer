@@ -1,10 +1,14 @@
 <script>
-  // Guida: il metodo in una pagina.
+  // Guida: il metodo in una pagina. In vista i cinque passi; il resto (medaglie, livello, durante
+  // l'allenamento, il piano, la libreria, i dati) in sezioni chiuse, una per argomento. Qui stanno
+  // le spiegazioni lunghe tolte dalle altre pagine.
   import { app } from '../store/app.svelte.js';
   import { BLOCKS, CYCLE_BLOCKS, PHASES, MATCH_TYPES, SCHEMES, PAUSE_MINUTES } from '../data/program.js';
   import { LIBRARY, PLAYER_LEVELS, TIERS, TIER } from '../data/library.js';
   import PageHead from '../ui/PageHead.svelte';
-  import Medal from '../ui/Medal.svelte';
+  import MedalBadge from '../ui/MedalBadge.svelte';
+  import LevelBadge from '../ui/LevelBadge.svelte';
+  import Collapse from '../ui/Collapse.svelte';
 
   const STEPS = [
     ['Il tuo livello', 'Scegli il livello che ti somiglia di più. Serve solo a proporti esercizi adatti: puoi fare qualsiasi esercizio, a qualsiasi livello.'],
@@ -16,145 +20,216 @@
   const example = LIBRARY.find((e) => e.id === 'top-d-block');
 </script>
 
-<div class="page enter">
-  <PageHead eyebrow="Guida" title="Come funziona" sub="Un colpo al mese, gli allenamenti che vuoi, e una medaglia per ogni traguardo. Niente è bloccato." actions={false} />
+<div class="page enter guide">
+  <PageHead eyebrow="Guida" title="Come funziona" actions={false} />
+  <p class="intro">Un colpo al mese, gli allenamenti che vuoi, una medaglia per ogni traguardo. Niente è bloccato.</p>
 
-  <section class="section">
-    <ol class="steps">
-      {#each STEPS as [title, text], i (title)}
-        <li>
-          <span class="n mono">{i + 1}</span>
-          <div><strong>{title}</strong><p class="muted">{text}</p></div>
-        </li>
-      {/each}
-    </ol>
-  </section>
+  <ol class="steps">
+    {#each STEPS as [title, text], i (title)}
+      <li>
+        <span class="n t-num">{i + 1}</span>
+        <div><strong>{title}</strong><p>{text}</p></div>
+      </li>
+    {/each}
+  </ol>
 
-  <section class="section">
-    <h2 class="heading">Le medaglie</h2>
-    <div class="stack g-12">
+  <div class="topics">
+    <Collapse title="Le medaglie" open={false} key="guida-medaglie">
       <p>Ogni esercizio ha tre gradini, a volte quattro. Per esempio, nel top di dritto contro block:</p>
-      <div class="card flush list">
+      <div class="medals">
         {#each TIERS.filter((t) => example.goals[t]) as t (t)}
-          <div class="item" data-tier={t}>
-            <Medal tier={t} size={20} />
-            <span class="grow"><strong>{TIER[t].name}</strong><span class="small muted block">{example.goals[t]} di fila{t === 'O' ? ', in due giorni diversi' : ''}</span></span>
+          <div class="md">
+            <MedalBadge tier={t} size={40} label={false} />
+            <strong>{TIER[t].name}</strong>
+            <span>{example.goals[t]} di fila</span>
           </div>
         {/each}
       </div>
-      <ul class="rules small muted">
+      <ul class="rules">
         <li>Quando conti quante di fila hai tre tentativi per seduta, e vale il migliore. Se sbaglia il compagno, il tentativo non conta: ripetilo.</li>
         <li>Quando conti su 10 o su 20 vale la prima serie del giorno: non si ripete finché esce il numero giusto.</li>
         <li>L’oro chiede la soglia in due giorni diversi. Con un giorno solo hai «metà oro».</li>
         <li>Le medaglie non si perdono. Se non misuri un esercizio da 90 giorni, l’app lo segna «da ripassare».</li>
         <li>Puoi dare un voto alla qualità del colpo, da 0 a 5. Non cambia la medaglia.</li>
       </ul>
-    </div>
-  </section>
+    </Collapse>
 
-  <section class="section">
-    <h2 class="heading">Il livello</h2>
-    <div class="stack g-12">
+    <Collapse title="Il livello" open={false} key="guida-livello">
       <div class="card flush list">
         {#each PLAYER_LEVELS as l (l.id)}
-          <div class="item lvl" class:me={l.id === app.player.level}>
-            <span class="grow"><strong>{l.name}</strong><span class="small muted block">{l.about}</span></span>
+          <div class="lvl" class:me={l.id === app.player.level}>
+            <LevelBadge level={l.id} small />
+            <span class="small">{l.about}</span>
           </div>
         {/each}
       </div>
-      <p class="small muted">
-        Ogni livello ha i suoi esercizi chiave. L’app ti propone il livello dopo quando hai l’argento nel 75% degli esercizi chiave (con almeno un argento in ogni famiglia), l’oro nel 40%, e queste misure vengono da almeno 4 sedute in almeno 14 giorni. Puoi dire di no: la proposta torna dopo 21 giorni, o prima se prendi 3 ori nuovi.
-      </p>
-    </div>
-  </section>
+      <ul class="rules">
+        <li>Ogni livello ha i suoi esercizi chiave.</li>
+        <li>L’app ti propone il livello dopo quando hai l’argento nel 75% degli esercizi chiave, con almeno un argento in ogni famiglia, e l’oro nel 40%.</li>
+        <li>Queste misure devono venire da almeno 4 sedute, in almeno 14 giorni: è la costanza.</li>
+        <li>Puoi dire di no: la proposta torna dopo 21 giorni, o prima se prendi 3 ori nuovi.</li>
+      </ul>
+    </Collapse>
 
-  <section class="section">
-    <h2 class="heading">Il modello Completo · 90 minuti</h2>
-    <div class="bar" role="img" aria-label="Le cinque fasi">
-      {#each PHASES as p (p.id)}<span style:flex={p.minutes} class:hot={p.id.startsWith('ex')}></span>{/each}
-    </div>
-    <div class="card flush list phases">
-      <div class="item"><span class="mono min">10′</span><span class="grow"><strong>Riscaldamento</strong><span class="small muted block">Dritto e rovescio in diagonale, top su block. Dal mese 2 gli ultimi 5 minuti sono il mantenimento del mese prima.</span></span></div>
-      <div class="item"><span class="mono min">14′</span><span class="grow"><strong>Servizi e ricezione</strong><span class="small muted block">Metà tempo serve uno, metà l’altro: a metà suona il cambio. Chi non serve allena la ricezione del mese.</span></span></div>
-      <div class="item"><span class="mono min">24′</span><span class="grow"><strong>Esercizio 1</strong><span class="small muted block">Il primo percorso del mese: l’app propone il primo esercizio della sequenza che non ha ancora l’argento. A metà di ogni esercizio suona il cambio e il riquadro del tempo diventa scuro: tocca al compagno. Se comincia lui, tocca l’etichetta «Tocca a te» e i turni si invertono. Nel palleggio e negli esercizi da solo non c’è cambio.</span></span></div>
-      <div class="item"><span class="mono min">24′</span><span class="grow"><strong>Esercizio 2</strong><span class="small muted block">Il secondo percorso del mese, come sopra.</span></span></div>
-      <div class="item"><span class="mono min">14′</span><span class="grow"><strong>Partitella</strong><span class="small muted block">Metà tempo per tipo, a metà suona il cambio.</span><span class="small muted block"><strong>{MATCH_TYPES.risk.name}.</strong> {MATCH_TYPES.risk.text} {MATCH_TYPES.risk.why}</span><span class="small muted block"><strong>{MATCH_TYPES.scheme.name}.</strong> Si sceglie uno schema. {MATCH_TYPES.scheme.text}</span></span></div>
-    </div>
-    <p class="small muted note">Fra una fase e l’altra c’è {PAUSE_MINUTES} minuto di pausa, con il conto alla rovescia. Si può saltare. Il minuto si toglie alla fase dopo: il totale resta 90. Vale per tutti i modelli, anche i tuoi.</p>
-  </section>
+    <Collapse title="Durante l’allenamento" open={false} key="guida-sessione">
+      <div class="bar" role="img" aria-label="Le cinque fasi del modello Completo">
+        {#each PHASES as p (p.id)}<span style:flex={p.minutes} class:hot={p.id.startsWith('ex')}></span>{/each}
+      </div>
+      <div class="card flush list phases">
+        <div class="ph"><b class="t-num">10′</b><span><strong>Riscaldamento</strong>Dritto e rovescio in diagonale, top su block. Dal secondo mese gli ultimi 5 minuti sono il mantenimento del mese prima.</span></div>
+        <div class="ph"><b class="t-num">14′</b><span><strong>Servizi e ricezione</strong>Metà tempo serve uno, metà l’altro. Chi non serve allena la ricezione.</span></div>
+        <div class="ph"><b class="t-num">24′</b><span><strong>Esercizio 1</strong>Il primo percorso del mese: l’app propone il primo esercizio che non ha ancora l’argento.</span></div>
+        <div class="ph"><b class="t-num">24′</b><span><strong>Esercizio 2</strong>Il secondo percorso del mese, allo stesso modo.</span></div>
+        <div class="ph"><b class="t-num">14′</b><span><strong>Partitella</strong>Metà tempo {MATCH_TYPES.risk.name.toLowerCase()}: {MATCH_TYPES.risk.text.charAt(0).toLowerCase() + MATCH_TYPES.risk.text.slice(1)} Metà tempo {MATCH_TYPES.scheme.name.toLowerCase()}: si sceglie uno schema.</span></div>
+      </div>
+      <ul class="rules">
+        <li><b>Il cambio.</b> A metà di ogni esercizio in due suona un doppio bip e il riquadro del tempo diventa scuro: tocca al compagno. Se comincia lui, tocca l’etichetta «Tocca a te» e i turni si invertono. Nel palleggio e negli esercizi da solo non c’è cambio.</li>
+        <li><b>Le pause.</b> Fra una fase e l’altra c’è {PAUSE_MINUTES} minuto di pausa, con il conto alla rovescia. Si può saltare. Il minuto si toglie alla fase dopo: il totale non cambia.</li>
+      </ul>
+    </Collapse>
 
-  <section class="section">
-    <h2 class="heading">Il programma di base · tre mesi</h2>
-    <div class="stack g-8">
-      {#each CYCLE_BLOCKS as b (b)}
-        {@const block = BLOCKS[b]}
-        <div class="card month">
-          <span class="big mono">{b}</span>
-          <div class="stack g-4">
-            <strong>{block.theme}</strong>
-            <p class="small muted">{block.tracks.map((t) => app.catalog.track(t).name).join(' · ')}</p>
-            <p class="small">Schemi della partitella: {block.schemes.map((x) => SCHEMES[x].name.toLowerCase()).join(', ')}</p>
+    <Collapse title="Il piano" open={false} key="guida-piano">
+      <p>Il piano è una fila di tappe: per ognuna scegli su cosa lavori e per quanto, un allenamento o una, due o quattro settimane. Il programma di base dura tre mesi:</p>
+      <div class="card flush list">
+        {#each CYCLE_BLOCKS as b (b)}
+          {@const block = BLOCKS[b]}
+          <div class="month">
+            <span class="big t-num">{b}</span>
+            <span><strong>{block.theme}</strong><span class="small muted block">{block.tracks.map((t) => app.catalog.track(t).short).join(', ')}</span></span>
           </div>
-        </div>
-      {/each}
-    </div>
-    <p class="small muted note">Il programma di base dà quattro settimane a ogni mese, ma nel piano puoi scegliere tu: un allenamento solo, una, due o quattro settimane. Una settimana saltata? Nel piano metti una pausa e tutto slitta.</p>
-  </section>
+        {/each}
+      </div>
+      <p class="small muted">Una settimana saltata? Nel piano metti una pausa e tutto slitta in avanti.</p>
+    </Collapse>
 
-  <section class="section">
-    <h2 class="heading">Fatto su misura</h2>
-    <div class="card flush list">
-      <div class="item"><span class="grow"><strong>Esercizi</strong><span class="small muted block">{LIBRARY.length} esercizi in otto famiglie, con livello suggerito, formato, criterio di qualità, errori comuni e medaglie. Si filtrano per livello e per formato.</span></span></div>
-      <div class="item"><span class="grow"><strong>Modelli</strong><span class="small muted block">La scaletta di un allenamento: riscaldamento, servizi, esercizi del mese, esercizi fissi, esercizi liberi, partitella. Ne crei quanti vuoi, ognuno con il suo colore.</span></span></div>
-      <div class="item"><span class="grow"><strong>Percorsi</strong><span class="small muted block">Una sequenza di esercizi, dal più guidato al più libero. Puoi usare quelli della libreria o scriverne di tuoi.</span></span></div>
-      <div class="item"><span class="grow"><strong>Mesi</strong><span class="small muted block">Su cosa lavori, con fino a tre percorsi, il mantenimento, i servizi e lo schema della partitella. Nel piano li metti in fila, ognuno per un allenamento o per una, due o quattro settimane.</span></span></div>
-    </div>
-    <p class="small muted note">Tutto dalla Libreria. Si può anche importare un file preparato da un assistente.</p>
-  </section>
+    <Collapse title="La libreria" open={false} key="guida-libreria">
+      <ul class="rules">
+        <li><b>Esercizi.</b> {LIBRARY.length} esercizi in otto famiglie, con il livello suggerito, il formato, come deve venire, gli errori comuni e le medaglie.</li>
+        <li><b>Modelli.</b> La scaletta di un allenamento. Ne crei quanti vuoi.</li>
+        <li><b>Percorsi.</b> Una sequenza di esercizi, dal più guidato al più libero.</li>
+        <li><b>Mesi.</b> Su cosa lavori: fino a tre percorsi, il mantenimento, i servizi e gli schemi della partitella.</li>
+        <li>Si può anche importare un file preparato da un assistente.</li>
+      </ul>
+    </Collapse>
 
-  <section class="section">
-    <h2 class="heading">I tuoi dati</h2>
-    <div class="card stack g-12">
+    <Collapse title="I tuoi dati" open={false} key="guida-dati">
       {#if app.cloud}
         <p>Diario, note, medaglie e livello li vedi solo tu. Il gruppo vede solo il tuo nome, se lo consenti.</p>
-        <p class="muted">Funziona anche senza rete: registra in palestra e sincronizza quando torna il segnale. Dal menu del browser puoi aggiungerla alla schermata Home.</p>
+        <p class="small muted">Funziona anche senza rete: registra in palestra e sincronizza quando torna il segnale. Dal menu del browser puoi aggiungerla alla schermata Home.</p>
       {:else}
         <p>Modalità locale: i dati restano in questo browser. Da Impostazioni puoi esportarli.</p>
       {/if}
-    </div>
-  </section>
+    </Collapse>
+  </div>
 </div>
 
 <style>
+  .intro {
+    margin: 8px 0 0;
+    font-size: 17px;
+    color: var(--ink-2);
+  }
   .steps {
     list-style: none;
-    margin: 0;
+    margin: 24px 0 0;
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 10px;
   }
   .steps li {
-    display: grid;
-    grid-template-columns: 32px 1fr;
+    display: flex;
     gap: 14px;
+    padding: 14px 16px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    border: 1px solid var(--line);
   }
   .n {
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--ink);
-    color: var(--paper);
-    font-weight: 560;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 800;
+    box-shadow: 0 3px 0 color-mix(in srgb, var(--accent) 62%, #000);
+  }
+  .steps strong {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .steps p {
+    margin: 2px 0 0;
     font-size: 14px;
+    color: var(--ink-2);
+  }
+  .topics {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 24px;
+  }
+  .topics p {
+    margin: 0 0 10px;
+  }
+  .medals {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 14px 6px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    border: 1px solid var(--line);
+  }
+  .md {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+    font-size: 13px;
+  }
+  .md strong {
+    margin-top: 6px;
+  }
+  .md span {
+    color: var(--ink-3);
+  }
+  .rules {
+    margin: 12px 0 4px;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .rules b {
+    color: var(--ink);
   }
   strong {
-    font-weight: 580;
+    font-weight: 700;
   }
   .block {
     display: block;
+  }
+  .lvl {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px 16px;
+  }
+  .lvl + .lvl {
+    border-top: 1px solid var(--line);
+  }
+  .lvl.me {
+    background: color-mix(in srgb, var(--accent) 8%, var(--card));
   }
   .bar {
     display: flex;
@@ -163,44 +238,43 @@
     margin-bottom: 12px;
   }
   .bar span {
-    border-radius: 4px;
-    background: var(--ink);
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--ink) 35%, var(--sunk));
   }
   .bar span.hot {
     background: var(--accent);
   }
-  .phases .item {
-    align-items: flex-start;
-  }
-  .min {
-    width: 30px;
-    padding-top: 1px;
+  .ph {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
     color: var(--ink-2);
-    font-size: 13px;
+  }
+  .ph + .ph {
+    border-top: 1px solid var(--line);
+  }
+  .ph b {
+    flex: none;
+    width: 32px;
+    color: var(--ink);
+  }
+  .ph strong {
+    display: block;
+    color: var(--ink);
   }
   .month {
-    display: grid;
-    grid-template-columns: 40px 1fr;
-    gap: 12px;
-    align-items: start;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+  }
+  .month + .month {
+    border-top: 1px solid var(--line);
   }
   .big {
-    font-size: 34px;
-    line-height: 1;
-    font-weight: 500;
+    font-size: 28px;
+    font-weight: 800;
     color: var(--accent);
-  }
-  .note {
-    margin-top: 12px;
-  }
-  .rules {
-    margin: 0;
-    padding-left: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .lvl.me {
-    background: color-mix(in srgb, var(--accent) 10%, var(--card));
   }
 </style>

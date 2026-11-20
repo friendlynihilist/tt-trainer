@@ -61,8 +61,8 @@
         <button class="opt" data-color={t.color} onclick={() => pickTraining(t)}>
           <span class="ic dot">{#if mode === 'live'}<Play size={15} fill="currentColor" />{/if}</span>
           <span class="grow">
-            <strong>{t.name}</strong>
-            <span class="small muted block">{templateMinutes(t)} min{t.custom ? ' · tuo' : ''}</span>
+            <strong>{t.name}</strong>{#if t.custom}<span class="mine">tuo</span>{/if}
+            {#if !t.name.includes(String(templateMinutes(t)))}<span class="small muted block">{templateMinutes(t)} min</span>{/if}
           </span>
         </button>
       {/each}
@@ -86,6 +86,15 @@
 </Sheet>
 
 <style>
+  .mine {
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--sunk);
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--ink-2);
+  }
   .opt {
     display: flex;
     align-items: center;

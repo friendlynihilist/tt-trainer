@@ -91,9 +91,18 @@ Ogni gruppo è una sezione richiudibile con la sua icona e quante voci ha; «Nuo
 - **Colpo** (`StrokeSheet`): l'icona e il colore della famiglia, il lato, le fasi del punto; **Come lo senti** con l'ultima nota in cinque tacche e la media sotto; le tue note (con «Aggiungi una nota» come ultima riga), dove lo alleni (con l'anello della medaglia) e da correggere in sezioni richiudibili.
 - Ancora nello stile di prima: i fogli del percorso, del mese, della voce del diario, della nota, del livello, del piano a parte le tappe.
 
-### Guida e Impostazioni
-- **Guida**: diventa il posto delle spiegazioni lunghe tolte dalle altre pagine (medaglie, livello, pause, turni, partitella).
-- **Impostazioni**: righe con icona a sinistra; tolti i sottotitoli ovvi.
+### Guida e Impostazioni (rifatte)
+- **Guida**: il titolo, una frase, i **cinque passi** come tessere numerate (numero arancione in rilievo, titolo e due righe). Il resto in sezioni chiuse, una per argomento: le medaglie (gli scudi e le regole dei tentativi), il livello (i badge e le condizioni), durante l'allenamento (le fasi, il cambio, le pause), il piano, la libreria, i tuoi dati. Qui stanno le spiegazioni lunghe tolte dalle altre pagine.
+- **Impostazioni**: titolo «Impostazioni», il profilo in una card; poi gruppi con l'intestazione in maiuscoletto: **Allenamento** (il piano, il tuo livello con il badge), **Preferenze** (aspetto, suoni, vibrazione, cambio a metà esercizio, il piano nel Diario, mancino), **Gruppo**, **Dati** (esporta, copia, cancella in rosso), **Informazioni** (novità con la versione, guida, esci). Ogni riga ha un'icona chiara a sinistra in un quadrato grigio; sottotitoli solo dove servono.
+
+### Le classi di base (`app.css`)
+Per tenere coerenti anche i fogli non rifatti uno per uno (voce del diario, nota, livello, percorso, mese, aggiungi, piano):
+- `.display` e `.title` in Geist 800 con spaziatura stretta; i fogli e le intestazioni di pagina usano lo stile nuovo di partenza.
+- `.heading`: maiuscoletto piccolo (12 px, 700, grigio).
+- `.chip` e `.tag.line`: pieni, senza bordo.
+- `.btn.primary` e `.btn.accent` (non piccoli): rilievo, arrotondamento 18, scendono quando li premi; testo bianco sull'arancione.
+- `.card`: arrotondamento 20.
+- Le medaglie a pallini (`Medal`, `MedalRow`) non si usano più: ovunque gli scudi (`MedalBadge`) o l'anello (`MedalRing`).
 
 ---
 

@@ -11,7 +11,7 @@
   import { PLAYER_LEVEL } from '../data/library.js';
   import { fmtDay } from '../util/dates.js';
   import Sheet from '../ui/Sheet.svelte';
-  import MedalRow from '../ui/MedalRow.svelte';
+  import MedalRing from '../ui/MedalRing.svelte';
 
   let { id } = $props();
 
@@ -42,7 +42,7 @@
                   <strong>{ex.name}</strong>
                   <span class="small muted block">{exId === current ? 'Proposto ora' : (PLAYER_LEVEL[ex.level]?.name ?? 'Tuo')}</span>
                 </span>
-                <MedalRow exercise={ex} medals={app.medals[exId]} />
+                <MedalRing exercise={ex} medals={app.medals[exId]} size={34} />
                 <ChevronRight size={16} />
               </button>
             </li>

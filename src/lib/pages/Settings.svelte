@@ -1,7 +1,24 @@
 <script>
-  // Impostazioni: piano, livello, preferenze, gruppo, dati.
+  // Impostazioni: righe con un'icona a sinistra, raggruppate. Il profilo in alto; poi allenamento
+  // (piano e livello), preferenze, gruppo, dati, informazioni. Sottotitoli solo dove servono.
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import X from '@lucide/svelte/icons/x';
+  import CalendarRange from '@lucide/svelte/icons/calendar-range';
+  import SunMoon from '@lucide/svelte/icons/sun-moon';
+  import Volume2 from '@lucide/svelte/icons/volume-2';
+  import Vibrate from '@lucide/svelte/icons/vibrate';
+  import Repeat from '@lucide/svelte/icons/repeat';
+  import CalendarDays from '@lucide/svelte/icons/calendar-days';
+  import Hand from '@lucide/svelte/icons/hand';
+  import Users from '@lucide/svelte/icons/users';
+  import FileSpreadsheet from '@lucide/svelte/icons/file-spreadsheet';
+  import FileJson from '@lucide/svelte/icons/file-json';
+  import Trash from '@lucide/svelte/icons/trash-2';
+  import Sparkles from '@lucide/svelte/icons/sparkles';
+  import BookOpen from '@lucide/svelte/icons/book-open';
+  import LogOut from '@lucide/svelte/icons/log-out';
+  import Signal from '@lucide/svelte/icons/signal';
+  import LevelBadge from '../ui/LevelBadge.svelte';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { backup, diaryCsv } from '../engine/export.js';
@@ -62,52 +79,46 @@
   }
 </script>
 
-<div class="page enter">
-  <PageHead eyebrow="Impostazioni" title={app.firstName || 'Profilo'} actions={false} />
+{#snippet row(Icon, label, sub, onclick, extra = null, danger = false)}
+  <button class="row-btn" class:danger {onclick}>
+    <span class="ico"><Icon size={20} /></span>
+    <span class="grow"><span class="lbl">{label}</span>{#if sub}<span class="sub">{sub}</span>{/if}</span>
+    {#if extra}{@render extra()}{/if}
+    {#if !danger}<ChevronRight size={18} />{/if}
+  </button>
+{/snippet}
+
+<div class="page enter settings">
+  <PageHead title="Impostazioni" actions={false} />
 
   <section class="card me">
-    <Avatar name={app.name} photo={app.photo} size={48} />
+    <Avatar name={app.name} photo={app.photo} size={52} />
     <div class="grow">
       <input class="name" value={app.name} placeholder="Il tuo nome" onchange={(e) => app.patchMeta({ profile: { name: e.currentTarget.value.trim() } })} aria-label="Nome" />
-      <p class="small muted">{app.user?.email || 'Modalità locale · dati su questo dispositivo'}</p>
+      <p class="small muted">{app.user?.email || 'Modalità locale: i dati restano su questo dispositivo'}</p>
     </div>
   </section>
 
   <section class="section">
-    <h2 class="heading">Piano</h2>
+    <h2 class="heading">Allenamento</h2>
     <div class="card flush list">
-      <button class="item" onclick={() => ui.open('plan')}>
-        <span class="grow">
-          {#if app.plan}
-            <strong>{rhythm}</strong>
-            <span class="small muted block">Iniziato {fmtLong(app.plan.start)} · tappe, ritmo, pause, piano nuovo</span>
-          {:else}
-            <strong>Crea il piano</strong>
-          {/if}
-        </span>
-        <ChevronRight size={16} />
-      </button>
-    </div>
-  </section>
-
-  <section class="section">
-    <h2 class="heading">Il tuo livello</h2>
-    <div class="card flush list">
-      <button class="item" onclick={() => ui.open('level')}>
-        <span class="grow">
-          <strong>{PLAYER_LEVEL[app.player.level].name}</strong>
-          <span class="small muted block">Serve solo a proporti esercizi: puoi fare tutto, a qualsiasi livello.</span>
-        </span>
-        <ChevronRight size={16} />
+      {@render row(CalendarRange, app.plan ? 'Il piano' : 'Crea il piano', app.plan ? `${rhythm} · dal ${fmtLong(app.plan.start)}` : '', () => ui.open('plan'))}
+      {#snippet lv()}<LevelBadge level={app.player.level} small />{/snippet}
+      <button class="row-btn" onclick={() => ui.open('level')}>
+        <span class="ico"><Signal size={20} /></span>
+        <span class="grow"><span class="lbl">Il tuo livello</span></span>
+        {@render lv()}
+        <ChevronRight size={18} />
       </button>
     </div>
   </section>
 
   <section class="section">
     <h2 class="heading">Preferenze</h2>
-    <div class="card stack g-16">
-      <div class="spread">
-        <span>Aspetto</span>
+    <div class="card prefs">
+      <div class="theme-row">
+        <span class="ico"><SunMoon size={20} /></span>
+        <span class="grow lbl">Aspetto</span>
         <Segmented
           small
           options={[
@@ -119,19 +130,20 @@
           onchange={(theme) => app.patchSettings({ theme })}
         />
       </div>
-      <Toggle label="Suoni" hint="Fine fase e cambio al servizio" checked={s.sound} onchange={(sound) => app.patchSettings({ sound })} />
-      <Toggle label="Vibrazione" checked={s.haptics} onchange={(haptics) => app.patchSettings({ haptics })} />
-      <Toggle label="Cambio a metà esercizio" hint="Un bip, e il riquadro del tempo cambia colore quando tocca al compagno" checked={s.turns} onchange={(turns) => app.patchSettings({ turns })} />
-      <Toggle label="Il piano nel Diario" hint="Fra le settimane del calendario, su cosa lavori quando cambia" checked={Boolean(s.calThemes)} onchange={(calThemes) => app.patchSettings({ calThemes })} />
-      <Toggle label="Sono mancino" hint="Scambia i lati nel disegno del tavolo" checked={Boolean(s.lefty)} onchange={(lefty) => app.patchSettings({ lefty })} />
+      <Toggle icon={Volume2} label="Suoni" checked={s.sound} onchange={(sound) => app.patchSettings({ sound })} />
+      <Toggle icon={Vibrate} label="Vibrazione" checked={s.haptics} onchange={(haptics) => app.patchSettings({ haptics })} />
+      <Toggle icon={Repeat} label="Cambio a metà esercizio" hint="Un bip, e il riquadro del tempo cambia colore quando tocca al compagno" checked={s.turns} onchange={(turns) => app.patchSettings({ turns })} />
+      <Toggle icon={CalendarDays} label="Il piano nel Diario" hint="Fra le settimane del calendario, su cosa lavori quando cambia" checked={Boolean(s.calThemes)} onchange={(calThemes) => app.patchSettings({ calThemes })} />
+      <Toggle icon={Hand} label="Sono mancino" hint="Scambia i lati nel disegno del tavolo" checked={Boolean(s.lefty)} onchange={(lefty) => app.patchSettings({ lefty })} />
     </div>
   </section>
 
   {#if app.cloud}
     <section class="section">
       <h2 class="heading">Gruppo</h2>
-      <div class="card stack g-16">
+      <div class="card prefs">
         <Toggle
+          icon={Users}
           label="Mostrami nel gruppo"
           hint="Solo il nome. Medaglie, livello, diario e note restano tuoi."
           checked={s.share}
@@ -156,7 +168,7 @@
           </div>
         {/if}
         <div class="card stack g-12 after">
-          <span class="small muted">Chi può entrare</span>
+          <span class="heading">Chi può entrare</span>
           {#each app.access?.admins ?? [] as email (email)}
             <div class="spread"><span>{email}</span><span class="tag">amministratore</span></div>
           {/each}
@@ -168,7 +180,7 @@
           {/each}
           <form class="row g-8" onsubmit={(e) => { e.preventDefault(); addMember(); }}>
             <input class="field grow" type="email" placeholder="email@gmail.com" bind:value={newEmail} />
-            <button class="btn primary" type="submit">Invita</button>
+            <button class="btn primary small" type="submit">Invita</button>
           </form>
         </div>
       {/if}
@@ -178,27 +190,21 @@
   <section class="section">
     <h2 class="heading">Dati</h2>
     <div class="card flush list">
-      <button class="item" onclick={exportCsv}><span class="grow">Esporta il diario<span class="small muted block">CSV, si apre con Excel o Fogli</span></span><ChevronRight size={16} /></button>
-      <button class="item" onclick={exportJson}><span class="grow">Copia completa<span class="small muted block">JSON con piano, sessioni e note</span></span><ChevronRight size={16} /></button>
-      <button class="item danger" onclick={wipe}><span class="grow">Cancella tutti i miei dati</span></button>
+      {@render row(FileSpreadsheet, 'Esporta il diario', 'Un file CSV, per Excel o Fogli', exportCsv)}
+      {@render row(FileJson, 'Copia completa', 'Un file JSON con piano, sessioni e note', exportJson)}
+      {@render row(Trash, 'Cancella tutti i miei dati', '', wipe, null, true)}
     </div>
   </section>
 
   <section class="section">
     <h2 class="heading">Informazioni</h2>
     <div class="card flush list">
-      <button class="item" onclick={() => (ui.news = { history: true })}>
-        <span class="grow">Novità<span class="small muted block">Cosa è cambiato, versione per versione</span></span>
-        <span class="mono small muted">v{VERSION}</span>
-        <ChevronRight size={16} />
-      </button>
+      {#snippet ver()}<span class="ver t-num">v{VERSION}</span>{/snippet}
+      {@render row(Sparkles, 'Novità', '', () => (ui.news = { history: true }), ver)}
+      {@render row(BookOpen, 'Guida', '', () => ui.go('guida'))}
+      {#if app.cloud}{@render row(LogOut, 'Esci', '', () => app.signOut(), null, true)}{/if}
     </div>
     <p class="small faint after">Terza palla {VERSION}{app.cloud ? '' : ' · modalità locale'}</p>
-  </section>
-
-  <section class="section links">
-    <a class="btn ghost" href="#/guida">Guida</a>
-    <button class="btn plain" onclick={() => app.signOut()}>Esci</button>
   </section>
 </div>
 
@@ -214,30 +220,78 @@
     border: 0;
     background: none;
     outline: none;
-    font-size: 17px;
-    font-weight: 580;
+    font-size: 18px;
+    font-weight: 700;
     padding: 0;
   }
   strong {
-    font-weight: 560;
+    font-weight: 650;
   }
   .block {
     display: block;
   }
-  .item :global(svg) {
+  .row-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 60px;
+    padding: 10px 16px;
+    text-align: left;
+    color: var(--ink);
+  }
+  .row-btn + .row-btn {
+    border-top: 1px solid var(--line);
+  }
+  .row-btn > :global(svg) {
+    color: var(--ink-3);
+    flex: none;
+  }
+  .ico {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    background: var(--sunk);
+    color: var(--ink-2);
+  }
+  .lbl {
+    display: block;
+    font-weight: 600;
+  }
+  .sub {
+    display: block;
+    font-size: 13px;
     color: var(--ink-3);
   }
-  .item.danger {
+  .row-btn.danger,
+  .row-btn.danger .ico {
     color: var(--down);
+  }
+  .ver {
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+  .prefs {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 16px;
+  }
+  .prefs :global(.toggle .grow) {
+    font-weight: 600;
+  }
+  .prefs :global(.toggle .muted) {
+    font-weight: 400;
+  }
+  .theme-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
   }
   .after {
     margin-top: 10px;
-  }
-  .links {
-    display: flex;
-    gap: 10px;
-  }
-  .links a {
-    text-decoration: none;
   }
 </style>

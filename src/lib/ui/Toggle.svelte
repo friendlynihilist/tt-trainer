@@ -1,8 +1,11 @@
 <script>
-  let { checked = false, onchange, label, hint = '' } = $props();
+  // Un interruttore con il suo nome; a sinistra, se c'è, l'icona della voce.
+  let { checked = false, onchange, label, hint = '', icon = null } = $props();
+  const Icon = $derived(icon);
 </script>
 
 <label class="toggle">
+  {#if Icon}<span class="ico"><Icon size={20} /></span>{/if}
   <span class="grow">
     {label}
     {#if hint}<span class="small muted block">{hint}</span>{/if}
@@ -20,6 +23,16 @@
   }
   .block {
     display: block;
+  }
+  .ico {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    background: var(--sunk);
+    color: var(--ink-2);
   }
   input {
     position: absolute;

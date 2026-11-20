@@ -5,7 +5,7 @@
   import { MATCH_TYPES, SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
   import { matchHalves, schemeOf } from '../engine/compose.js';
   import { nextGoal, goalText } from '../engine/medals.js';
-  import Medal from './Medal.svelte';
+  import Medal from './MedalBadge.svelte';
 
   // part: la metà della partitella in corso (1 o 2), solo nella sessione dal vivo.
   // onscheme, onmore: per cambiare lo schema della partitella, solo nella sessione dal vivo.
@@ -35,7 +35,7 @@
     </dl>
     {#if ex && showGoal}
       <p class="next">
-        <Medal tier={goal?.tier ?? 'P'} on={!goal} half={goal?.half} size={big ? 16 : 13} />
+        <Medal tier={goal?.tier ?? 'P'} on={!goal} half={goal?.half} size={big ? 22 : 18} />
         <span><strong>{ex.name}</strong>{goal ? ` · ${goalText(ex, goal)}` : ' · tutte le medaglie prese'}</span>
       </p>
     {/if}
@@ -46,7 +46,7 @@
     {/if}
     {#if showGoal && goal}
       <p class="next">
-        <Medal tier={goal.tier} on={false} half={goal.half} size={big ? 16 : 13} />
+        <Medal tier={goal.tier} on={false} half={goal.half} size={big ? 22 : 18} />
         <span>Prossimo obiettivo · {goalText(ex, goal)}</span>
       </p>
     {/if}

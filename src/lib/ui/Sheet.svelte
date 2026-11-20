@@ -6,7 +6,7 @@
   import X from '@lucide/svelte/icons/x';
 
   // sans: titolo in Geist, come nelle schermate rifatte (docs/design.md).
-  let { title = '', onclose, children, footer = null, tall = false, sans = false } = $props();
+  let { title = '', onclose, children, footer = null, tall = false, sans = true } = $props();
 
   let drag = $state(0);
   let dragging = $state(false);

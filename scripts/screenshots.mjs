@@ -142,6 +142,13 @@ const SHOTS = [
   },
   { name: 'guida', hash: 'guida' },
   { name: 'impostazioni', hash: 'impostazioni' },
+  // Gli altri fogli.
+  { name: 'foglio-voce', hash: 'calendario', steps: [click('/^Test/', 'button.item')] },
+  { name: 'foglio-livello', hash: 'progressi', steps: [`document.querySelector('.lv-top button').click()`] },
+  { name: 'foglio-percorso', hash: 'libreria/allenamenti', steps: [click('/^Percorsi/'), click('/^Top di dritto/', 'button.item')] },
+  { name: 'foglio-mese', hash: 'libreria/allenamenti', steps: [click('/^Dritto/', 'button.item')] },
+  { name: 'foglio-nota', hash: 'libreria/colpi', steps: [click('/^Attacco/'), click('/^Apertura di dritto su taglio/', 'button.item'), click('/^Aggiungi una nota/')] },
+  { name: 'foglio-aggiungi', hash: 'oggi', steps: [`document.querySelector('nav button.add').click()`], viewport: true },
   { name: 'scheda-esercizio', hash: 'libreria/esercizi', steps: [click('/^Attacco/'), click('/^Top di dritto contro block/', 'button.item')] },
   { name: 'scheda-allenamento', hash: 'libreria/allenamenti', steps: [click('/^Pacchetti/'), click('/^90′$/', '.pk button')] },
   { name: 'scheda-colpo', hash: 'libreria/colpi', steps: [click('/^Attacco/'), click('/^Apertura di dritto su taglio/', 'button.item')] },

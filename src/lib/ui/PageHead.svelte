@@ -5,7 +5,7 @@
   import { app } from '../store/app.svelte.js';
   import Avatar from './Avatar.svelte';
 
-  let { eyebrow = '', title, sub = '', children = null, actions = true, sans = false } = $props();
+  let { eyebrow = '', title, sub = '', children = null, actions = true, sans = true } = $props();
 </script>
 
 <header class="head">
