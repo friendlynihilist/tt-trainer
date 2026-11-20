@@ -85,10 +85,11 @@ Ogni gruppo è una sezione richiudibile con la sua icona e quante voci ha; «Nuo
 - **Esercizi**: un campo **Cerca** (senza accenti e maiuscole); due filtri, **livello** e **formato**, che si scelgono in un foglio (al posto di tredici pulsantini); «Togli i filtri» quando servono. Le famiglie sono sezioni chiuse con icona e numero; con una ricerca o un filtro si aprono. Ogni esercizio: il nome, sotto il livello con il pallino del suo colore e i formati in grigio, a destra l'anello della medaglia; «Da ripassare» in rosso.
 - **Colpi**: Tutti / Dritto / Rovescio; le famiglie sono sezioni chiuse con icona e numero; i colpi senza descrizione (sta nella scheda); quante volte da correggere con il mirino rosso; «Aggiungi un colpo»; «Le altre voci» (fasi, palle, errori) chiuse.
 
-### Schede
-- **Esercizio**: in alto colore e icona della famiglia, badge del livello, parametri con icona e unità; le medaglie come quattro anelli in fila; la spiegazione dei tentativi va nella Guida.
-- **Allenamento**: i blocchi come mattoncini da trascinare, aggiungere e togliere.
-- **Colpo**: famiglia con colore; le note restano.
+### Schede (rifatte)
+- **Esercizio** (`ExerciseSheet`): in alto chi è, ogni cosa con il suo stile: l'icona della famiglia nel suo colore, il nome della famiglia, i formati in grigio, il badge del livello; sotto «Si misura: …» con l'icona della misura. Poi cosa si fa e **Come deve venire** in un riquadro del colore della famiglia. Le **medaglie come quattro scudi in fila** (con la soglia, la data o «prossima»; il riflesso quando entrano in vista). **Le tue misure** in un grafico (`MeasureChart`): una barra per seduta nel colore della famiglia, la linea tratteggiata della prossima medaglia con il suo nome, toccando una barra si legge data e valore. «Come si misura» (la regola dei tentativi), note, errori e colpi in sezioni chiuse. In fondo, fisso, **Misurati ora**.
+- **Allenamento** (`TemplateSheet`): in lettura la durata grande, la scaletta in segmenti colorati e i blocchi come **mattoncini** (`Brick`) con gli esercizi di adesso, separati dalla pausa di 1 minuto. Nell'editor ogni blocco ha il bordo e il fondo tenue della sua famiglia. (Trascinare i blocchi: non ancora.)
+- **Colpo** (`StrokeSheet`): l'icona e il colore della famiglia, il lato, le fasi del punto; **Come lo senti** con l'ultima nota in cinque tacche e la media sotto; le tue note (con «Aggiungi una nota» come ultima riga), dove lo alleni (con l'anello della medaglia) e da correggere in sezioni richiudibili.
+- Ancora nello stile di prima: i fogli del percorso, del mese, della voce del diario, della nota, del livello, del piano a parte le tappe.
 
 ### Guida e Impostazioni
 - **Guida**: diventa il posto delle spiegazioni lunghe tolte dalle altre pagine (medaglie, livello, pause, turni, partitella).

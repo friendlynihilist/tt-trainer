@@ -142,9 +142,9 @@ const SHOTS = [
   },
   { name: 'guida', hash: 'guida' },
   { name: 'impostazioni', hash: 'impostazioni' },
-  { name: 'scheda-esercizio', hash: 'libreria/esercizi', steps: [click('/^Attacco/'), click('/^Top di dritto contro block/', 'button.item')], viewport: true },
-  { name: 'scheda-allenamento', hash: 'libreria/allenamenti', steps: [click('/^Pacchetti/'), click('/^90′$/', '.pk button')], viewport: true },
-  { name: 'scheda-colpo', hash: 'libreria/colpi', steps: [click('/^Attacco/'), click('/^Apertura di dritto su taglio/', 'button.item')], viewport: true },
+  { name: 'scheda-esercizio', hash: 'libreria/esercizi', steps: [click('/^Attacco/'), click('/^Top di dritto contro block/', 'button.item')] },
+  { name: 'scheda-allenamento', hash: 'libreria/allenamenti', steps: [click('/^Pacchetti/'), click('/^90′$/', '.pk button')] },
+  { name: 'scheda-colpo', hash: 'libreria/colpi', steps: [click('/^Attacco/'), click('/^Apertura di dritto su taglio/', 'button.item')] },
   {
     name: 'sessione',
     hash: 'oggi',

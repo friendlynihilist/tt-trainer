@@ -9,11 +9,15 @@
   import Trash from '@lucide/svelte/icons/trash';
   import Play from '@lucide/svelte/icons/play';
   import Repeat from '@lucide/svelte/icons/repeat-2';
+  import Timer from '@lucide/svelte/icons/timer';
+  import Coffee from '@lucide/svelte/icons/coffee';
   import { app } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
   import { startItem, weekOf } from '../store/actions.js';
   import { COLORS, STEP_TYPES, normalizeTemplate, templateMinutes } from '../data/templates.js';
-  import { schemeOf } from '../engine/compose.js';
+  import { schemeOf, composeSession } from '../engine/compose.js';
+  import { sessionBlocks } from '../ui/design.js';
+  import Brick from '../ui/Brick.svelte';
   import { pickExercise, pickScheme } from '../ui/pickers.js';
   import Sheet from '../ui/Sheet.svelte';
 
@@ -35,6 +39,25 @@
   );
 
   const month = $derived(weekOf(app.today)?.focusBlock ?? app.catalog.block('1'));
+  // In lettura: i blocchi come mattoncini, con gli esercizi di adesso e i colori delle famiglie.
+  const bricks = $derived.by(() => {
+    if (!readonly) return [];
+    try {
+      return sessionBlocks(composeSession({ week: weekOf(app.today), template: source, catalog: app.catalog, medals: app.medals }), app.catalog);
+    } catch {
+      return [];
+    }
+  });
+  /** La famiglia (il colore) di un blocco nell'editor: dal ruolo o dal primo esercizio. */
+  function blockFam(b) {
+    if (b.role === 'warmup') return 'palleggio';
+    if (b.role === 'serve') return 'servizio';
+    if (b.role === 'match') return 'partita';
+    const it = b.items?.[0];
+    if (it?.ex) return app.catalog.exercise(it.ex)?.family ?? 'libero';
+    if (it?.focus) return app.catalog.exercise(app.catalog.sequence(month.tracks[it.focus - 1] ?? '')[0])?.family ?? 'attacco';
+    return 'libero';
+  }
   const total = $derived(templateMinutes({ blocks }));
   const usedBy = $derived(id ? (app.plan?.slots ?? []).filter((s) => s.template === id).length : 0);
   const hasMatch = $derived(blocks.some((b) => b.role === 'match'));
@@ -147,18 +170,23 @@
   }
 </script>
 
-<Sheet title={readonly ? source.name : source?.custom ? 'Modifica allenamento' : 'Nuovo allenamento'} onclose={() => ui.close()} tall>
+<Sheet title={readonly ? source.name : source?.custom ? 'Modifica allenamento' : 'Nuovo allenamento'} onclose={() => ui.close()} tall sans>
   <div class="stack g-24">
     {#if readonly}
-      <p class="muted">{templateMinutes(source)} minuti{source.about ? ` · ${source.about}` : ''}</p>
-      <ol class="steps ro">
-        {#each source.blocks as b, i (i)}
-          <li>
-            <span class="mono min">{b.minutes}′</span>
-            <span class="grow"><strong>{b.name}</strong><span class="small muted block">{describe(b)}</span></span>
-          </li>
+      <div class="ro-head">
+        <span class="dur"><Timer size={18} /><b class="t-num">{templateMinutes(source)}</b> min</span>
+        {#if bricks.length}
+          <span class="segs" aria-hidden="true">{#each bricks as b (b.key)}<i data-fam={b.fam} style:flex-grow={b.minutes}></i>{/each}</span>
+        {/if}
+      </div>
+      {#if source.about}<p class="about">{source.about}</p>{/if}
+      <div class="bricks">
+        {#each bricks as b, i (b.key)}
+          {#if i > 0}<div class="gap"><Coffee size={14} /> 1 min</div>{/if}
+          <Brick fam={b.fam} name={b.name} minutes={b.minutes} fams={b.fams} sub={b.steps.length > 1 ? b.steps.map((x) => x.name).join(', ') : b.steps[0].name !== b.name ? b.steps[0].name : ''} />
         {/each}
-      </ol>
+      </div>
+      <p class="note">Gli esercizi sono quelli di adesso: cambiano con il mese e con le tue medaglie.</p>
     {:else}
       <input class="field" placeholder="Nome" bind:value={name} maxlength="60" />
 
@@ -171,7 +199,7 @@
       <section class="stack g-8">
         <h3 class="heading">Blocchi · {total} min</h3>
         {#each blocks as b, i (b.key)}
-          <div class="step" data-color={color}>
+          <div class="step" data-fam={blockFam(b)}>
             <div class="spread">
               {#if b.role}
                 <strong class="grow">{b.name}</strong>
@@ -259,23 +287,62 @@
   .block {
     display: block;
   }
-  .steps {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+  .ro-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .dur {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    flex: none;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .dur :global(svg) {
+    align-self: center;
+    color: var(--ink-3);
+  }
+  .dur b {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .segs {
+    flex: 1;
+    display: flex;
+    gap: 3px;
+  }
+  .segs i {
+    flex-basis: 0;
+    min-width: 8px;
+    height: 10px;
+    border-radius: 5px;
+    background: var(--f);
+  }
+  .about {
+    margin: -8px 0 0;
+    color: var(--ink-2);
+  }
+  .bricks {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 8px;
   }
-  .steps li {
+  .gap {
     display: flex;
-    gap: 14px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-3);
   }
-  .min {
-    width: 34px;
-    color: var(--ink-2);
+  .note {
+    margin: -8px 0 0;
     font-size: 13px;
-    padding-top: 2px;
+    color: var(--ink-3);
   }
   .colors {
     display: flex;
@@ -302,8 +369,8 @@
     padding: 12px 8px 12px 14px;
     border-radius: var(--r);
     border: 1px solid var(--line);
-    border-left: 3px solid var(--c);
-    background: var(--card);
+    border-left: 5px solid var(--f);
+    background: color-mix(in srgb, var(--f) 6%, var(--card));
   }
   .step .spread {
     gap: 4px;
