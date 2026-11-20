@@ -110,8 +110,8 @@
 
   {#if legend.length}
     <div class="legend">
-      {#each legend as k (k.id)}<span data-color={k.color}><i class="pip"></i>{k.short}</span>{/each}
-      <span><i class="pip todo" data-color="slate"></i>in programma</span>
+      <span class="kinds">{#each legend as k (k.id)}<span data-color={k.color}><i class="pip"></i>{k.short}</span>{/each}</span>
+      <span class="states"><span><i class="pip" data-color="slate"></i>fatto</span><span><i class="pip todo" data-color="slate"></i>in programma</span></span>
     </div>
   {/if}
 </div>
@@ -271,7 +271,21 @@
     font-size: 12px;
     color: var(--ink-2);
   }
-  .legend span {
+  .legend {
+    flex-direction: column;
+    align-items: center;
+  }
+  .legend .kinds,
+  .legend .states {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 14px;
+  }
+  .legend .states {
+    color: var(--ink-3);
+  }
+  .legend span span {
     display: inline-flex;
     align-items: center;
     gap: 5px;

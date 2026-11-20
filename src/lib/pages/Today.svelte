@@ -20,7 +20,7 @@
   import { ui } from '../store/ui.svelte.js';
   import { loadLive, clearLive } from '../store/live.js';
   import { startItem, logItem, weekOf, proposalFor } from '../store/actions.js';
-  import { weekAt, removeWeek, stageInfo } from '../engine/plan.js';
+  import { weekAt, removeWeek, stageInfo, stagePeriod, stageLength } from '../engine/plan.js';
   import { agenda } from '../engine/events.js';
   import { composeSession, templateWithOverrides } from '../engine/compose.js';
   import { packagesOf } from '../data/packages.js';
@@ -42,6 +42,7 @@
   import LevelBadge from '../ui/LevelBadge.svelte';
   import WeekDays from '../ui/WeekDays.svelte';
   import StageProgress from '../ui/StageProgress.svelte';
+  import FamilyIcon from '../ui/FamilyIcon.svelte';
   import Sheet from '../ui/Sheet.svelte';
 
   const plan = $derived(app.plan);
@@ -92,6 +93,13 @@
     return out;
   });
 
+  // La tappa in corso, in breve: il tema, a che punto sei, i percorsi. Il resto nel foglio.
+  const stage = $derived(plan ? stageInfo(plan, app.today, app.catalog) : null);
+  // Il periodo della tappa in tempo relativo: «Questo mese», «Questa settimana», «Oggi»…
+  const period = $derived.by(() => {
+    const st = stage?.stages[stage.current];
+    return st ? stagePeriod(st, { isToday: st.start === app.today }) : { title: 'Questo mese', of: 'di questo mese', noun: 'Mese' };
+  });
   // Una medaglia da prendere, con il perché: prima una vicina che è nell'allenamento di oggi, poi
   // una vicina dei percorsi del mese, poi la più vicina, poi l'esercizio del mese.
   const near = $derived(nearGoals({ medals: app.medals, catalog: app.catalog, max: 10 }));
@@ -108,7 +116,7 @@
     const goal = ex && nextGoal(ex, app.medals[ex.id]);
     if (!goal) return null;
     const inSession = sessionExs.has(ex.id);
-    const why = inSession ? 'È nell’allenamento di oggi' : near.some((n) => n.ex === ex.id) ? 'Ti manca poco' : 'È l’esercizio del tema';
+    const why = inSession ? 'È nell’allenamento di oggi' : near.some((n) => n.ex === ex.id) ? 'Ti manca poco' : `È l’esercizio ${period.of}`;
     return { ex, goal, inSession, why, best: app.medals[ex.id]?.best ?? null };
   });
 
@@ -122,14 +130,18 @@
 
   const title = $derived(fmtLong(app.today).replace(/^./, (c) => c.toUpperCase()));
 
-  // La tappa in corso, in breve: il tema, a che punto sei, i percorsi. Il resto nel foglio.
-  const stage = $derived(plan ? stageInfo(plan, app.today, app.catalog) : null);
   const monthInfo = $derived.by(() => {
     if (!plan || !stage || app.phase === 'done') return null;
-    const trackNames = (block) => (block?.tracks ?? []).map((id) => app.catalog.track(id)?.short).filter(Boolean).join(' · ');
+    // La famiglia (colore e icona) è quella dell'esercizio di adesso nel primo percorso.
+    const famOf = (block) => {
+      const t = block?.tracks?.[0];
+      const ex = t ? app.catalog.exercise(currentInSequence(t, app.catalog, app.medals) ?? app.catalog.sequence(t)[0]) : null;
+      return ex?.family ?? 'libero';
+    };
+    const trackNames = (block) => (block?.tracks ?? []).map((id) => app.catalog.track(id)?.short).filter(Boolean).join(', ');
     if (app.phase === 'before') {
       const first = stage.stages.find((st) => st.block);
-      return first ? { label: 'Il tuo tema', theme: first.block.theme, sub: [`Da ${fmtLong(first.start ?? plan.start)}`, trackNames(first.block)].filter(Boolean).join(' · '), p: null } : null;
+      return first ? { label: `Da ${fmtLong(first.start ?? plan.start)}`, theme: first.block.theme, fam: famOf(first.block), where: stageLength(first), tracks: trackNames(first.block), p: null } : null;
     }
     const now = stage.stages[stage.current];
     if (!now || now.b === 'P') return null;
@@ -137,8 +149,8 @@
     if (!block) return null;
     const p = stage.progress;
     const where =
-      p.unit === 's' ? (p.of === 1 ? (now.start === app.today ? 'Solo per l’allenamento di oggi' : `Un allenamento solo, ${fmtShort(now.start)}`) : `Allenamento ${p.pos} di ${p.of}`) : p.pos === 0 ? `Comincia ${fmtLong(p.startsOn)}` : `Settimana ${p.pos} di ${p.of}`;
-    return { label: 'Il tuo tema', theme: block.theme, sub: [where, trackNames(block)].filter(Boolean).join(' · '), p };
+      p.unit === 's' ? (p.of === 1 ? (now.start === app.today ? 'Un allenamento solo' : `Un allenamento solo, ${fmtShort(now.start)}`) : `Allenamento ${p.pos} di ${p.of}`) : p.pos === 0 ? `Comincia ${fmtLong(p.startsOn)}` : `Settimana ${p.pos} di ${p.of}`;
+    return { label: period.title, theme: block.theme, fam: famOf(block), where, tracks: trackNames(block), p };
   });
 
   function choose(id) {
@@ -188,14 +200,22 @@
 <div class="page enter today">
   <PageHead eyebrow="Oggi" {title} sans />
 
-  <!-- La tappa: il tema in grande, come un promemoria. Il dettaglio si apre toccandolo. -->
+  <!-- La tappa: «Questo mese · Dritto» in grande, come un promemoria. Il dettaglio si apre toccandolo. -->
   {#if monthInfo}
     <section class="mantra">
-      <button class="m-main" onclick={() => ui.open('stage')}>
+      <button class="m-main" data-fam={monthInfo.fam} onclick={() => ui.open('stage')}>
         <span class="t-caps m-label">{monthInfo.label}</span>
-        <span class="m-theme">{monthInfo.theme}<ChevronRight size={26} strokeWidth={2.6} /></span>
-        {#if monthInfo.p}<span class="m-prog"><StageProgress unit={monthInfo.p.unit} pos={monthInfo.p.pos} of={monthInfo.p.of} small /></span>{/if}
-        <span class="m-sub">{monthInfo.sub}</span>
+        <span class="m-head">
+          <span class="m-ico"><FamilyIcon fam={monthInfo.fam} size={34} /></span>
+          <span class="m-theme">{monthInfo.theme}</span>
+          <span class="m-chev"><ChevronRight size={24} strokeWidth={2.6} /></span>
+        </span>
+        <!-- A che punto sei e i percorsi: due righe, due stili, perché sono due cose diverse. -->
+        <span class="m-where">
+          {#if monthInfo.p && (monthInfo.p.unit === 'w' || monthInfo.p.of > 1)}<span class="m-prog"><StageProgress unit={monthInfo.p.unit} pos={monthInfo.p.pos} of={monthInfo.p.of} small /></span>{/if}
+          <span>{monthInfo.where}</span>
+        </span>
+        {#if monthInfo.tracks}<span class="m-tracks">{monthInfo.tracks}</span>{/if}
       </button>
       <span class="m-level"><LevelBadge level={app.player.level} small onclick={() => ui.open('level')} /></span>
     </section>
@@ -433,8 +453,8 @@
     width: 100%;
     padding: 16px 18px 18px;
     border-radius: var(--r-card);
-    background: var(--card);
-    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--f) 10%, var(--card));
+    border: 1.5px solid color-mix(in srgb, var(--f) 40%, var(--line));
     text-align: left;
     color: var(--ink);
     transition: transform var(--dur-fast) var(--ease);
@@ -443,31 +463,59 @@
     transform: scale(0.985);
   }
   .m-label {
-    color: var(--ink-3);
+    color: var(--f-ink, var(--ink-2));
     min-height: 30px;
     display: flex;
     align-items: center;
   }
-  .m-theme {
-    display: inline-flex;
+  .m-head {
+    display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: 40px;
+    gap: 12px;
+    margin: 2px 0;
+  }
+  .m-ico {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: var(--f);
+    color: var(--f-on);
+    box-shadow: 0 3px 0 var(--f-edge);
+  }
+  .m-theme {
+    min-width: 0;
+    font-size: 38px;
     font-weight: 800;
     letter-spacing: -0.03em;
     line-height: 1.05;
   }
-  .m-theme :global(svg) {
+  .m-chev {
+    display: grid;
     color: var(--ink-3);
     margin-top: 4px;
   }
-  .m-prog {
-    display: block;
-    margin: 6px 0 4px;
-  }
-  .m-sub {
+  .m-where {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
     font-size: 14px;
-    color: var(--ink-2);
+    font-weight: 650;
+    color: var(--ink);
+  }
+  .m-prog {
+    flex: 0 1 120px;
+    min-width: 48px;
+    /* Le tacche prendono il colore della famiglia, come il resto della scheda. */
+    --accent: var(--f);
+    --accent-ink: var(--f-ink);
+  }
+  .m-tracks {
+    font-size: 13px;
+    color: var(--ink-3);
   }
   .m-level {
     position: absolute;

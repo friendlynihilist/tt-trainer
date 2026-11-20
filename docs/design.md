@@ -25,7 +25,7 @@ Screenshot di partenza: `docs/design-shots/prima/` (390 px, tema scuro e chiaro,
 
 ### Oggi (passo 3, rivisto il 20 novembre)
 Dal generale al particolare: prima il quadro d'insieme, il dettaglio solo quando lo chiedi. Dall'alto:
-1. **Il tuo tema** («Dritto»), in grande come un promemoria. Sotto, a che punto sei della tappa (tacche per le settimane, pallini per gli allenamenti) e una riga: «Settimana 3 di 4 · Top di dritto · Apertura di dritto», oppure «Solo per l’allenamento di oggi». A destra il badge del livello. Toccandolo si apre il **foglio della tappa** (`StageSheet`): a che punto sei, che cosa viene dopo, tutte le tappe del piano, i percorsi del tema con l'esercizio di adesso, i servizi, gli schemi della partitella. In fondo, «Modifica il piano».
+1. **La tappa in corso**, con il periodo in **tempo relativo** come etichetta e il nome in grande: «Questo mese · Dritto» (4 settimane), «Queste due settimane», «Questa settimana», «Oggi» o «Questo allenamento» (un allenamento solo). A sinistra l'icona della famiglia nel suo colore; la scheda ha il fondo tenue e il bordo della famiglia (quella dell'esercizio di adesso nel primo percorso). Sotto, su due righe e con due stili: a che punto sei (tacche nel colore della famiglia e «Settimana 3 di 4», oppure «Un allenamento solo») e i percorsi. A destra il badge del livello. Toccandola si apre il **foglio della tappa** (`StageSheet`): a che punto sei, che cosa viene dopo, tutte le tappe del piano, i percorsi con l'esercizio di adesso, i servizi, gli schemi della partitella. In fondo, «Modifica il piano».
 2. **In calendario oggi**: il pulsante grande, la striscia colorata dei blocchi (senza icone), Blocchi, Cambia, Registra. Sotto, se ci sono, il test di oggi e «Da correggere».
 3. **Allenamenti**, con la scelta fra **settimana** e **mese**; la scelta resta per la volta dopo. Nel mese, sotto ogni data, un pallino per attività con il colore del tipo (allenamento, test, lezione, partite…), pieno se fatta e vuoto se in programma, e sotto la legenda dei tipi presenti. Toccando un giorno si apre il Diario su quel giorno.
 4. **Medaglie**: quelle **prese oggi** (se ci sono) e **una medaglia da prendere**, con il motivo: è nell'allenamento di oggi, ti manca poco, oppure è l'esercizio del mese. «Tutte» porta a Progressi.
@@ -41,11 +41,20 @@ Dal generale al particolare: prima il quadro d'insieme, il dettaglio solo quando
 - **Cambio di turno**: negli esercizi a coppie e nei servizi, a metà tempo suona un doppio bip (con la vibrazione) e compare «Cambio». Il riquadro del tempo si rovescia: fondo scuro, bordo, pulsante e barra del colore della famiglia, e l'etichetta passa da «Tocca a te» a «Tocca al compagno» («Servi tu» / «Serve il compagno» nei servizi). Sulla barra una tacca segna la metà. Se comincia il compagno, si tocca l'etichetta e i turni si invertono. Niente cambio nel palleggio, negli esercizi da solo o con il robot, e negli ultimi 20 secondi. Si spegne in Impostazioni (sostituisce il vecchio cambio ogni 5 minuti).
 - **Chiusura**: minuti ed esercizi in grande, poi le medaglie con i coriandoli e i risultati di oggi; compagno, sensazione, nota e «da correggere» in una sezione compatta. Tolta la tessera «misure»: non si capiva.
 
-### Diario
-- **Togli**: la legenda lunga sotto il calendario (i colori si leggono dalle icone).
-- **Accorpa**: l'appuntamento di oggi diventa una riga con le azioni a icona.
-- **Icona**: tipo di voce (allenamento, test, lezione, partite, torneo); misure come chip con icona e unità.
-- **Altrove**: le 12 settimane del piano, in alto.
+### Diario (rifatto)
+Appena entri: il mese, e sotto oggi se c'è qualcosa. Il resto si apre a richiesta.
+1. **Il mese**, in una card. Sotto ogni data un pallino per attività, del colore del **tipo** (allenamento, test, lezione, partite…): pieno se fatta, vuoto se in programma. Oggi ha il bordo arancione, il giorno scelto è pieno. Il mese cambia con le frecce o scorrendo il calendario di lato; entra da quella parte. «Torna a oggi» compare solo quando serve.
+2. **Legenda**: i tipi del mese (toccandoli si filtra: gli altri si attenuano) e, sotto, «● fatto ○ in programma».
+3. **Il giorno**: una sezione richiudibile con il titolo («Oggi» o la data) e quante voci ha. Oggi si vede solo se c'è qualcosa; un altro giorno sempre, perché l'hai scelto tu. In fondo alla lista, una riga «Aggiungi a questo giorno» (o «Metti in programma»).
+4. **Nel mese**: tutte le voci, in una sezione **chiusa di partenza**; lo stato aperto o chiuso si ricorda.
+- I temi del piano fra le settimane si vedono solo con «Temi nel Diario» acceso in Impostazioni (spento di base).
+
+### Righe del diario (`EventRow`, `PlannedRow`)
+- **Cose diverse, stili diversi**: il tipo in grassetto («Allenamento»), il modello in grigio («Intermedio · 60′»), la data a destra; durata, compagno e cosa correggere ognuno con la sua icona; il tema in una pillola; «Non registrato» in rosso; i risultati come chip con il valore in grassetto. Mai due informazioni di natura diversa attaccate con lo stesso stile e un «·» in mezzo.
+- **Un'azione in vista**: Inizia se è oggi, Registra se è passato. Toccando la riga si apre il foglio dell'appuntamento (`ItemSheet`) con tutte le azioni scritte per esteso: Registra com'è andata, Sposta a un altro giorno, Togli dal calendario.
+
+### Sezioni richiudibili (`Collapse`)
+Titolo, numero di voci, freccia che ruota; il contenuto scivola (280 ms, niente con «riduci movimento»). Con `key` lo stato si ricorda su questo dispositivo.
 
 ### Progressi
 - **Togli**: «Verso avanzato: quando ci sono…», «Dalla prima all'ultima…», «Esercizi con almeno il bronzo, per famiglia».
@@ -79,7 +88,9 @@ Il piano è una fila di **tappe**: un tema (o una pausa) e una durata. Le durate
 | 2 settimane | tacche numerate 1–2 |
 | 4 settimane | tacche numerate 1–4 |
 
-Una tappa da un allenamento occupa un allenamento del ritmo; più tappe brevi di fila riempiono la settimana nell'ordine dei giorni. Se una settimana resta a metà, gli allenamenti rimasti anticipano la tappa dopo, che comincia a contare dal lunedì seguente. I piani di prima (a settimane) si leggono come tappe da N settimane. Il piano di base resta: Dritto, Rovescio, Primi colpi, quattro settimane ciascuno. Nell'app «mese» non indica più il tema: si dice **tema**.
+Una tappa da un allenamento occupa un allenamento del ritmo; più tappe brevi di fila riempiono la settimana nell'ordine dei giorni. Se una settimana resta a metà, gli allenamenti rimasti anticipano la tappa dopo, che comincia a contare dal lunedì seguente. I piani di prima (a settimane) si leggono come tappe da N settimane. Il piano di base resta: Dritto, Rovescio, Primi colpi, quattro settimane ciascuno.
+
+**Come si chiama.** Mai «tema». Dove conta il periodo (Oggi, foglio della tappa, motivo delle proposte: «Esercizio di questo mese») si usa il tempo relativo della tappa (`stagePeriod`). Dove si descrive il contenuto, senza un periodo (Libreria, editor, modelli: «Mesi», «Nuovo mese», «Del mese»), si dice **mese**, come nel programma di base. Nel piano: «Tappa» e «Su cosa lavori».
 
 ## 3. Regole
 
@@ -89,7 +100,7 @@ Ogni colore ha tre usi: **pieno** (mattoncini, icone, barre), **tenue** (sfondo 
 
 **Famiglie di esercizi** (`--fam-*`, attributo `data-fam`):
 
-| Famiglia | Icona (non usata) | Chiaro | Scuro | Testo sopra |
+| Famiglia | Icona Lucide (non più usata) | Chiaro | Scuro | Testo sopra |
 |---|---|---|---|---|
 | Servizio | `send` | `#E9A800` | `#FFC83D` | scuro |
 | Ricezione | `reply` | `#0E9F8E` | `#2DD4BF` | bianco / scuro |
@@ -130,7 +141,7 @@ Il badge del livello ha sempre anche le tacche (da 1 a 5): il colore non è mai 
 
 - Una sola libreria: **Lucide** (licenza ISC), già nel progetto.
 - Dimensioni: 16 nelle chip, 20 nelle righe, 24 nei pulsanti, 28 nelle tessere grandi. Tratto 2; 2,4 sopra un colore pieno.
-- **Niente icone per le famiglie**: quelle generiche (aereo di carta per il servizio, fulmine per l'attacco, spade per la partitella) confondono. La famiglia si riconosce dal colore e dal nome. Se serviranno, si disegnano apposta, come gli scudi delle medaglie.
+- **Icone delle famiglie disegnate apposta** (`FamilyIcon`), non quelle generiche di Lucide (aereo di carta, fulmine, spade: confondevano). Partono dalla racchetta degli scudi delle medaglie e aggiungono il dettaglio del colpo: servizio la palla lanciata, ricezione la palla in arrivo, palleggio due racchette, attacco le linee di velocità, controllo la palla che torna indietro, taglio la rotazione all'indietro, gambe due impronte, schemi il percorso tratteggiato. Per ora solo nella scheda in cima a Oggi.
 - Parametri: `timer` minuti, `target` su 10 o su 20, `link` di fila, `hourglass` a tempo, `hash` conteggio, `medal` medaglia, `flame` settimane di fila.
 - Ogni icona senza testo ha `aria-label`.
 

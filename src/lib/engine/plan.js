@@ -66,6 +66,25 @@ export function stageLength(st) {
   return st.n === 1 ? '1 settimana' : `${st.n} settimane`;
 }
 
+const NUM = ['', 'un', 'due', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto'];
+
+/**
+ * Il periodo di una tappa, detto in tempo relativo: «Questo mese» (4 settimane), «Queste due
+ * settimane», «Questa settimana», «Oggi» o «Questo allenamento» (un allenamento solo).
+ * `of` è la forma con «di»: «l'esercizio di questo mese»; `noun` il nome breve: «Mese».
+ */
+export function stagePeriod(st, { isToday = false } = {}) {
+  if (!st) return { title: '', of: '', noun: '' };
+  if (st.b === 'P') return { title: 'In pausa', of: 'della pausa', noun: 'Pausa' };
+  if (st.u === 's') {
+    if (st.n === 1) return isToday ? { title: 'Oggi', of: 'di oggi', noun: 'Allenamento' } : { title: 'Questo allenamento', of: 'di questo allenamento', noun: 'Allenamento' };
+    return { title: `Questi ${NUM[st.n] ?? st.n} allenamenti`, of: `di questi ${NUM[st.n] ?? st.n} allenamenti`, noun: 'Allenamenti' };
+  }
+  if (st.n === 4) return { title: 'Questo mese', of: 'di questo mese', noun: 'Mese' };
+  if (st.n === 1) return { title: 'Questa settimana', of: 'di questa settimana', noun: 'Settimana' };
+  return { title: `Queste ${NUM[st.n] ?? st.n} settimane`, of: `di queste ${NUM[st.n] ?? st.n} settimane`, noun: 'Settimane' };
+}
+
 function validStage(st) {
   return st && typeof st.b === 'string' && st.b && Number.isInteger(st.n) && st.n > 0 && (st.u === 's' || st.u === 'w');
 }

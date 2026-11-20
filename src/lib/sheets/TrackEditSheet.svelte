@@ -92,7 +92,7 @@
       sequence
     });
     ui.close();
-    ui.toast(editing ? 'Percorso aggiornato' : `«${t.short}» creato: mettilo in un tema o in un modello`);
+    ui.toast(editing ? 'Percorso aggiornato' : `«${t.short}» creato: mettilo in un mese o in un modello`);
   }
 
   function archive() {

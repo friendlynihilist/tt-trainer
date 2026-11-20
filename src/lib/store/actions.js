@@ -5,7 +5,7 @@ import { app } from './app.svelte.js';
 import { ui } from './ui.svelte.js';
 import { agenda } from '../engine/events.js';
 import { testProposal } from '../engine/player.js';
-import { weekFor } from '../engine/plan.js';
+import { weekFor, stageInfo, stagePeriod } from '../engine/plan.js';
 import { fmtLong } from '../util/dates.js';
 
 /** Cosa c'è ancora da fare in un giorno. */
@@ -19,7 +19,11 @@ export function weekOf(date) {
 
 /** Gli esercizi proposti per un test in quel giorno, con il motivo. */
 export function proposalFor(date = app.today) {
-  return testProposal({ catalog: app.catalog, week: weekOf(date), medals: app.medals, events: app.events, level: app.player.level });
+  // «Esercizio di questo mese», «… di questa settimana», secondo la durata della tappa.
+  const info = app.plan ? stageInfo(app.plan, date, app.catalog) : null;
+  const st = info?.stages[info.current];
+  const period = st ? stagePeriod(st, { isToday: st.start === date }).of : 'di questo mese';
+  return testProposal({ catalog: app.catalog, week: weekOf(date), medals: app.medals, events: app.events, level: app.player.level, period });
 }
 
 /**

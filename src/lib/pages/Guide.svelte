@@ -17,7 +17,7 @@
 </script>
 
 <div class="page enter">
-  <PageHead eyebrow="Guida" title="Come funziona" sub="Mesi a tema, gli allenamenti che vuoi, e una medaglia per ogni traguardo. Niente è bloccato." actions={false} />
+  <PageHead eyebrow="Guida" title="Come funziona" sub="Un colpo al mese, gli allenamenti che vuoi, e una medaglia per ogni traguardo. Niente è bloccato." actions={false} />
 
   <section class="section">
     <ol class="steps">
@@ -98,7 +98,7 @@
         </div>
       {/each}
     </div>
-    <p class="small muted note">Il programma di base dà quattro settimane a ogni tema, ma nel piano puoi scegliere tu: un allenamento solo, una, due o quattro settimane. Una settimana saltata? Nel piano metti una pausa e tutto slitta.</p>
+    <p class="small muted note">Il programma di base dà quattro settimane a ogni mese, ma nel piano puoi scegliere tu: un allenamento solo, una, due o quattro settimane. Una settimana saltata? Nel piano metti una pausa e tutto slitta.</p>
   </section>
 
   <section class="section">
@@ -107,7 +107,7 @@
       <div class="item"><span class="grow"><strong>Esercizi</strong><span class="small muted block">{LIBRARY.length} esercizi in otto famiglie, con livello suggerito, formato, criterio di qualità, errori comuni e medaglie. Si filtrano per livello e per formato.</span></span></div>
       <div class="item"><span class="grow"><strong>Modelli</strong><span class="small muted block">La scaletta di un allenamento: riscaldamento, servizi, esercizi del mese, esercizi fissi, esercizi liberi, partitella. Ne crei quanti vuoi, ognuno con il suo colore.</span></span></div>
       <div class="item"><span class="grow"><strong>Percorsi</strong><span class="small muted block">Una sequenza di esercizi, dal più guidato al più libero. Puoi usare quelli della libreria o scriverne di tuoi.</span></span></div>
-      <div class="item"><span class="grow"><strong>Temi</strong><span class="small muted block">Un tema con fino a tre percorsi, il mantenimento, i servizi e lo schema della partitella. Nel piano li metti in fila, ognuno per un allenamento o per una, due o quattro settimane.</span></span></div>
+      <div class="item"><span class="grow"><strong>Mesi</strong><span class="small muted block">Su cosa lavori, con fino a tre percorsi, il mantenimento, i servizi e lo schema della partitella. Nel piano li metti in fila, ognuno per un allenamento o per una, due o quattro settimane.</span></span></div>
     </div>
     <p class="small muted note">Tutto dalla Libreria. Si può anche importare un file preparato da un assistente.</p>
   </section>

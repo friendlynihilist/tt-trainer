@@ -136,9 +136,9 @@ const SHOTS = [
   { name: 'sessione-chiusura', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/'), `document.querySelector('[role=tab][aria-label=Chiusura]').click()`], viewport: true },
   // Dopo il rifacimento: il foglio dei blocchi, l'inizio della sessione, una medaglia presa e la chiusura con la medaglia.
   { name: 'oggi-blocchi', hash: 'oggi', steps: [click('/^Blocchi/')], viewport: true },
-  { name: 'oggi-tappa', hash: 'oggi', steps: [click('/^Il tuo tema/')] },
-  { name: 'oggi-allenamento-solo-tappa', hash: 'oggi', stages: 'solo', steps: [click('/^Il tuo tema/')] },
-  { name: 'oggi-piano', hash: 'oggi', steps: [click('/^Il tuo tema/'), click('/^Modifica il piano/')] },
+  { name: 'oggi-tappa', hash: 'oggi', steps: [click('/^(Questo mese|Queste|Questa settimana|Oggi|Questo allenamento|Questi)/', '.m-main')] },
+  { name: 'oggi-allenamento-solo-tappa', hash: 'oggi', stages: 'solo', steps: [click('/^(Questo mese|Queste|Questa settimana|Oggi|Questo allenamento|Questi)/', '.m-main')] },
+  { name: 'oggi-piano', hash: 'oggi', steps: [click('/^(Questo mese|Queste|Questa settimana|Oggi|Questo allenamento|Questi)/', '.m-main'), click('/^Modifica il piano/')] },
   // Oggi un tema per un allenamento solo, in mezzo ad altri: Dritto 2 settimane, poi Rovescio,
   // Primi colpi (oggi) e Dritto per un allenamento ciascuno, poi Rovescio 2 settimane.
   {

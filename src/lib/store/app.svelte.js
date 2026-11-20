@@ -21,8 +21,10 @@ const DEMO_CONFIG = { apiKey: 'demo', authDomain: 'demo-tt-trainer.firebaseapp.c
 
 const DEFAULT_SETTINGS = {
   sound: true,
-  // Negli esercizi, «Cambio» ogni 5 minuti: i due giocatori si alternano.
+  // Negli esercizi, «Cambio» a metà tempo: i due giocatori si alternano.
   turns: true,
+  // Nel Diario, il tema del piano fra una settimana e l'altra.
+  calThemes: false,
   haptics: true,
   share: true,
   partner: null,

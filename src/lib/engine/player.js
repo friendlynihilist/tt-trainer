@@ -124,14 +124,14 @@ function trainedSince(events, medals) {
  * Gli esercizi da mettere in un test, ognuno con il motivo. È solo una proposta: nel test si
  * può aggiungere qualsiasi esercizio.
  */
-export function testProposal({ catalog = BASE, week = null, medals = {}, events = [], level = DEFAULT_LEVEL, max = 5 }) {
+export function testProposal({ catalog = BASE, week = null, medals = {}, events = [], level = DEFAULT_LEVEL, max = 5, period = 'del mese' }) {
   const out = [];
   const add = (id, reason) => {
     const ex = catalog.exercise(id);
     if (!ex?.measure || !Object.keys(ex.goals ?? {}).length || out.length >= max || out.some((o) => o.ex === id)) return;
     out.push({ ex: id, reason });
   };
-  for (const t of week?.focusBlock?.tracks ?? []) add(currentInSequence(t, catalog, medals), 'Esercizio del tema');
+  for (const t of week?.focusBlock?.tracks ?? []) add(currentInSequence(t, catalog, medals), `Esercizio ${period}`);
   for (const [id, m] of Object.entries(medals)) if (m.half && !m.O) add(id, 'Metà oro: serve un’altra seduta');
   for (const n of nearGoals({ medals, catalog, max: 10 })) add(n.ex, `Vicino ${TIER[n.goal.tier].to}`);
   for (const [id, n] of Object.entries(trainedSince(events, medals)).sort((a, b) => b[1] - a[1])) {

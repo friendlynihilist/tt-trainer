@@ -33,7 +33,7 @@
   const preview = $derived(creating ? createPlan({ start, slots: $state.snapshot(slots), stages: $state.snapshot(draft) }) : app.plan);
   const weeksTotal = $derived(layout(preview).weeks.length);
 
-  const name = (st) => (st.b === 'P' ? 'Pausa' : (app.catalog.block(st.b)?.theme ?? 'Tema cancellato'));
+  const name = (st) => (st.b === 'P' ? 'Pausa' : (app.catalog.block(st.b)?.theme ?? 'Mese cancellato'));
   const lengthId = (st) => STAGE_LENGTHS.find((l) => l.n === st.n && l.u === st.u)?.id ?? null;
 
   /** Applica le tappe nuove: alla bozza o al piano in corso. */
@@ -47,11 +47,11 @@
     const blocks = Object.values(app.catalog.blocks);
     const hint = (b) => b.tracks.map((t) => app.catalog.track(t)?.short).filter(Boolean).join(' · ');
     ui.open('pick', {
-      title: 'Tema',
+      title: 'Su cosa lavori',
       value,
       groups: [
         { name: 'Programma', options: blocks.filter((b) => !b.custom).map((b) => ({ id: b.id, label: b.theme, hint: hint(b) })) },
-        { name: 'I tuoi temi', options: blocks.filter((b) => b.custom).map((b) => ({ id: b.id, label: b.theme, hint: hint(b) })) }
+        { name: 'I tuoi mesi', options: blocks.filter((b) => b.custom).map((b) => ({ id: b.id, label: b.theme, hint: hint(b) })) }
       ].filter((g) => g.options.length),
       onpick
     });
@@ -115,7 +115,7 @@
 
     <section class="stack g-8">
       <h3 class="heading">Le tappe, in ordine</h3>
-      <p class="small muted">Ogni tappa è un tema, per un allenamento o per una, due o quattro settimane.</p>
+      <p class="small muted">Ogni tappa è su cosa lavori (dritto, rovescio…) per un allenamento o per una, due o quattro settimane.</p>
       <div class="stages">
         {#each stages as st, i (i)}
           {@const s = stateOf(i)}
@@ -152,7 +152,7 @@
         {/each}
       </div>
       <div class="row g-8">
-        <button class="btn ghost small" onclick={addTheme}><Plus size={16} /> Tema</button>
+        <button class="btn ghost small" onclick={addTheme}><Plus size={16} /> Tappa</button>
         <button class="btn ghost small" onclick={addPause}><Coffee size={16} /> {creating ? 'Pausa' : 'Pausa da questa settimana'}</button>
       </div>
       <p class="small muted">

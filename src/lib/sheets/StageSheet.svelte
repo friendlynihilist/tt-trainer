@@ -1,14 +1,14 @@
 <script>
-  // La tappa in corso, quella che in Oggi sta in alto («Dritto»): a che punto sei, le tappe del
-  // piano, i percorsi del tema con l'esercizio di adesso, i servizi e la partitella. È il dettaglio:
-  // in Oggi restano il nome del tema e una riga.
+  // La tappa in corso, quella che in Oggi sta in alto («Questo mese · Dritto»): a che punto sei,
+  // le tappe del piano, i percorsi con l'esercizio di adesso, i servizi e la partitella. È il
+  // dettaglio: in Oggi restano il nome e una riga.
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Check from '@lucide/svelte/icons/check';
   import Coffee from '@lucide/svelte/icons/coffee';
   import CalendarRange from '@lucide/svelte/icons/calendar-range';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { stageInfo, stageLength } from '../engine/plan.js';
+  import { stageInfo, stageLength, stagePeriod } from '../engine/plan.js';
   import { currentInSequence } from '../engine/player.js';
   import { SCHEMES } from '../data/program.js';
   import { fmtLong, fmtShort } from '../util/dates.js';
@@ -22,6 +22,7 @@
   // Il tema da mostrare: quello della tappa in corso o, in pausa, quello di oggi del piano.
   const block = $derived(now?.block ?? app.week?.focusBlock ?? null);
   const next = $derived(info.stages.find((st) => st.i > info.current && st.b !== 'P') ?? null);
+  const period = $derived(stagePeriod(now, { isToday: now?.start === app.today }));
   const pauseNext = $derived(info.stages[info.current + 1]?.b === 'P');
 
   const tracks = $derived(
@@ -38,7 +39,7 @@
   );
   const schemes = $derived((block?.schemes ?? []).map((id) => SCHEMES[id]).filter(Boolean));
 
-  const name = (st) => (st.b === 'P' ? 'Pausa' : (st.block?.theme ?? 'Tema cancellato'));
+  const name = (st) => (st.b === 'P' ? 'Pausa' : (st.block?.theme ?? 'Mese cancellato'));
   const when = (st) => (!st.start ? '' : st.u === 's' && st.n === 1 ? fmtShort(st.start) : `dal ${fmtShort(st.start)}`);
 </script>
 
@@ -85,7 +86,7 @@
 
       {#if tracks.length}
       <section class="part">
-        <h2 class="t-caps muted">I percorsi del tema</h2>
+        <h2 class="t-caps muted">I percorsi {period.of}</h2>
         <div class="tracks">
           {#each tracks as t (t.id + t.maint)}
             <button class="trk raise neutral" onclick={() => ui.open('track', { id: t.id })}>

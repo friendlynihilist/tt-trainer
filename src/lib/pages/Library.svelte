@@ -120,7 +120,7 @@
 
         <section class="section">
           <div class="spread head">
-            <h2 class="heading">Temi</h2>
+            <h2 class="heading">Mesi</h2>
             <button class="btn ghost small" onclick={() => ui.open('block')}><Plus size={16} /> Nuovo</button>
           </div>
           <div class="card flush list">
@@ -134,7 +134,7 @@
               </button>
             {/each}
           </div>
-          <p class="small faint after">I temi si mettono in fila nel piano, ognuno per un allenamento o per una, due o quattro settimane.</p>
+          <p class="small faint after">I mesi si mettono in fila nel piano. Ognuno può durare anche meno: un allenamento, una o due settimane.</p>
         </section>
 
         <section class="section">
@@ -160,7 +160,7 @@
           {/if}
         </section>
 
-        <button class="btn ghost import" onclick={() => ui.open('import')}><Download size={16} /> Importa esercizi, percorsi, temi e modelli</button>
+        <button class="btn ghost import" onclick={() => ui.open('import')}><Download size={16} /> Importa esercizi, percorsi, mesi e modelli</button>
       {:else if tab === 'esercizi'}
         <div class="filters">
           <div class="chips" role="group" aria-label="Livello">

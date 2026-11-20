@@ -1,80 +1,141 @@
 <script>
-  // Un appuntamento previsto e non ancora fatto: inizia, registra, sposta, togli.
+  // Un appuntamento previsto e non ancora fatto. In vista solo l'azione che serve adesso: Inizia se
+  // è oggi, Registra se è passato. Toccando la riga si apre il foglio con tutte le azioni.
+  // Come nelle voci fatte: il tipo in grassetto, il modello in grigio, la data a destra; sotto la
+  // durata con la sua icona e il tema in una pillola.
   import Play from '@lucide/svelte/icons/play';
-  import CalendarClock from '@lucide/svelte/icons/calendar-clock';
-  import X from '@lucide/svelte/icons/x';
+  import Timer from '@lucide/svelte/icons/timer';
   import { app } from '../store/app.svelte.js';
-  import { itemColor, itemTitle } from '../engine/events.js';
+  import { ui } from '../store/ui.svelte.js';
+  import { KIND } from '../data/taxonomy.js';
   import { templateMinutes } from '../data/templates.js';
-  import { startItem, logItem, moveItem, removeItem } from '../store/actions.js';
+  import { startItem, logItem } from '../store/actions.js';
   import { fmtShort } from '../util/dates.js';
 
   let { item, showDate = false } = $props();
 
-  const color = $derived(itemColor(item, app.catalog));
-  const title = $derived(itemTitle(item, app.catalog));
+  const color = $derived(KIND[item.kind]?.color ?? 'slate');
+  const kind = $derived(KIND[item.kind]?.short ?? 'Attività');
+  const model = $derived(item.kind === 'training' ? (app.catalog.template(item.template)?.name ?? '') : '');
+  // La durata, se il nome del modello non la dice già («Intermedio · 60′»).
+  const minutes = $derived.by(() => {
+    if (item.kind !== 'training') return null;
+    const m = templateMinutes(app.catalog.template(item.template));
+    return model.includes(String(m)) ? null : m;
+  });
+  const theme = $derived(item.week?.focusBlock && (item.kind === 'training' || item.kind === 'test') ? item.week.focusBlock.theme : '');
   const past = $derived(item.date < app.today);
   const today = $derived(item.date === app.today);
-  const sub = $derived.by(() => {
-    const parts = [];
-    if (showDate) parts.push(fmtShort(item.date));
-    if (item.kind === 'training') parts.push(`${templateMinutes(app.catalog.template(item.template))} min`);
-    if (item.week?.focusBlock && (item.kind === 'training' || item.kind === 'test')) parts.push(item.week.focusBlock.theme);
-    if (item.source === 'event') parts.push('aggiunto a mano');
-    if (past) parts.push('non registrato');
-    return parts.join(' · ');
-  });
 </script>
 
-<div class="item row-planned" class:past data-color={color}>
-  <span class="ring"></span>
-  <span class="grow">
-    <strong>{title}</strong>
-    {#if sub}<span class="small muted block">{sub}</span>{/if}
-  </span>
+<div class="planned" class:past data-color={color}>
+  <button class="main" onclick={() => ui.open('item', { item })}>
+    <span class="ring" aria-hidden="true"></span>
+    <span class="grow">
+      <span class="top">
+        <strong>{kind}</strong>
+        {#if model}<span class="model">{model}</span>{/if}
+        {#if showDate}<span class="date">{fmtShort(item.date)}</span>{/if}
+      </span>
+      {#if minutes || theme || past}
+        <span class="meta">
+          {#if minutes}<span><Timer size={14} />{minutes} min</span>{/if}
+          {#if theme}<span class="theme">{theme}</span>{/if}
+          {#if past}<span class="warn">Non registrato</span>{/if}
+        </span>
+      {/if}
+    </span>
+  </button>
   {#if today}
-    <button class="btn accent small" onclick={() => startItem(item)}><Play size={14} fill="currentColor" /> Inizia</button>
+    <button class="btn accent small go" onclick={() => startItem(item)}><Play size={14} fill="currentColor" /> Inizia</button>
+  {:else if past}
+    <button class="btn ghost small go" onclick={() => logItem(item)}>Registra</button>
   {/if}
-  {#if past || today}
-    <button class="btn ghost small" onclick={() => logItem(item)}>Registra</button>
-  {/if}
-  <button class="icon-btn" onclick={() => moveItem(item)} aria-label="Sposta" title="Sposta"><CalendarClock size={17} /></button>
-  <button class="icon-btn" onclick={() => removeItem(item)} aria-label="Togli" title="Togli"><X size={17} /></button>
 </div>
 
 <style>
-  .row-planned {
-    padding: 10px 6px 10px 16px;
+  .planned {
+    display: flex;
+    align-items: center;
     gap: 8px;
+    padding-right: 14px;
+  }
+  .main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 0 14px 16px;
+    text-align: left;
+    color: var(--ink);
   }
   .ring {
     flex: none;
     width: 14px;
     height: 14px;
+    margin-top: 4px;
     border-radius: 50%;
-    box-shadow: inset 0 0 0 2px var(--c);
-    margin-right: 4px;
+    box-shadow: inset 0 0 0 2.5px var(--c);
   }
   .past .ring {
     opacity: 0.45;
   }
+  .top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+  strong {
+    font-weight: 650;
+  }
   .past strong {
     color: var(--ink-2);
   }
-  strong {
-    font-weight: 560;
+  .model {
+    font-size: 14px;
+    color: var(--ink-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .block {
-    display: block;
-  }
-  .icon-btn {
-    width: 34px;
-    height: 34px;
+  .date {
+    margin-left: auto;
     flex: none;
+    font-size: 13px;
+    color: var(--ink-3);
   }
-  @media (max-width: 380px) {
-    .btn.ghost {
-      display: none;
-    }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .meta :global(svg) {
+    color: var(--ink-3);
+  }
+  .theme {
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--card));
+    color: var(--accent-ink);
+    font-weight: 650;
+  }
+  .warn {
+    color: var(--down);
+    font-weight: 600;
+  }
+  .go {
+    flex: none;
   }
 </style>
