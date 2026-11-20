@@ -10,6 +10,12 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.6.1',
+    date: '2026-11-20',
+    title: 'Correzioni',
+    items: [{ icon: 'calendar', text: 'Nel Diario puoi di nuovo aggiungere qualcosa a oggi anche quando la giornata è vuota: tocca «Aggiungi a oggi» sotto il calendario.' }]
+  },
+  {
     version: '0.6.0',
     date: '2026-11-20',
     title: 'Un aspetto nuovo',

@@ -355,9 +355,9 @@ describe('versioni', () => {
     expect(compareVersions('0.10.0', '0.9.0')).toBe(1);
     expect(compareVersions('0.2.0', '0.2.0')).toBe(0);
     expect(CHANGELOG[0].version).toBe(VERSION); // ogni versione ha la sua voce
-    expect(unseen('0.5.0').map((c) => c.version)).toEqual([VERSION]);
-    expect(unseen('0.4.0').map((c) => c.version)).toEqual([VERSION, '0.5.0']);
-    expect(unseen('0.1.0').map((c) => c.version)).toEqual(['0.6.0', '0.5.0', '0.4.0', '0.3.0', '0.2.1', '0.2.0']); // la più recente prima
+    expect(unseen('0.6.0').map((c) => c.version)).toEqual([VERSION]);
+    expect(unseen('0.4.0').map((c) => c.version)).toEqual([VERSION, '0.6.0', '0.5.0']);
+    expect(unseen('0.1.0').map((c) => c.version)).toEqual(['0.6.1', '0.6.0', '0.5.0', '0.4.0', '0.3.0', '0.2.1', '0.2.0']); // la più recente prima
     expect(unseen(VERSION)).toEqual([]);
   });
 });

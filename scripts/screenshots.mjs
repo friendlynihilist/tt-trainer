@@ -143,6 +143,22 @@ const SHOTS = [
   { name: 'guida', hash: 'guida' },
   { name: 'impostazioni', hash: 'impostazioni' },
   // Gli altri fogli.
+  // Oggi vuoto nel Diario: resta la riga «Aggiungi a oggi», che apre il foglio per aggiungere.
+  {
+    name: 'diario-oggi-vuoto',
+    hash: 'calendario',
+    patch: (d) => {
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
+      const iso = today.toISOString().slice(0, 10);
+      const wd = ((today.getDay() + 6) % 7) + 1;
+      d.events = Object.fromEntries(Object.entries(d.events).filter(([, e]) => e.date !== iso));
+      d.meta.plan.slots = d.meta.plan.slots.filter((x) => x.day !== wd);
+      return d;
+    },
+    steps: [click('/^Aggiungi a oggi/')],
+    viewport: true
+  },
   { name: 'foglio-voce', hash: 'calendario', steps: [click('/^Test/', 'button.item')] },
   { name: 'foglio-livello', hash: 'progressi', steps: [`document.querySelector('.lv-top button').click()`] },
   { name: 'foglio-percorso', hash: 'libreria/allenamenti', steps: [click('/^Percorsi/'), click('/^Top di dritto/', 'button.item')] },
@@ -238,7 +254,7 @@ try {
       await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: true });
       await send('Page.navigate', { url: BASE });
       await sleep(600);
-      await evaluate(`localStorage.clear(); localStorage.setItem('tt-trainer:v1', ${JSON.stringify(JSON.stringify(seed(theme, shot.stages === 'solo' ? SHOTS.find((x) => x.name === 'oggi-allenamento-solo').stages : shot.stages)))}); localStorage.setItem('tt-trainer:theme', '${theme}'); true`);
+      await evaluate(`localStorage.clear(); localStorage.setItem('tt-trainer:v1', ${JSON.stringify(JSON.stringify((shot.patch ?? ((x) => x))(seed(theme, shot.stages === 'solo' ? SHOTS.find((x) => x.name === 'oggi-allenamento-solo').stages : shot.stages))))}); localStorage.setItem('tt-trainer:theme', '${theme}'); true`);
       await send('Page.navigate', { url: `${BASE}?t=${Date.now()}#/${shot.hash}` });
       await sleep(1600);
       for (const step of shot.steps ?? []) {

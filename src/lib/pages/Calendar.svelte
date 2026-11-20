@@ -39,7 +39,8 @@
   const keep = (kind) => !only || kind === only;
   const monthEvents = $derived(app.events.filter((e) => e.kind !== 'livello' && !e.planned && monthKey(e.date) === month && keep(e.kind)).sort((a, b) => byTime(b, a)));
   const isNow = $derived(month === monthKey(app.today) && selected === app.today);
-  // Oggi si mostra solo se c'è qualcosa; un altro giorno si mostra sempre, perché l'hai scelto tu.
+  // Oggi si mostra solo se c'è qualcosa (altrimenti resta la riga «Aggiungi a oggi»); un altro
+  // giorno si mostra sempre, perché l'hai scelto tu.
   const showDay = $derived(selected !== app.today || dayCount > 0);
 
   /** I pallini di un giorno: prima il fatto, poi il previsto. Al massimo tre. */
@@ -191,6 +192,16 @@
           </div>
         {/key}
       </Collapse>
+    </div>
+  {:else}
+    <!-- Oggi non c'è niente: resta solo la riga per aggiungere. -->
+    <div class="section" transition:fade={{ duration: motion(180) }}>
+      <div class="card flush list">
+        <button class="add" onclick={() => ui.open('add', { date: app.today })}>
+          <Plus size={18} />
+          Aggiungi a oggi
+        </button>
+      </div>
     </div>
   {/if}
 
