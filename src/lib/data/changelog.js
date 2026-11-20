@@ -10,6 +10,20 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.6.0',
+    date: '2026-11-20',
+    title: 'Un aspetto nuovo',
+    items: [
+      { icon: 'palette', text: 'L’app ha un aspetto nuovo: caratteri più chiari, un colore per ogni famiglia di esercizi e meno pulsanti. Le sezioni lunghe si aprono e si chiudono.' },
+      { icon: 'calendar', text: 'In Oggi trovi in alto su cosa lavori questo mese, poi l’allenamento del giorno, la settimana o il mese, le medaglie prese oggi e una da prendere.' },
+      { icon: 'trending', text: 'Il piano è fatto di tappe: per ognuna scegli su cosa lavori e per quanto, da un allenamento solo a quattro settimane.' },
+      { icon: 'swap', text: 'In allenamento, a metà di ogni esercizio in due suona il cambio e il riquadro del tempo diventa scuro: tocca al compagno.' },
+      { icon: 'medal', text: 'In Progressi trovi la costanza, gli anelli di argento e oro per il livello e il medagliere.' },
+      { icon: 'library', text: 'Nel Diario i pallini colorati dicono cosa hai fatto ogni giorno. In Libreria cerchi gli esercizi per nome.' }
+    ],
+    note: 'I tuoi dati non cambiano. Il cambio ogni 5 minuti ora arriva a metà esercizio: si spegne da Impostazioni.'
+  },
+  {
     version: '0.5.0',
     date: '2026-11-19',
     title: 'Note per colpo',
