@@ -74,10 +74,16 @@ Quando la medaglia entra in vista, una volta sola, ritagliato sulla forma dello 
 - **Fiamma**: un bagliore caldo. **Bronzo** e medaglie non prese: niente.
 - Con «riduci movimento»: niente.
 
-### Libreria
-- **Allenamenti**: modelli e pacchetti come card con i mattoncini colorati e la durata; mesi e percorsi in una sezione compatta; «Importa» diventa un'icona in alto.
-- **Esercizi**: l'elenco lungo diventa una griglia di schede (colore e icona della famiglia, badge del livello, anello della medaglia); filtri in una riga che scorre.
-- **Colpi**: tolte le descrizioni dall'elenco (restano nella scheda del colpo); famiglia con colore e icona; ultima sensazione come tacche.
+### Libreria (rifatta)
+Ogni gruppo è una sezione richiudibile con la sua icona e quante voci ha; «Nuovo…» è l'ultima riga di ogni elenco, non un pulsante in più.
+- **Allenamenti**
+  - **Modelli** (aperto): card con il nome, la durata a destra con l'icona del timer, la scaletta in segmenti colorati per famiglia (composta con gli esercizi di adesso) e sotto i nomi dei blocchi; «tuo» in una pillola. In fondo «Nuovo modello» tratteggiato.
+  - **Pacchetti per livello** (chiuso): una riga per livello con il badge e i due allenamenti, 90′ e 60′; «il tuo» accanto al tuo livello.
+  - **Mesi** (aperto): l'icona e il colore della famiglia, il nome, i percorsi sotto in grigio.
+  - **Percorsi** (chiuso): il nome, «Adesso: …» e l'anello della medaglia dell'esercizio di adesso.
+  - In fondo, una riga «Importa esercizi, percorsi, mesi e modelli».
+- **Esercizi**: un campo **Cerca** (senza accenti e maiuscole); due filtri, **livello** e **formato**, che si scelgono in un foglio (al posto di tredici pulsantini); «Togli i filtri» quando servono. Le famiglie sono sezioni chiuse con icona e numero; con una ricerca o un filtro si aprono. Ogni esercizio: il nome, sotto il livello con il pallino del suo colore e i formati in grigio, a destra l'anello della medaglia; «Da ripassare» in rosso.
+- **Colpi**: Tutti / Dritto / Rovescio; le famiglie sono sezioni chiuse con icona e numero; i colpi senza descrizione (sta nella scheda); quante volte da correggere con il mirino rosso; «Aggiungi un colpo»; «Le altre voci» (fasi, palle, errori) chiuse.
 
 ### Schede
 - **Esercizio**: in alto colore e icona della famiglia, badge del livello, parametri con icona e unità; le medaglie come quattro anelli in fila; la spiegazione dei tentativi va nella Guida.

@@ -6,7 +6,7 @@
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import { reducedMotion } from '../util/motion.js';
 
-  let { title, count = null, open = true, key = null, aside = null, children } = $props();
+  let { title, count = null, open = true, key = null, aside = null, lead = null, children } = $props();
 
   // La chiave non cambia durante la vita della sezione.
   // svelte-ignore state_referenced_locally
@@ -35,6 +35,7 @@
 <section class="collapse" class:open={isOpen}>
   <div class="head">
     <button class="toggle" onclick={toggle} aria-expanded={isOpen} aria-controls={id}>
+      {#if lead}{@render lead()}{/if}
       <span class="t-name">{title}</span>
       {#if count != null}<span class="count t-num">{count}</span>{/if}
       <span class="chev"><ChevronDown size={20} strokeWidth={2.4} /></span>

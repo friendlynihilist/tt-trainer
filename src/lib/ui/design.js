@@ -35,6 +35,17 @@ export const FAMILY_ICON = {
 /** Icona e testo breve di come si misura un esercizio. */
 export const MEASURE_ICON = { su: Target, fila: LinkIcon, tempo: Hourglass, conta: Hash };
 
+/**
+ * La famiglia (colore e icona) di un mese: quella dell'esercizio di adesso nel suo primo percorso.
+ * Dritto e Rovescio → attacco; Primi colpi → schemi.
+ */
+export function blockFamily(block, catalog, medals = {}, current = null) {
+  const t = block?.tracks?.[0];
+  if (!t) return 'libero';
+  const id = (current ? current(t, catalog, medals) : null) ?? catalog.sequence(t)[0];
+  return catalog.exercise(id)?.family ?? 'libero';
+}
+
 /** La famiglia (colore e icona) di un passo della sessione. */
 export function stepFamily(step, catalog) {
   if (!step) return null;

@@ -134,11 +134,17 @@ const SHOTS = [
   { name: 'libreria-allenamenti', hash: 'libreria/allenamenti' },
   { name: 'libreria-esercizi', hash: 'libreria/esercizi' },
   { name: 'libreria-colpi', hash: 'libreria/colpi' },
+  // La ricerca: «top» apre le famiglie che hanno un esercizio con quel nome.
+  {
+    name: 'libreria-cerca',
+    hash: 'libreria/esercizi',
+    steps: [`(() => { const i = document.querySelector('.search input'); i.value = 'top'; i.dispatchEvent(new Event('input', { bubbles: true })); })()`]
+  },
   { name: 'guida', hash: 'guida' },
   { name: 'impostazioni', hash: 'impostazioni' },
-  { name: 'scheda-esercizio', hash: 'libreria/esercizi', steps: [click('/^Top di dritto contro block/', 'button.item')], viewport: true },
-  { name: 'scheda-allenamento', hash: 'libreria/allenamenti', steps: [click('/^90′$/', '.pk button')], viewport: true },
-  { name: 'scheda-colpo', hash: 'libreria/colpi', steps: [click('/^Apertura di dritto su taglio/', 'button.item')], viewport: true },
+  { name: 'scheda-esercizio', hash: 'libreria/esercizi', steps: [click('/^Attacco/'), click('/^Top di dritto contro block/', 'button.item')], viewport: true },
+  { name: 'scheda-allenamento', hash: 'libreria/allenamenti', steps: [click('/^Pacchetti/'), click('/^90′$/', '.pk button')], viewport: true },
+  { name: 'scheda-colpo', hash: 'libreria/colpi', steps: [click('/^Attacco/'), click('/^Apertura di dritto su taglio/', 'button.item')], viewport: true },
   {
     name: 'sessione',
     hash: 'oggi',

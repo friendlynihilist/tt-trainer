@@ -1,44 +1,97 @@
 <script>
-  // Libreria: gli allenamenti (modelli, mesi, percorsi), gli esercizi con le loro medaglie e la
-  // tassonomia dei colpi. Gli esercizi si mostrano sempre tutti: il livello e il formato sono solo
-  // filtri che scegli tu, e di base sono spenti.
+  // Libreria: gli allenamenti (modelli, pacchetti, mesi, percorsi), gli esercizi con le loro medaglie
+  // e i colpi. Dal generale al particolare: ogni gruppo è una sezione richiudibile con la sua icona e
+  // quante voci ha; «Nuovo» è l'ultima riga di ogni elenco, non un pulsante in più. Gli esercizi si
+  // cercano per nome; livello e formato sono due filtri che si scelgono in un foglio.
+  import { fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Plus from '@lucide/svelte/icons/plus';
   import Download from '@lucide/svelte/icons/download';
-  import { fly } from 'svelte/transition';
+  import Search from '@lucide/svelte/icons/search';
+  import X from '@lucide/svelte/icons/x';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
+  import Crosshair from '@lucide/svelte/icons/crosshair';
+  import Timer from '@lucide/svelte/icons/timer';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { normalizeTemplate, templateMinutes } from '../data/templates.js';
+  import { templateMinutes } from '../data/templates.js';
   import { packagesOf } from '../data/packages.js';
   import { FAMILIES, BALLS, POINT_PHASES, ERROR_GROUPS } from '../data/taxonomy.js';
   import { PLAYER_LEVELS, PLAYER_LEVEL, LEVEL_IDS, MODES, MODE } from '../data/library.js';
   import { weaknesses } from '../engine/stats.js';
   import { currentInSequence } from '../engine/player.js';
+  import { composeSession } from '../engine/compose.js';
+  import { sessionBlocks, blockFamily } from '../ui/design.js';
+  import { reducedMotion } from '../util/motion.js';
   import PageHead from '../ui/PageHead.svelte';
   import Segmented from '../ui/Segmented.svelte';
-  import MedalRow from '../ui/MedalRow.svelte';
+  import Collapse from '../ui/Collapse.svelte';
+  import FamilyIcon from '../ui/FamilyIcon.svelte';
+  import MedalRing from '../ui/MedalRing.svelte';
+  import LevelBadge from '../ui/LevelBadge.svelte';
 
   const TABS = ['allenamenti', 'esercizi', 'colpi'];
   const asked = ui.route.params[0] === 'percorsi' ? 'allenamenti' : ui.route.params[0];
   let tab = $state(TABS.includes(asked) ? asked : 'allenamenti');
-  let side = $state('all');
+  const motion = (n) => (reducedMotion() ? 0 : n);
+
+  // ── Allenamenti ──
+  const templates = $derived(Object.values(app.catalog.templates));
+  const blocks = $derived(Object.values(app.catalog.blocks));
+  const tracks = $derived(app.catalog.activeTrackIds);
+  const archived = $derived(app.catalog.trackIds.filter((id) => app.catalog.track(id).archived));
+  /** I blocchi di un modello come segmenti colorati, con gli esercizi di oggi. */
+  function strip(t) {
+    try {
+      return sessionBlocks(composeSession({ week: app.week, template: t, catalog: app.catalog, medals: app.medals }), app.catalog);
+    } catch {
+      return [];
+    }
+  }
+
+  // ── Esercizi ──
+  let query = $state('');
   let levelFilter = $state('all');
   let modeFilter = $state('all');
-
-  // Gli esercizi per famiglia, in ordine di livello. I filtri li scegli tu: di base mostrano tutto.
+  const filtering = $derived(Boolean(query.trim()) || levelFilter !== 'all' || modeFilter !== 'all');
+  const norm = (x) => x.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const exerciseGroups = $derived.by(() => {
+    const q = norm(query.trim());
     const all = app.catalog.activeExerciseIds
       .map((id) => app.catalog.exercise(id))
-      .filter((e) => (levelFilter === 'all' || e.level === levelFilter) && (modeFilter === 'all' || e.modes?.includes(modeFilter)));
+      .filter((e) => (levelFilter === 'all' || e.level === levelFilter) && (modeFilter === 'all' || e.modes?.includes(modeFilter)) && (!q || norm(e.name).includes(q)));
     const byLevel = (a, b) => LEVEL_IDS.indexOf(a.level) - LEVEL_IDS.indexOf(b.level);
     const groups = FAMILIES.map((f) => ({ ...f, list: all.filter((e) => e.family === f.id).sort(byLevel) })).filter((g) => g.list.length);
     const mine = all.filter((e) => !FAMILIES.some((f) => f.id === e.family));
-    if (mine.length) groups.push({ id: 'mine', name: 'I tuoi esercizi', color: 'slate', list: mine });
+    if (mine.length) groups.push({ id: 'libero', name: 'I tuoi esercizi', list: mine });
     return groups;
   });
   const shownCount = $derived(exerciseGroups.reduce((n, g) => n + g.list.length, 0));
-  const baseTracks = $derived(app.catalog.activeTrackIds.filter((id) => !app.catalog.track(id).custom));
+  function pickLevel() {
+    ui.open('pick', {
+      title: 'Livello',
+      value: levelFilter,
+      groups: [{ options: [{ id: 'all', label: 'Tutti i livelli' }, ...PLAYER_LEVELS.map((l) => ({ id: l.id, label: l.name, hint: l.id === app.player.level ? 'Il tuo livello' : '' }))] }],
+      onpick: (v) => v && (levelFilter = v)
+    });
+  }
+  function pickMode() {
+    ui.open('pick', {
+      title: 'Formato',
+      value: modeFilter,
+      groups: [{ options: [{ id: 'all', label: 'Ogni formato' }, ...MODES.map((m) => ({ id: m.id, label: m.name }))] }],
+      onpick: (v) => v && (modeFilter = v)
+    });
+  }
+  function clearFilters() {
+    query = '';
+    levelFilter = 'all';
+    modeFilter = 'all';
+  }
 
+  // ── Colpi ──
+  let side = $state('all');
   const counts = $derived(Object.fromEntries(weaknesses(app.events).strokes.map((s) => [s.id, s.count])));
   const families = $derived.by(() => {
     const defs = [...FAMILIES, { id: 'custom', name: 'I tuoi colpi' }];
@@ -46,16 +99,6 @@
       .map((f) => ({ ...f, strokes: app.strokes.filter((s) => s.family === f.id && (side === 'all' || s.side === side || !s.side)) }))
       .filter((f) => f.strokes.length);
   });
-
-  const templates = $derived(Object.values(app.catalog.templates));
-  const blocks = $derived(Object.values(app.catalog.blocks));
-  const myTracks = $derived(app.catalog.activeTrackIds.filter((id) => app.catalog.track(id).custom));
-  const archived = $derived(app.catalog.trackIds.filter((id) => app.catalog.track(id).archived));
-
-  function summary(t) {
-    return normalizeTemplate(t).blocks.map((b) => b.name).join(' · ');
-  }
-
   function addStroke() {
     ui.open('pick', {
       title: 'Nuovo colpo',
@@ -65,8 +108,16 @@
   }
 </script>
 
-<div class="page enter">
-  <PageHead eyebrow="Libreria" title={tab === 'allenamenti' ? 'Allenamenti' : tab === 'esercizi' ? 'Esercizi' : 'Colpi'} />
+{#snippet famLead(id)}
+  <span class="lead" data-fam={id}><FamilyIcon fam={id} size={20} /></span>
+{/snippet}
+
+{#snippet addRow(label, onclick)}
+  <button class="add" {onclick}><Plus size={18} />{label}</button>
+{/snippet}
+
+<div class="page enter library">
+  <PageHead eyebrow="Libreria" title={tab === 'allenamenti' ? 'Allenamenti' : tab === 'esercizi' ? 'Esercizi' : 'Colpi'} sans />
 
   <div class="tabs">
     <Segmented
@@ -81,125 +132,142 @@
   </div>
 
   {#key tab}
-    <div in:fly={{ y: 10, duration: 320 }}>
+    <div in:fly={{ y: 10, duration: motion(280), easing: cubicOut }}>
       {#if tab === 'allenamenti'}
-        <section class="section">
-          <div class="spread head">
-            <h2 class="heading">Modelli</h2>
-            <button class="btn ghost small" onclick={() => ui.open('template')}><Plus size={16} /> Nuovo</button>
-          </div>
-          <div class="card flush list">
-            {#each templates as t (t.id)}
-              <button class="item" data-color={t.color} onclick={() => ui.open('template', { id: t.id })}>
-                <span class="bar"></span>
-                <span class="grow">
-                  <strong>{t.name}</strong>{#if t.custom}<span class="small muted"> · tuo</span>{/if}
-                  <span class="small muted block clamp">{templateMinutes(t)} min · {summary(t)}</span>
-                </span>
-                <ChevronRight size={16} />
-              </button>
-            {/each}
-          </div>
-        </section>
-
-        <section class="section">
-          <h2 class="heading head">Pacchetti</h2>
-          <div class="card flush list">
-            {#each PLAYER_LEVELS as l (l.id)}
-              <div class="item pk">
-                <span class="grow">
-                  <strong>{l.name}</strong>{#if l.id === app.player.level}<i class="me" aria-label="il tuo livello"></i>{/if}
-                </span>
-                {#each packagesOf(l.id) as t (t.id)}
-                  <button class="chip mini" data-color={t.color} onclick={() => ui.open('template', { id: t.id })}>{t.minutes}′</button>
-                {/each}
-              </div>
-            {/each}
-          </div>
-        </section>
-
-        <section class="section">
-          <div class="spread head">
-            <h2 class="heading">Mesi</h2>
-            <button class="btn ghost small" onclick={() => ui.open('block')}><Plus size={16} /> Nuovo</button>
-          </div>
-          <div class="card flush list">
-            {#each blocks as b (b.id)}
-              <button class="item" onclick={() => ui.open('block', { id: b.id })}>
-                <span class="grow">
-                  <strong>{b.theme}</strong>{#if b.custom}<span class="small muted"> · tuo</span>{/if}
-                  <span class="small muted block">{b.tracks.map((id) => app.catalog.track(id)?.short).join(' · ')}</span>
-                </span>
-                <ChevronRight size={16} />
-              </button>
-            {/each}
-          </div>
-          <p class="small faint after">I mesi si mettono in fila nel piano. Ognuno può durare anche meno: un allenamento, una o due settimane.</p>
-        </section>
-
-        <section class="section">
-          <div class="spread head">
-            <h2 class="heading">Percorsi</h2>
-            <button class="btn ghost small" onclick={() => ui.open('trackedit')}><Plus size={16} /> Nuovo</button>
-          </div>
-          <div class="card flush list">
-            {#each [...baseTracks, ...myTracks] as id (id)}
-              {@const t = app.catalog.track(id)}
-              {@const now = currentInSequence(id, app.catalog, app.medals)}
-              <button class="item" onclick={() => ui.open('track', { id })}>
-                <span class="grow">
-                  <strong>{t.name}</strong>{#if t.custom}<span class="small muted"> · tuo</span>{/if}
-                  <span class="small muted block clamp">{t.sequence.length} esercizi{now ? ` · ora ${app.catalog.exercise(now)?.name}` : ''}</span>
-                </span>
-                <ChevronRight size={16} />
-              </button>
-            {/each}
-          </div>
-          {#if archived.length}
-            <p class="small faint after">Archiviati: {archived.map((id) => app.catalog.track(id).short).join(', ')}</p>
-          {/if}
-        </section>
-
-        <button class="btn ghost import" onclick={() => ui.open('import')}><Download size={16} /> Importa esercizi, percorsi, mesi e modelli</button>
-      {:else if tab === 'esercizi'}
-        <div class="filters">
-          <div class="chips" role="group" aria-label="Livello">
-            <button class="chip mini" aria-pressed={levelFilter === 'all'} onclick={() => (levelFilter = 'all')}>Tutti i livelli</button>
-            {#each PLAYER_LEVELS as l (l.id)}
-              <button class="chip mini" aria-pressed={levelFilter === l.id} onclick={() => (levelFilter = levelFilter === l.id ? 'all' : l.id)}>
-                {l.name}{#if l.id === app.player.level}<i class="me" aria-label="il tuo livello"></i>{/if}
-              </button>
-            {/each}
-          </div>
-          <div class="chips" role="group" aria-label="Formato">
-            <button class="chip mini" aria-pressed={modeFilter === 'all'} onclick={() => (modeFilter = 'all')}>Ogni formato</button>
-            {#each MODES as m (m.id)}
-              <button class="chip mini" aria-pressed={modeFilter === m.id} onclick={() => (modeFilter = modeFilter === m.id ? 'all' : m.id)}>{m.name}</button>
-            {/each}
-          </div>
-          <p class="small muted">{shownCount} esercizi. Il livello serve solo a orientarti: puoi fare qualsiasi esercizio.</p>
-        </div>
-
-        {#each exerciseGroups as g (g.id)}
-          <section class="section">
-            <h2 class="heading fam" data-color={g.color}><i class="pip"></i>{g.name}</h2>
-            <div class="card flush list">
-              {#each g.list as e (e.id)}
-                <button class="item" onclick={() => ui.open('exercise', { id: e.id })}>
-                  <span class="grow">
-                    <strong>{e.name}</strong>
-                    <span class="small muted block clamp">{[PLAYER_LEVEL[e.level]?.name, ...(e.modes ?? []).map((m) => MODE[m]?.name.toLowerCase())].filter(Boolean).join(' · ')}</span>
+        <!-- I modelli: la scaletta in segmenti colorati, la durata a destra. -->
+        <div class="section">
+          <Collapse title="Modelli" count={templates.length} key="lib-modelli">
+            <div class="cards">
+              {#each templates as t (t.id)}
+                {@const segs = strip(t)}
+                <button class="tpl" onclick={() => ui.open('template', { id: t.id })}>
+                  <span class="tpl-top">
+                    <strong>{t.name}</strong>
+                    {#if t.custom}<span class="mine">tuo</span>{/if}
+                    <span class="tpl-min"><Timer size={14} />{templateMinutes(t)} min</span>
                   </span>
-                  {#if app.medals[e.id]?.stale}<span class="tag stay">da ripassare</span>{/if}
-                  <MedalRow exercise={e} medals={app.medals[e.id]} />
-                  <ChevronRight size={16} />
+                  {#if segs.length}
+                    <span class="segs" aria-hidden="true">
+                      {#each segs as b (b.key)}<i data-fam={b.fam} style:flex-grow={b.minutes}></i>{/each}
+                    </span>
+                    <span class="tpl-blocks">{segs.map((b) => b.name).join(', ')}</span>
+                  {/if}
                 </button>
               {/each}
             </div>
-          </section>
-        {:else}
-          <p class="muted empty">Nessun esercizio con questi filtri.</p>
-        {/each}
+            {@render addRow('Nuovo modello', () => ui.open('template'))}
+          </Collapse>
+        </div>
+
+        <!-- I pacchetti: per ogni livello un allenamento da 90 e uno da 60 minuti. -->
+        <div class="section">
+          <Collapse title="Pacchetti per livello" count={PLAYER_LEVELS.length} open={false} key="lib-pacchetti">
+            <div class="card flush list">
+              {#each PLAYER_LEVELS as l (l.id)}
+                <div class="pk">
+                  <LevelBadge level={l.id} small />
+                  {#if l.id === app.player.level}<span class="yours">il tuo</span>{/if}
+                  <span class="grow"></span>
+                  {#each packagesOf(l.id) as t (t.id)}
+                    <button class="min-btn" onclick={() => ui.open('template', { id: t.id })} aria-label="{l.name}, {t.minutes} minuti">{t.minutes}′</button>
+                  {/each}
+                </div>
+              {/each}
+            </div>
+          </Collapse>
+        </div>
+
+        <!-- I mesi: su cosa lavori, con la famiglia e i percorsi. -->
+        <div class="section">
+          <Collapse title="Mesi" count={blocks.length} key="lib-mesi">
+            <div class="card flush list">
+              {#each blocks as b (b.id)}
+                {@const fam = blockFamily(b, app.catalog, app.medals, currentInSequence)}
+                <button class="item" onclick={() => ui.open('block', { id: b.id })}>
+                  <span class="ico" data-fam={fam}><FamilyIcon {fam} size={24} /></span>
+                  <span class="grow">
+                    <span class="top"><strong>{b.theme}</strong>{#if b.custom}<span class="mine">tuo</span>{/if}</span>
+                    <span class="sub">{b.tracks.map((id) => app.catalog.track(id)?.short).filter(Boolean).join(', ')}</span>
+                  </span>
+                  <ChevronRight size={18} />
+                </button>
+              {/each}
+              {@render addRow('Nuovo mese', () => ui.open('block'))}
+            </div>
+            <p class="note">Nel piano ogni mese può durare anche meno: un allenamento, una o due settimane.</p>
+          </Collapse>
+        </div>
+
+        <!-- I percorsi: l'esercizio di adesso e la sua medaglia. -->
+        <div class="section">
+          <Collapse title="Percorsi" count={tracks.length} open={false} key="lib-percorsi">
+            <div class="card flush list">
+              {#each tracks as id (id)}
+                {@const t = app.catalog.track(id)}
+                {@const now = currentInSequence(id, app.catalog, app.medals)}
+                {@const ex = now ? app.catalog.exercise(now) : null}
+                <button class="item" onclick={() => ui.open('track', { id })}>
+                  <span class="grow">
+                    <span class="top"><strong>{t.name}</strong>{#if t.custom}<span class="mine">tuo</span>{/if}</span>
+                    {#if ex}<span class="sub">Adesso: {ex.name}</span>{/if}
+                  </span>
+                  {#if ex}<MedalRing exercise={ex} medals={app.medals[ex.id]} size={36} />{/if}
+                </button>
+              {/each}
+              {@render addRow('Nuovo percorso', () => ui.open('trackedit'))}
+            </div>
+            {#if archived.length}<p class="note">Archiviati: {archived.map((id) => app.catalog.track(id).short).join(', ')}</p>{/if}
+          </Collapse>
+        </div>
+
+        <button class="import" onclick={() => ui.open('import')}><Download size={18} /> Importa esercizi, percorsi, mesi e modelli</button>
+      {:else if tab === 'esercizi'}
+        <!-- Cerca e filtra -->
+        <div class="find">
+          <label class="search">
+            <Search size={18} />
+            <input type="search" placeholder="Cerca un esercizio" bind:value={query} aria-label="Cerca un esercizio" />
+            {#if query}<button class="clear" onclick={() => (query = '')} aria-label="Cancella la ricerca"><X size={16} /></button>{/if}
+          </label>
+          <div class="pickers">
+            <button class="pickr" class:on={levelFilter !== 'all'} onclick={pickLevel}>
+              {levelFilter === 'all' ? 'Tutti i livelli' : PLAYER_LEVEL[levelFilter].name}<ChevronDown size={16} />
+            </button>
+            <button class="pickr" class:on={modeFilter !== 'all'} onclick={pickMode}>
+              {modeFilter === 'all' ? 'Ogni formato' : MODE[modeFilter].name}<ChevronDown size={16} />
+            </button>
+            {#if filtering}<button class="reset" onclick={clearFilters}>Togli i filtri</button>{/if}
+          </div>
+          <p class="note">{shownCount} {shownCount === 1 ? 'esercizio' : 'esercizi'}. Il livello serve solo a orientarti: puoi fare qualsiasi esercizio.</p>
+        </div>
+
+        <!-- Con un filtro le famiglie si aprono; senza, restano chiuse. -->
+        {#key filtering}
+          {#each exerciseGroups as g (g.id)}
+            <div class="section tight">
+              <Collapse title={g.name} count={g.list.length} open={filtering}>
+                {#snippet lead()}{@render famLead(g.id)}{/snippet}
+                <div class="card flush list">
+                  {#each g.list as e (e.id)}
+                    <button class="item" onclick={() => ui.open('exercise', { id: e.id })}>
+                      <span class="grow">
+                        <strong class="block">{e.name}</strong>
+                        <span class="meta">
+                          <span class="lvl" data-level={e.level}><i></i>{PLAYER_LEVEL[e.level]?.name ?? 'Tuo'}</span>
+                          {#if e.modes?.length}<span class="modes">{e.modes.map((m) => MODE[m]?.name.toLowerCase()).filter(Boolean).join(', ')}</span>{/if}
+                          {#if app.medals[e.id]?.stale}<span class="stale">Da ripassare</span>{/if}
+                        </span>
+                      </span>
+                      <MedalRing exercise={e} medals={app.medals[e.id]} size={36} />
+                    </button>
+                  {/each}
+                </div>
+              </Collapse>
+            </div>
+          {:else}
+            <p class="muted empty">Nessun esercizio con questi filtri.</p>
+          {/each}
+        {/key}
       {:else}
         <div class="filter">
           <Segmented
@@ -215,55 +283,55 @@
         </div>
 
         {#each families as f (f.id)}
-          <section class="section">
-            <h2 class="heading">{f.name}</h2>
-            <div class="card flush list">
-              {#each f.strokes as s (s.id)}
-                <button class="item" onclick={() => ui.open('stroke', { id: s.id })}>
-                  <span class="grow">
-                    {s.name}
-                    {#if s.about}<span class="small muted block clamp">{s.about}</span>{/if}
-                  </span>
-                  {#if counts[s.id]}<span class="tag down">{counts[s.id]}</span>{/if}
-                  <ChevronRight size={16} />
-                </button>
-              {/each}
-            </div>
-          </section>
+          <div class="section tight">
+            <Collapse title={f.name} count={f.strokes.length} open={false} key="lib-colpi-{f.id}">
+              {#snippet lead()}{@render famLead(f.id === 'custom' ? 'libero' : f.id)}{/snippet}
+              <div class="card flush list">
+                {#each f.strokes as s (s.id)}
+                  <button class="item" onclick={() => ui.open('stroke', { id: s.id })}>
+                    <span class="grow">{s.name}</span>
+                    {#if counts[s.id]}<span class="fix" aria-label="{counts[s.id]} volte da correggere"><Crosshair size={14} />{counts[s.id]}</span>{/if}
+                    <ChevronRight size={18} />
+                  </button>
+                {/each}
+              </div>
+            </Collapse>
+          </div>
         {/each}
 
-        <button class="btn ghost small add" onclick={addStroke}><Plus size={16} /> Aggiungi un colpo</button>
+        <div class="card flush list after-list">{@render addRow('Aggiungi un colpo', addStroke)}</div>
 
-        <section class="section">
-          <h2 class="heading">Le altre voci</h2>
-          <div class="card stack g-16">
-            <div class="stack g-8">
-              <span class="small muted">Fase del punto</span>
-              <div class="chips">{#each POINT_PHASES as p (p.id)}<span class="tag line">{p.name}</span>{/each}</div>
-            </div>
-            <div class="stack g-8">
-              <span class="small muted">Palla in arrivo</span>
-              <div class="chips">{#each BALLS as p (p.id)}<span class="tag line">{p.name}</span>{/each}</div>
-            </div>
-            {#each [...ERROR_GROUPS, { id: 'custom', name: 'I tuoi errori' }] as g (g.id)}
-              {@const list = app.errors.filter((e) => e.group === g.id)}
-              {#if list.length}
-                <div class="stack g-8">
-                  <span class="small muted">Errore · {g.name.toLowerCase()}</span>
-                  <div class="chips">
-                    {#each list as e (e.id)}
-                      {#if e.custom}
-                        <button class="tag line" onclick={() => app.removeCustom('errors', e.id)} title="Tocca per eliminare">{e.name} ×</button>
-                      {:else}
-                        <span class="tag line">{e.name}</span>
-                      {/if}
-                    {/each}
+        <div class="section">
+          <Collapse title="Le altre voci" open={false} key="lib-altre">
+            <div class="card stack g-16">
+              <div class="stack g-8">
+                <span class="small muted">Fase del punto</span>
+                <div class="chips">{#each POINT_PHASES as p (p.id)}<span class="tag line">{p.name}</span>{/each}</div>
+              </div>
+              <div class="stack g-8">
+                <span class="small muted">Palla in arrivo</span>
+                <div class="chips">{#each BALLS as p (p.id)}<span class="tag line">{p.name}</span>{/each}</div>
+              </div>
+              {#each [...ERROR_GROUPS, { id: 'custom', name: 'I tuoi errori' }] as g (g.id)}
+                {@const list = app.errors.filter((e) => e.group === g.id)}
+                {#if list.length}
+                  <div class="stack g-8">
+                    <span class="small muted">Errore · {g.name.toLowerCase()}</span>
+                    <div class="chips">
+                      {#each list as e (e.id)}
+                        {#if e.custom}
+                          <button class="tag line" onclick={() => app.removeCustom('errors', e.id)} title="Tocca per eliminare">{e.name} ×</button>
+                        {:else}
+                          <span class="tag line">{e.name}</span>
+                        {/if}
+                      {/each}
+                    </div>
                   </div>
-                </div>
-              {/if}
-            {/each}
-          </div>
-        </section>
+                {/if}
+              {/each}
+            </div>
+          </Collapse>
+        </div>
       {/if}
     </div>
   {/key}
@@ -271,95 +339,314 @@
 
 <style>
   .tabs {
-    margin-top: 20px;
-    max-width: 280px;
+    margin-top: 16px;
   }
-  .filter {
-    margin-top: 24px;
-    max-width: 280px;
+  .section.tight {
+    margin-top: 8px;
   }
-  .filter + :global(.section) {
-    margin-top: 20px;
-  }
-  .filters {
-    margin-top: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .filters .chips {
-    gap: 6px;
-  }
-  .chip.mini {
-    min-height: 30px;
-    padding: 4px 12px;
-    font-size: 13px;
-    gap: 6px;
-  }
-  .pk {
-    gap: 8px;
-  }
-  .pk .me {
-    display: inline-block;
-    margin-left: 8px;
-    vertical-align: middle;
-  }
-  .me {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-  }
-  .fam {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .fam .pip {
-    width: 9px;
-    height: 9px;
-  }
-  .empty {
-    margin-top: 24px;
-  }
-  .item :global(svg) {
-    color: var(--ink-3);
+  .lead {
+    display: grid;
+    place-items: center;
     flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    background: var(--f);
+    color: var(--f-on);
   }
   strong {
-    font-weight: 560;
+    font-weight: 650;
   }
   .block {
     display: block;
   }
-  .clamp {
+  .item :global(.lucide-chevron-right),
+  .item > :global(svg) {
+    color: var(--ink-3);
+    flex: none;
+  }
+  .top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .sub {
+    display: block;
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+  .mine {
+    height: 20px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--sunk);
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--ink-2);
+  }
+  .note {
+    margin: 10px 4px 0;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+  .add {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 18px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-2);
+    text-align: left;
+  }
+  .add :global(svg) {
+    color: var(--ink-3);
+  }
+  .cards + .add {
+    margin-top: 4px;
+    border-radius: var(--r-card);
+    border: 1px dashed var(--line-strong);
+  }
+
+  /* ── Modelli ── */
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .tpl {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    border: 1px solid var(--line);
+    text-align: left;
+    color: var(--ink);
+    transition: transform var(--dur-fast) var(--ease);
+  }
+  .tpl:active {
+    transform: scale(0.985);
+  }
+  .tpl-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tpl-top strong {
+    font-size: 17px;
+  }
+  .tpl-min {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    font-weight: 650;
+    color: var(--ink-2);
+  }
+  .tpl-min :global(svg) {
+    color: var(--ink-3);
+  }
+  .segs {
+    display: flex;
+    gap: 3px;
+  }
+  .segs i {
+    flex-basis: 0;
+    min-width: 8px;
+    height: 10px;
+    border-radius: 5px;
+    background: var(--f);
+  }
+  .tpl-blocks {
+    font-size: 13px;
+    color: var(--ink-3);
     display: -webkit-box;
     -webkit-line-clamp: 1;
     line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  .add {
-    margin-top: 14px;
+
+  /* ── Pacchetti ── */
+  .pk {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
   }
-  .head {
-    margin-bottom: 12px;
+  .pk + .pk {
+    border-top: 1px solid var(--line);
   }
-  .head .heading {
-    margin: 0;
+  .yours {
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--accent-ink);
   }
-  .bar {
+  .min-btn {
+    min-width: 52px;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 12px;
+    background: var(--sunk);
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 650;
+    color: var(--ink);
+  }
+
+  /* ── Mesi ── */
+  .ico {
+    display: grid;
+    place-items: center;
     flex: none;
-    width: 4px;
-    align-self: stretch;
-    border-radius: 2px;
-    background: var(--c);
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+    background: var(--f);
+    color: var(--f-on);
   }
-  .after {
-    margin-top: 10px;
-  }
+
   .import {
-    margin-top: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     width: 100%;
+    margin-top: 28px;
+    min-height: 48px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+
+  /* ── Esercizi ── */
+  .find {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 16px 0 6px;
+  }
+  .search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 48px;
+    padding: 0 8px 0 14px;
+    border-radius: 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--ink-3);
+  }
+  .search:focus-within {
+    border-color: var(--ink-3);
+  }
+  .search input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 16px;
+    color: var(--ink);
+    outline: none;
+  }
+  .search input::-webkit-search-cancel-button {
+    display: none;
+  }
+  .clear {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--sunk);
+    color: var(--ink-2);
+  }
+  .pickers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .pickr {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 10px 0 14px;
+    border-radius: 999px;
+    background: var(--sunk);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .pickr.on {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .reset {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-ink);
+    padding: 0 6px;
+    min-height: 36px;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    margin-top: 4px;
+    font-size: 13px;
+  }
+  .lvl {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 650;
+    color: var(--ink-2);
+  }
+  .lvl i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--lv);
+  }
+  .modes {
+    color: var(--ink-3);
+  }
+  .stale {
+    color: var(--down);
+    font-weight: 600;
+  }
+  .empty {
+    margin-top: 24px;
+  }
+
+  /* ── Colpi ── */
+  .filter {
+    margin-top: 16px;
+    max-width: 300px;
+  }
+  .fix {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--down);
+  }
+  .fix :global(svg) {
+    color: var(--down) !important;
+  }
+  .after-list {
+    margin-top: 12px;
   }
 </style>

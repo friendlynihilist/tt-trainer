@@ -31,7 +31,7 @@
   import { exerciseLabel } from '../data/catalog.js';
   import { PLAYER_LEVEL, TIER, TIERS } from '../data/library.js';
   import { addDays, fmtLong, fmtRelative, fmtShort } from '../util/dates.js';
-  import { sessionBlocks, stepFamily, MEASURE_ICON } from '../ui/design.js';
+  import { sessionBlocks, stepFamily, blockFamily, MEASURE_ICON } from '../ui/design.js';
   import PageHead from '../ui/PageHead.svelte';
   import PlannedRow from '../ui/PlannedRow.svelte';
   import EventRow from '../ui/EventRow.svelte';
@@ -133,11 +133,7 @@
   const monthInfo = $derived.by(() => {
     if (!plan || !stage || app.phase === 'done') return null;
     // La famiglia (colore e icona) è quella dell'esercizio di adesso nel primo percorso.
-    const famOf = (block) => {
-      const t = block?.tracks?.[0];
-      const ex = t ? app.catalog.exercise(currentInSequence(t, app.catalog, app.medals) ?? app.catalog.sequence(t)[0]) : null;
-      return ex?.family ?? 'libero';
-    };
+    const famOf = (block) => blockFamily(block, app.catalog, app.medals, currentInSequence);
     const trackNames = (block) => (block?.tracks ?? []).map((id) => app.catalog.track(id)?.short).filter(Boolean).join(', ');
     if (app.phase === 'before') {
       const first = stage.stages.find((st) => st.block);
