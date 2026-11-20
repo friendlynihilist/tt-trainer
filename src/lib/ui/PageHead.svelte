@@ -1,56 +1,57 @@
 <script>
-  // Intestazione di pagina. Su telefono porta anche guida e profilo, che su schermi larghi
-  // stanno già nella colonna di sinistra.
-  import Help from '@lucide/svelte/icons/circle-question-mark';
+  // Intestazione di pagina: il nome della pagina in grande e, sul telefono, il profilo a destra
+  // (apre Impostazioni; su schermi larghi sta già nella colonna di sinistra). Le pagine fuori dalla
+  // barra in basso (Guida, Impostazioni) hanno al suo posto la freccia per tornare indietro.
+  import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import { app } from '../store/app.svelte.js';
+  import { ui } from '../store/ui.svelte.js';
   import Avatar from './Avatar.svelte';
 
-  let { eyebrow = '', title, sub = '', children = null, actions = true, sans = true } = $props();
+  let { title, sub = '', back = false, children = null } = $props();
 </script>
 
 <header class="head">
   <div class="top">
-    <span class="small muted eyebrow">{eyebrow}</span>
-    {#if actions}
-      <span class="actions">
-        <a class="icon-btn" href="#/guida" aria-label="Guida"><Help size={21} strokeWidth={1.7} /></a>
-        <a class="me" href="#/impostazioni" aria-label="Impostazioni">
-          <Avatar name={app.name} photo={app.photo} size={32} />
-        </a>
-      </span>
+    {#if back}
+      <button class="icon-btn back" onclick={() => ui.back()} aria-label="Indietro"><ArrowLeft size={22} /></button>
+    {/if}
+    <h1 class="t-title big">{title}</h1>
+    {#if !back}
+      <a class="me" href="#/impostazioni" aria-label="Impostazioni">
+        <Avatar name={app.name} photo={app.photo} size={34} />
+      </a>
     {/if}
   </div>
-  <h1 class={sans ? 't-title big' : 'display'}>{title}</h1>
-  {#if sub}<p class="lead muted sub">{sub}</p>{/if}
+  {#if sub}<p class="sub">{sub}</p>{/if}
   {#if children}{@render children()}{/if}
 </header>
 
 <style>
-  .t-title.big {
-    font-size: 34px;
-    margin: 0;
-  }
   .top {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    min-height: 40px;
-    margin-bottom: 4px;
+    gap: 6px;
+    min-height: 44px;
   }
-  .eyebrow::first-letter {
-    text-transform: uppercase;
+  .t-title.big {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: 34px;
   }
-  .actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-right: -4px;
+  .back {
+    width: 44px;
+    height: 44px;
+    margin-left: -12px;
+    color: var(--ink);
   }
   .me {
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    margin-right: -5px;
     border-radius: 50%;
     text-decoration: none;
     transition: transform 0.2s var(--ease);
@@ -59,15 +60,16 @@
     transform: scale(0.92);
   }
   .sub {
-    margin-top: 6px;
+    margin-top: 2px;
+    font-size: 15px;
+    color: var(--ink-2);
+  }
+  .sub::first-letter {
+    text-transform: uppercase;
   }
   @media (min-width: 900px) {
-    .actions {
+    .me {
       display: none;
-    }
-    .top {
-      min-height: 0;
-      margin-bottom: 8px;
     }
   }
 </style>

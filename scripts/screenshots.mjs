@@ -6,6 +6,7 @@
 //   node scripts/screenshots.mjs docs/design-shots oggi,sessione   (solo alcune)
 //
 // CHROME=/percorso/di/chrome per un'installazione diversa da quella standard su macOS.
+// W=1280 H=800 per lo schermo largo.
 
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
@@ -17,8 +18,9 @@ const BASE = process.env.BASE ?? 'http://localhost:5175/';
 const PORT = 9333;
 const OUT = process.argv[2] ?? 'docs/design-shots';
 const ONLY = process.argv[3]?.split(',') ?? null;
-const W = 390;
-const H = 844;
+// W=1280 H=800 per guardare lo schermo largo (di base il telefono, 390 × 844).
+const W = Number(process.env.W ?? 390);
+const H = Number(process.env.H ?? 844);
 const MAX_H = 2600;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -176,7 +178,11 @@ const SHOTS = [
   },
   { name: 'sessione-chiusura', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/'), `document.querySelector('[role=tab][aria-label=Chiusura]').click()`], viewport: true },
   // Dopo il rifacimento: il foglio dei blocchi, l'inizio della sessione, una medaglia presa e la chiusura con la medaglia.
-  { name: 'oggi-blocchi', hash: 'oggi', steps: [click('/^Blocchi/')], viewport: true },
+  { name: 'oggi-blocchi', hash: 'oggi', steps: [`document.querySelector('.inside').click()`], viewport: true },
+  // La scelta di un esercizio: dal foglio dell'allenamento, «Cambia esercizio» sul primo.
+  { name: 'foglio-scegli-esercizio', hash: 'oggi', steps: [`document.querySelector('.inside').click()`, `document.querySelector('.exs .round').click()`], viewport: true },
+  // Il primo avvio: le schermate di benvenuto, per chi non ha ancora un piano.
+  { name: 'primo-avvio', hash: 'oggi', patch: (d) => ({ ...d, meta: { settings: d.meta.settings } }), viewport: true },
   { name: 'oggi-tappa', hash: 'oggi', steps: [click('/^(Questo mese|Queste|Questa settimana|Oggi|Questo allenamento|Questi)/', '.m-main')] },
   { name: 'oggi-allenamento-solo-tappa', hash: 'oggi', stages: 'solo', steps: [click('/^(Questo mese|Queste|Questa settimana|Oggi|Questo allenamento|Questi)/', '.m-main')] },
   { name: 'oggi-piano', hash: 'oggi', steps: [click('/^(Questo mese|Queste|Questa settimana|Oggi|Questo allenamento|Questi)/', '.m-main'), click('/^Modifica il piano/')] },
@@ -194,7 +200,6 @@ const SHOTS = [
     ],
     viewport: true
   },
-  { name: 'oggi-vista-mese', hash: 'oggi', steps: [click('/^Mese$/'), `document.querySelector('.week').scrollIntoView({ block: 'center' })`], viewport: true },
   { name: 'sessione-inizio', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/')], viewport: true },
   // Il cambio: a metà esercizio tocca al compagno e il riquadro diventa scuro (qui con l'inversione a mano).
   { name: 'sessione-cambio', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/'), `document.querySelectorAll('[role=tab]')[2].click()`, click('/^Tocca a te/')], viewport: true },
@@ -251,7 +256,7 @@ try {
     await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
     for (const shot of SHOTS) {
       if (ONLY && !ONLY.includes(shot.name)) continue;
-      await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: true });
+      await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 2, mobile: W < 700 });
       await send('Page.navigate', { url: BASE });
       await sleep(600);
       await evaluate(`localStorage.clear(); localStorage.setItem('tt-trainer:v1', ${JSON.stringify(JSON.stringify((shot.patch ?? ((x) => x))(seed(theme, shot.stages === 'solo' ? SHOTS.find((x) => x.name === 'oggi-allenamento-solo').stages : shot.stages))))}); localStorage.setItem('tt-trainer:theme', '${theme}'); true`);
@@ -265,7 +270,7 @@ try {
       let height = H;
       if (!shot.viewport) {
         height = Math.min(MAX_H, await evaluate('document.documentElement.scrollHeight'));
-        await send('Emulation.setDeviceMetricsOverride', { width: W, height, deviceScaleFactor: 2, mobile: true });
+        await send('Emulation.setDeviceMetricsOverride', { width: W, height, deviceScaleFactor: 2, mobile: W < 700 });
         await sleep(500);
       }
       const { data } = await send('Page.captureScreenshot', { format: 'jpeg', quality: 72 });

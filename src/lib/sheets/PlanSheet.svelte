@@ -231,7 +231,7 @@
   }
   .now .n {
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-on);
   }
   .theme {
     text-align: left;

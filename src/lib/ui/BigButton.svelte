@@ -28,7 +28,7 @@
     padding: 16px 20px 16px 16px;
     border-radius: var(--r-brick);
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-on);
     text-align: left;
   }
   .ico {

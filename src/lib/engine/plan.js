@@ -307,19 +307,11 @@ function nearestBlock(plan, idx, catalog) {
   return catalog.block('1');
 }
 
-export function allWeeks(plan, catalog = BASE) {
-  return plan ? plan.weeks.map((_, i) => weekAt(plan, i, catalog)) : [];
-}
-
 /** La settimana di una data; prima del piano la prima, dopo l'ultima. Senza piano null. */
 export function weekFor(plan, date, catalog = BASE) {
   if (!plan) return null;
   const idx = Math.max(0, Math.min(plan.weeks.length - 1, weekIndex(plan, date)));
   return themedWeek(plan, weekAt(plan, idx, catalog), date, catalog);
-}
-
-export function planEnd(plan) {
-  return addDays(plan.start, plan.weeks.length * 7 - 1);
 }
 
 /** 'before' | 'active' | 'done' */

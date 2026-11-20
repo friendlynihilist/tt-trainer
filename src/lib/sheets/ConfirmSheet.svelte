@@ -23,6 +23,6 @@
 <style>
   .btn.primary.danger {
     background: var(--down);
-    color: #fff;
+    color: var(--paper);
   }
 </style>

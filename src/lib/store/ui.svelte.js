@@ -17,9 +17,15 @@ class UI {
   /** La finestra delle novità aperta a mano: { history: true } oppure null. */
   news = $state.raw(null);
 
+  /** Le pagine visitate dentro l'app, per sapere se «indietro» resta nell'app. */
+  #trail = [typeof location === 'undefined' ? '' : location.hash];
+
   constructor() {
     if (typeof window !== 'undefined') {
       window.addEventListener('hashchange', () => {
+        // Tornare alla pagina di prima accorcia la fila, andare altrove la allunga.
+        if (this.#trail.at(-2) === location.hash) this.#trail.pop();
+        else this.#trail.push(location.hash);
         this.route = parseHash();
         this.sheets = []; // cambiando pagina i fogli aperti si chiudono
         window.scrollTo({ top: 0 });
@@ -29,6 +35,12 @@ class UI {
 
   go(name, ...params) {
     location.hash = `/${[name, ...params].join('/')}`;
+  }
+
+  /** Dalle pagine fuori dalla barra (Guida, Impostazioni): torna da dove sei venuto, o a Oggi. */
+  back() {
+    if (this.#trail.length > 1) history.back();
+    else this.go('oggi');
   }
 
   open(type, props = {}) {

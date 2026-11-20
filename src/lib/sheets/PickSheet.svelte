@@ -1,8 +1,10 @@
 <script>
   // Scelta da un elenco, con gruppi, ricerca e (se serve) aggiunta di una voce propria.
-  // `filters`: righe di filtri facoltativi, [{ key, options: [{ id, label }] }]; ogni opzione
+  // `filters`: filtri facoltativi, [{ key, label, all, options: [{ id, label }] }]; ogni opzione
   // dell'elenco porta i suoi valori in `tags` (es. { family, level, modes: [] }). Di base sono spenti.
+  // Ogni filtro è un pulsante con il suo nome, come in Libreria: toccandolo si sceglie in un foglio.
   import Check from '@lucide/svelte/icons/check';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import Search from '@lucide/svelte/icons/search';
   import Plus from '@lucide/svelte/icons/plus';
   import { ui } from '../store/ui.svelte.js';
@@ -28,6 +30,17 @@
     onpick?.(id);
   }
 
+  const chosen = (f) => f.options.find((o) => o.id === active[f.key]) ?? null;
+  const filtering = $derived(Object.values(active).some((v) => v != null));
+  function pickFilter(f) {
+    ui.open('pick', {
+      title: f.label,
+      value: active[f.key] ?? 'all',
+      groups: [{ options: [{ id: 'all', label: f.all ?? 'Tutti' }, ...f.options] }],
+      onpick: (v) => v && (active = { ...active, [f.key]: v === 'all' ? null : v })
+    });
+  }
+
   function add() {
     const label = query.trim();
     if (!label) return;
@@ -44,13 +57,16 @@
     </label>
   {/if}
 
-  {#each filters as f (f.key)}
-    <div class="filter" role="group" aria-label={f.label}>
-      {#each f.options as o (o.id)}
-        <button class="chip mini" aria-pressed={active[f.key] === o.id} onclick={() => (active = { ...active, [f.key]: active[f.key] === o.id ? null : o.id })}>{o.label}</button>
+  {#if filters.length}
+    <div class="filters" role="group" aria-label="Filtri">
+      {#each filters as f (f.key)}
+        <button class="pickr" class:on={chosen(f)} onclick={() => pickFilter(f)} aria-label="{f.label}: {chosen(f)?.label ?? f.all}">
+          {chosen(f)?.label ?? f.label}<ChevronDown size={16} />
+        </button>
       {/each}
+      {#if filtering}<button class="reset" onclick={() => (active = {})}>Togli i filtri</button>{/if}
     </div>
-  {/each}
+  {/if}
 
   {#if clearable && value != null && !query}
     <button class="row-btn clear" onclick={() => pick(null)}>Togli la scelta</button>
@@ -102,22 +118,35 @@
   .group {
     margin: 18px 0 4px;
   }
-  .filter {
+  .filters {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .pickr {
+    display: inline-flex;
+    align-items: center;
     gap: 6px;
-    margin: 0 -20px 8px;
-    padding: 0 20px;
-    overflow-x: auto;
-    scrollbar-width: none;
+    height: 36px;
+    padding: 0 10px 0 14px;
+    border-radius: 999px;
+    background: var(--sunk);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-2);
   }
-  .filter::-webkit-scrollbar {
-    display: none;
+  .pickr.on {
+    background: var(--ink);
+    color: var(--paper);
   }
-  .filter .chip {
-    flex: none;
-    min-height: 30px;
-    padding: 4px 12px;
+  .reset {
+    min-height: 36px;
+    padding: 0 6px;
     font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-ink);
   }
   .row-btn {
     display: flex;

@@ -8,12 +8,15 @@
   --sunk: #ece8df;
   --ink: #15171a;
   --ink-2: #565a61;
-  --ink-3: #8d9096;
+  /* Il grigio dei testi piccoli: almeno 4,5:1 sul fondo, così si legge anche in palestra. */
+  --ink-3: #6a6e75;
   --line: rgba(21, 23, 26, 0.1);
   --line-strong: rgba(21, 23, 26, 0.2);
   --accent: #ec5b13;
   --accent-ink: #b8430a;
   --accent-soft: #fbe5d7;
+  /* Il testo sopra l'arancione: bianco sul tema chiaro, scuro sul tema scuro (dove l'arancione è più chiaro). */
+  --accent-on: #ffffff;
   --up: #12735e;
   --up-soft: #dcefe8;
   --down: #c2362b;
@@ -42,7 +45,6 @@
   --m-plat: #4a879d;
   --m-empty: 95%;
 
-  --serif: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
   --sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
 
@@ -71,12 +73,13 @@
     --sunk: #1e2125;
     --ink: #f1eee7;
     --ink-2: #a5a8ae;
-    --ink-3: #6c7076;
+    --ink-3: #858a91;
     --line: rgba(255, 255, 255, 0.09);
     --line-strong: rgba(255, 255, 255, 0.2);
     --accent: #ff7a36;
     --accent-ink: #ff9459;
     --accent-soft: #38200f;
+    --accent-on: #1f0d02;
     --up: #46c9a8;
     --up-soft: #12302a;
     --down: #ff7466;
@@ -109,12 +112,13 @@
   --sunk: #1e2125;
   --ink: #f1eee7;
   --ink-2: #a5a8ae;
-  --ink-3: #6c7076;
+  --ink-3: #858a91;
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.2);
   --accent: #ff7a36;
   --accent-ink: #ff9459;
   --accent-soft: #38200f;
+  --accent-on: #1f0d02;
   --up: #46c9a8;
   --up-soft: #12302a;
   --down: #ff7466;
@@ -379,7 +383,7 @@ a {
 
 .btn.accent {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
 }
 
 /* I pulsanti principali (non quelli piccoli) hanno il rilievo: scendono quando li premi. */

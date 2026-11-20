@@ -89,7 +89,7 @@
 {/snippet}
 
 <div class="page enter settings">
-  <PageHead title="Impostazioni" actions={false} />
+  <PageHead title="Impostazioni" back />
 
   <section class="card me">
     <Avatar name={app.name} photo={app.photo} size={52} />
@@ -152,6 +152,17 @@
             app.refreshProfile();
           }}
         />
+      </div>
+
+      <div class="card flush list after">
+        {#each app.mates as m (m.id)}
+          <div class="item">
+            <Avatar name={m.name} photo={m.photo} size={32} />
+            <strong class="grow">{m.name}</strong>
+          </div>
+        {:else}
+          <p class="empty small muted">Quando un compagno entra nel gruppo, lo vedi qui.</p>
+        {/each}
       </div>
 
       {#if app.isAdmin}
@@ -293,5 +304,8 @@
   }
   .after {
     margin-top: 10px;
+  }
+  .empty {
+    padding: 14px 16px;
   }
 </style>

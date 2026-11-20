@@ -1,7 +1,7 @@
 <script>
   // Diario. Appena entri: il mese, e sotto oggi se c'è qualcosa. Toccando un giorno si apre quel
-  // giorno; l'elenco di tutte le voci del mese è chiuso e si apre a richiesta. Il mese cambia con le
-  // frecce o scorrendo il calendario di lato.
+  // giorno; l'elenco di tutte le voci del mese è chiuso e si apre a richiesta. Il nome del mese e le
+  // frecce stanno in cima al calendario; il mese cambia anche scorrendo il calendario di lato.
   //
   // Sotto ogni data un pallino per attività, del colore del tipo: pieno se fatta, vuoto se in
   // programma. La legenda dei tipi è anche il filtro. I temi del piano fra le settimane si vedono
@@ -17,7 +17,7 @@
   import { weekAt, weekIndex, weekParts, isPause } from '../engine/plan.js';
   import { KIND } from '../data/taxonomy.js';
   import { monthGrid, monthKey, addMonths, addDays, fmtMonth, fmtLong, WEEKDAYS_MIN } from '../util/dates.js';
-  import { reducedMotion } from '../util/motion.js';
+  import { dur } from '../util/motion.js';
   import PageHead from '../ui/PageHead.svelte';
   import EventRow from '../ui/EventRow.svelte';
   import PlannedRow from '../ui/PlannedRow.svelte';
@@ -111,27 +111,26 @@
 
   const title = $derived(fmtMonth(month).replace(/^./, (c) => c.toUpperCase()));
   const dayTitle = $derived(selected === app.today ? 'Oggi' : fmtLong(selected).replace(/^./, (c) => c.toUpperCase()));
-  const motion = (n) => (reducedMotion() ? 0 : n);
 </script>
 
 <div class="page enter diary">
-  <PageHead eyebrow="Diario" {title} sans>
-    <div class="nav">
-      <button class="icon-btn" onclick={() => shift(-1)} aria-label="Mese precedente"><ChevronLeft size={22} /></button>
-      <button class="icon-btn" onclick={() => shift(1)} aria-label="Mese successivo"><ChevronRight size={22} /></button>
-      {#if !isNow}
-        <button class="today-btn" onclick={goToday} transition:fade={{ duration: motion(160) }}>Torna a oggi</button>
-      {/if}
-    </div>
-  </PageHead>
+  <PageHead title="Diario" />
 
   <!-- Il mese -->
   <section class="cal" role="group" aria-label="Calendario del mese" onpointerdown={down} onpointerup={up} onpointercancel={() => (x0 = null)}>
+    <div class="cal-head">
+      <h2 class="t-name month" aria-live="polite">{title}</h2>
+      {#if !isNow}
+        <button class="today-btn" onclick={goToday} transition:fade={{ duration: dur(160) }}>Oggi</button>
+      {/if}
+      <button class="icon-btn" onclick={() => shift(-1)} aria-label="Mese precedente"><ChevronLeft size={22} /></button>
+      <button class="icon-btn" onclick={() => shift(1)} aria-label="Mese successivo"><ChevronRight size={22} /></button>
+    </div>
     <div class="dow" aria-hidden="true">
       {#each WEEKDAYS_MIN as d, i (i)}<span>{d}</span>{/each}
     </div>
     {#key month}
-      <div class="grid" in:fly={{ x: 36 * dir, duration: motion(260), easing: cubicOut }}>
+      <div class="grid" in:fly={{ x: 36 * dir, duration: dur(260), easing: cubicOut }}>
         {#each rows as r (r.week[0])}
           {#if r.theme}<span class="theme t-caps">{r.theme}</span>{/if}
           {#each r.week as d (d)}
@@ -177,10 +176,10 @@
 
   <!-- Il giorno scelto: oggi solo se c'è qualcosa. -->
   {#if showDay}
-    <div class="section" transition:fade={{ duration: motion(180) }}>
+    <div class="section" transition:fade={{ duration: dur(180) }}>
       <Collapse title={dayTitle} count={dayCount || null}>
         {#key selected}
-          <div in:fly={{ y: 8, duration: motion(220), easing: cubicOut }}>
+          <div in:fly={{ y: 8, duration: dur(220), easing: cubicOut }}>
             <div class="card flush list">
               {#each day.todo as item (item.key)}<PlannedRow {item} />{/each}
               {#each day.done as e (e.id)}<EventRow event={e} showDate={false} />{/each}
@@ -195,7 +194,7 @@
     </div>
   {:else}
     <!-- Oggi non c'è niente: resta solo la riga per aggiungere. -->
-    <div class="section" transition:fade={{ duration: motion(180) }}>
+    <div class="section" transition:fade={{ duration: dur(180) }}>
       <div class="card flush list">
         <button class="add" onclick={() => ui.open('add', { date: app.today })}>
           <Plus size={18} />
@@ -218,16 +217,27 @@
 </div>
 
 <style>
-  .nav {
+  .cal-head {
     display: flex;
     align-items: center;
     gap: 2px;
-    margin: 6px 0 0 -10px;
+    min-height: 44px;
+    margin: 0 -2px 8px 8px;
+  }
+  .month {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+  }
+  .cal-head .icon-btn {
+    width: 44px;
+    height: 44px;
+    color: var(--ink);
   }
   .today-btn {
-    margin-left: 6px;
-    height: 34px;
+    height: 36px;
     padding: 0 14px;
+    margin-right: 4px;
     border-radius: 999px;
     background: var(--sunk);
     font-size: 13px;
@@ -235,8 +245,8 @@
     color: var(--ink);
   }
   .cal {
-    margin-top: 12px;
-    padding: 14px 10px 16px;
+    margin-top: 16px;
+    padding: 8px 10px 16px;
     border-radius: var(--r-card);
     background: var(--card);
     border: 1px solid var(--line);
@@ -309,7 +319,7 @@
   }
   .day.sel.today .n {
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-on);
   }
   .marks {
     display: flex;

@@ -1,36 +1,11 @@
-// Le regole grafiche in codice: icona di ogni famiglia, famiglia di ogni passo della sessione,
-// segmenti colorati di una sessione (docs/design.md).
+// Le regole grafiche in codice: l'icona di ogni misura, la famiglia (il colore) di ogni passo della
+// sessione e di ogni mese, i blocchi di una sessione (docs/design.md). Le icone delle famiglie sono
+// disegnate apposta: stanno in FamilyIcon.svelte.
 
-import Send from '@lucide/svelte/icons/send';
-import Reply from '@lucide/svelte/icons/reply';
-import Repeat from '@lucide/svelte/icons/repeat';
-import Zap from '@lucide/svelte/icons/zap';
-import Shield from '@lucide/svelte/icons/shield';
-import Scissors from '@lucide/svelte/icons/scissors';
-import Footprints from '@lucide/svelte/icons/footprints';
-import Route from '@lucide/svelte/icons/route';
-import Swords from '@lucide/svelte/icons/swords';
-import PencilLine from '@lucide/svelte/icons/pencil-line';
-import Coffee from '@lucide/svelte/icons/coffee';
 import Target from '@lucide/svelte/icons/target';
 import LinkIcon from '@lucide/svelte/icons/link';
 import Hourglass from '@lucide/svelte/icons/hourglass';
 import Hash from '@lucide/svelte/icons/hash';
-
-/** Icona Lucide di ogni famiglia (e dei blocchi che non sono esercizi). */
-export const FAMILY_ICON = {
-  servizio: Send,
-  ricezione: Reply,
-  palleggio: Repeat,
-  attacco: Zap,
-  controllo: Shield,
-  taglio: Scissors,
-  gambe: Footprints,
-  schemi: Route,
-  partita: Swords,
-  libero: PencilLine,
-  pausa: Coffee
-};
 
 /** Icona e testo breve di come si misura un esercizio. */
 export const MEASURE_ICON = { su: Target, fila: LinkIcon, tempo: Hourglass, conta: Hash };
@@ -56,11 +31,6 @@ export function stepFamily(step, catalog) {
   if (step.kind === 'free') return 'libero';
   if (step.kind === 'pause') return 'pausa';
   return null;
-}
-
-/** I segmenti colorati di una sessione (senza pause), proporzionali ai minuti. */
-export function sessionSegments(session, catalog) {
-  return (session?.steps ?? []).filter((s) => s.kind !== 'pause').map((s) => ({ id: s.id, fam: stepFamily(s, catalog), minutes: s.minutes, name: s.name }));
 }
 
 /**

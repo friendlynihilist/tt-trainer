@@ -23,11 +23,14 @@ Screenshot di partenza: `docs/design-shots/prima/` (390 px, tema scuro e chiaro,
 
 **Togli**: sparisce. **Accorpa**: due cose diventano una. **Icona**: un testo diventa un'icona (con l'etichetta per lo screen reader). **Altrove**: si sposta in un'altra pagina o nella Guida.
 
-### Oggi (passo 3, rivisto il 20 novembre)
-Dal generale al particolare: prima il quadro d'insieme, il dettaglio solo quando lo chiedi. Dall'alto:
-1. **La tappa in corso**, con il periodo in **tempo relativo** come etichetta e il nome in grande: «Questo mese · Dritto» (4 settimane), «Queste due settimane», «Questa settimana», «Oggi» o «Questo allenamento» (un allenamento solo). A sinistra l'icona della famiglia nel suo colore; la scheda ha il fondo tenue e il bordo della famiglia (quella dell'esercizio di adesso nel primo percorso). Sotto, su due righe e con due stili: a che punto sei (tacche nel colore della famiglia e «Settimana 3 di 4», oppure «Un allenamento solo») e i percorsi. A destra il badge del livello. Toccandola si apre il **foglio della tappa** (`StageSheet`): a che punto sei, che cosa viene dopo, tutte le tappe del piano, i percorsi con l'esercizio di adesso, i servizi, gli schemi della partitella. In fondo, «Modifica il piano».
-2. **In calendario oggi**: il pulsante grande, la striscia colorata dei blocchi (senza icone), Blocchi, Cambia, Registra. Sotto, se ci sono, il test di oggi e «Da correggere».
-3. **Allenamenti**, con la scelta fra **settimana** e **mese**; la scelta resta per la volta dopo. Nel mese, sotto ogni data, un pallino per attività con il colore del tipo (allenamento, test, lezione, partite…), pieno se fatta e vuoto se in programma, e sotto la legenda dei tipi presenti. Toccando un giorno si apre il Diario su quel giorno.
+### Intestazione delle pagine (`PageHead`)
+In ogni pagina il titolo grande è il nome della pagina, lo stesso della barra in basso: «Oggi», «Diario», «Progressi», «Libreria». Niente scritta piccola sopra il titolo e niente punto interrogativo: a destra resta solo il profilo, che apre Impostazioni (la Guida si apre da lì). Guida e Impostazioni non stanno nella barra in basso: al posto del profilo hanno la freccia per tornare alla pagina di prima.
+
+### Oggi (passo 3, rivisto il 20 novembre; ripulita dopo la revisione)
+Dal generale al particolare: prima il quadro d'insieme, il dettaglio solo quando lo chiedi. Il titolo è «Oggi», con la data sotto. Dall'alto:
+1. **La tappa in corso**, con il periodo in **tempo relativo** come etichetta e il nome in grande: «Questo mese · Dritto» (4 settimane), «Queste due settimane», «Questa settimana», «Oggi» o «Questo allenamento» (un allenamento solo). A sinistra l'icona della famiglia nel suo colore; la scheda ha il fondo tenue e il bordo della famiglia (quella dell'esercizio di adesso nel primo percorso). Sotto, su due righe e con due stili: a che punto sei (tacche nel colore della famiglia e «Settimana 3 di 4», oppure «Un allenamento solo») e i percorsi. Il badge del livello non sta più qui: il livello non riguarda la tappa, e si cambia da Progressi o da Impostazioni. Toccandola si apre il **foglio della tappa** (`StageSheet`): a che punto sei, che cosa viene dopo, tutte le tappe del piano, i percorsi con l'esercizio di adesso, i servizi, gli schemi della partitella. In fondo, «Modifica il piano».
+2. **In calendario oggi**: il pulsante grande e, sotto, **una riga sola**: la striscia colorata dei blocchi, quanti sono e «Vedi e cambia». La riga apre il foglio dell'allenamento: in cima «Scegli un altro allenamento», poi i blocchi con gli esercizi (ognuno si cambia), in fondo «L'ho già fatto» per registrarlo senza il timer. Al posto dei tre pulsanti Blocchi, Cambia e Registra, che con la striscia facevano quattro cose da toccare. Sotto, se ci sono, il test di oggi e «Da correggere».
+3. **Questa settimana**: sette cerchi (pieno se fatto, anello se in calendario) e «3 su 5». Toccando un giorno, o il titolo, si apre il Diario. La vista del mese non c'è più: era la stessa del Diario.
 4. **Medaglie**: quelle **prese oggi** (se ci sono) e **una medaglia da prendere**, con il motivo: è nell'allenamento di oggi, ti manca poco, oppure è l'esercizio del mese. «Tutte» porta a Progressi.
 
 - **Togli**: la striscia delle 12 settimane (ora nel foglio del mese); «Settimana 3» come titolo (il titolo è la data); le icone delle famiglie; la griglia di sei medaglie; l'elenco completo degli esercizi; il testo della partitella; le chip di tutti i modelli.
@@ -43,7 +46,7 @@ Dal generale al particolare: prima il quadro d'insieme, il dettaglio solo quando
 
 ### Diario (rifatto)
 Appena entri: il mese, e sotto oggi se c'è qualcosa. Il resto si apre a richiesta.
-1. **Il mese**, in una card. Sotto ogni data un pallino per attività, del colore del **tipo** (allenamento, test, lezione, partite…): pieno se fatta, vuoto se in programma. Oggi ha il bordo arancione, il giorno scelto è pieno. Il mese cambia con le frecce o scorrendo il calendario di lato; entra da quella parte. «Torna a oggi» compare solo quando serve.
+1. **Il mese**, in una card. In cima alla card il nome del mese e, a destra, le due frecce; «Oggi» compare accanto alle frecce solo quando sei su un altro giorno o su un altro mese. Sotto ogni data un pallino per attività, del colore del **tipo** (allenamento, test, lezione, partite…): pieno se fatta, vuoto se in programma. Oggi ha il bordo arancione, il giorno scelto è pieno. Il mese cambia con le frecce o scorrendo il calendario di lato; entra da quella parte.
 2. **Legenda**: i tipi del mese (toccandoli si filtra: gli altri si attenuano) e, sotto, «● fatto ○ in programma».
 3. **Il giorno**: una sezione richiudibile con il titolo («Oggi» o la data) e quante voci ha. Oggi si vede solo se c'è qualcosa; un altro giorno sempre, perché l'hai scelto tu. In fondo alla lista, una riga «Aggiungi a questo giorno» (o «Metti in programma»).
 4. **Nel mese**: tutte le voci, in una sezione **chiusa di partenza**; lo stato aperto o chiuso si ricorda.
@@ -56,15 +59,13 @@ Appena entri: il mese, e sotto oggi se c'è qualcosa. Il resto si apre a richies
 ### Sezioni richiudibili (`Collapse`)
 Titolo, numero di voci, freccia che ruota; il contenuto scivola (280 ms, niente con «riduci movimento»). Con `key` lo stato si ricorda su questo dispositivo.
 
-### Progressi (rifatto)
+### Progressi (rifatto, riordinato dopo la revisione)
 Dal generale al particolare:
-1. **Il livello**, in una card con il colore del livello, con in alto il badge (si tocca per cambiarlo).
-   - **Prima la costanza**: la **fiamma** (uno scudo come quelli delle medaglie, `fiamma.svg`) dentro un anello che si riempie verso la condizione del livello; accanto «3 settimane di fila» e sotto «✓ 4 sedute in 14 giorni» (o «Per il livello: 3 sedute su 4»). A destra, più piccoli, ore e attività.
-   - Sotto, separati da una riga, **gli anelli di argento e oro** negli esercizi chiave («6/8», «1/4»; pieni: la spunta) e una frase sola su cosa manca.
+1. **Tre numeri** in tre tessere: le **settimane di fila** (con la fiamma, `fiamma.svg`), le ore e le attività.
+2. **Il livello**, in una card con il colore del livello: «Il tuo livello» e il badge (si tocca per cambiarlo). Sotto, «Per passare al livello avanzato» e **tre anelli uguali**, uno per condizione: argento e oro negli esercizi chiave («6/8», «1/4»), e la **costanza** (prima le sedute, poi i giorni). Pieni: la spunta. Sotto, una frase sola su cosa manca. Prima le settimane di fila e la costanza del livello stavano nello stesso anello, ma sono due cose diverse: una dice da quanto ti alleni, l'altra è una condizione del livello.
    - **Esercizi chiave** in una sezione chiusa, ognuno con il suo anello della medaglia; in fondo «Come si passa di livello» porta alla Guida.
-   - Tolti «Verso avanzato» e la tessera «settimane di fila» (stava già nella costanza).
-2. **Medagliere** (aperto): le quattro medaglie con quante ne hai; quando entrano in vista, un riflesso le attraversa una volta (vedi sotto). Poi le **famiglie** in una fila che scorre (icona, nome, «Attacco 4/20»), che sono anche il filtro; sotto la **griglia** degli esercizi misurati, con l'anello e il gradino dopo, o «Da ripassare».
-3. **Le ultime 12 settimane** (aperto), **Da correggere**, **Il gruppo**, **I test della versione 0.2** (chiusi).
+3. **Medagliere** (aperto): le quattro medaglie con quante ne hai; quando entrano in vista, un riflesso le attraversa una volta (vedi sotto). Poi le **famiglie** in una fila che scorre (icona, nome, «Attacco 4/20»), che sono anche il filtro; sotto la **griglia** degli esercizi misurati, con l'anello e il gradino dopo, o «Da ripassare».
+4. **Le ultime 12 settimane** (aperto), **Da correggere**, **I test della versione 0.2** (chiusi). Il gruppo non sta più qui: è in Impostazioni.
 
 ### Riflessi delle medaglie (`MedalBadge shine`)
 Quando la medaglia entra in vista, una volta sola, ritagliato sulla forma dello scudo:
@@ -92,8 +93,8 @@ Ogni gruppo è una sezione richiudibile con la sua icona e quante voci ha; «Nuo
 - Ancora nello stile di prima: i fogli del percorso, del mese, della voce del diario, della nota, del livello, del piano a parte le tappe.
 
 ### Guida e Impostazioni (rifatte)
-- **Guida**: il titolo, una frase, i **cinque passi** come tessere numerate (numero arancione in rilievo, titolo e due righe). Il resto in sezioni chiuse, una per argomento: le medaglie (gli scudi e le regole dei tentativi), il livello (i badge e le condizioni), durante l'allenamento (le fasi, il cambio, le pause), il piano, la libreria, i tuoi dati. Qui stanno le spiegazioni lunghe tolte dalle altre pagine.
-- **Impostazioni**: titolo «Impostazioni», il profilo in una card; poi gruppi con l'intestazione in maiuscoletto: **Allenamento** (il piano, il tuo livello con il badge), **Preferenze** (aspetto, suoni, vibrazione, cambio a metà esercizio, il piano nel Diario, mancino), **Gruppo**, **Dati** (esporta, copia, cancella in rosso), **Informazioni** (novità con la versione, guida, esci). Ogni riga ha un'icona chiara a sinistra in un quadrato grigio; sottotitoli solo dove servono.
+- **Guida**: il titolo con la freccia per tornare indietro, una frase, i **cinque passi** come tessere numerate (numero arancione in rilievo, titolo e due righe). Il resto in sezioni chiuse, una per argomento: le medaglie (gli scudi e le regole dei tentativi), il livello (i badge e le condizioni), durante l'allenamento (le fasi, il cambio, le pause), il piano, la libreria, i tuoi dati. Qui stanno le spiegazioni lunghe tolte dalle altre pagine.
+- **Impostazioni**: titolo «Impostazioni» con la freccia per tornare indietro, il profilo in una card; poi gruppi con l'intestazione in maiuscoletto: **Allenamento** (il piano, il tuo livello con il badge), **Preferenze** (aspetto, suoni, vibrazione, cambio a metà esercizio, il piano nel Diario, mancino), **Gruppo** (se farti vedere, i compagni, e per l'amministratore le richieste e gli inviti), **Dati** (esporta, copia, cancella in rosso), **Informazioni** (novità con la versione, guida, esci). Ogni riga ha un'icona chiara a sinistra in un quadrato grigio; sottotitoli solo dove servono.
 
 ### Le classi di base (`app.css`)
 Per tenere coerenti anche i fogli non rifatti uno per uno (voce del diario, nota, livello, percorso, mese, aggiungi, piano):
@@ -102,7 +103,9 @@ Per tenere coerenti anche i fogli non rifatti uno per uno (voce del diario, nota
 - `.chip` e `.tag.line`: pieni, senza bordo.
 - `.btn.primary` e `.btn.accent` (non piccoli): rilievo, arrotondamento 18, scendono quando li premi; testo bianco sull'arancione.
 - `.card`: arrotondamento 20.
-- Le medaglie a pallini (`Medal`, `MedalRow`) non si usano più: ovunque gli scudi (`MedalBadge`) o l'anello (`MedalRing`).
+- Le medaglie a pallini (`Medal`, `MedalRow`) non ci sono più: ovunque gli scudi (`MedalBadge`) o l'anello (`MedalRing`).
+- **La sensazione** (`FeelPicker`): cinque barre che crescono, ognuna con il suo nome sotto («Dura», «Così così», «Bene», «Molto bene», «Ottima»). È la stessa nella chiusura della sessione, nella voce del diario e nella nota sul colpo.
+- **I filtri di una scelta** (`PickSheet`): un pulsante per filtro con il suo nome («Famiglia», «Livello», «Formato»), come in Libreria; toccandolo si sceglie in un foglio. Niente file di pulsantini.
 
 ---
 
@@ -157,9 +160,11 @@ Il badge del livello ha sempre anche le tacche (da 1 a 5): il colore non è mai 
 
 **Neutri e accento**: restano quelli di oggi (carta calda, inchiostro, arancione `#EC5B13` / `#FF7A36` per le azioni principali). Verde e rosso degli stati restano per «fatto» e «errore».
 
+**Contrasto.** Il grigio dei testi piccoli (`--ink-3`) è `#6A6E75` sul chiaro e `#858A91` sullo scuro: almeno 4,5:1 sul fondo. Il testo sopra l'arancione ha il suo colore (`--accent-on`): bianco sul tema chiaro, scuro sul tema scuro, dove l'arancione è più chiaro e il bianco non si leggeva (2,6:1).
+
 ### 3.2 Caratteri
 
-- **Geist** per tutto il testo nelle schermate nuove, anche i titoli (pesi 700 e 800, spaziatura stretta). Fraunces resta solo nelle pagine non ancora rifatte.
+- **Geist** per tutto il testo, anche i titoli (pesi 700 e 800, spaziatura stretta). Fraunces non c'è più: tutte le pagine sono rifatte.
 - **Geist Mono** per tempo e numeri che cambiano (cifre della stessa larghezza).
 - Scala: 12 (etichette), 14 (secondario), 16 (testo), 18 (titolo di card), 22 (sezione), 28 (titolo di pagina), 40 (numero grande), 96 (tempo nella sessione).
 - Etichette corte in maiuscolo solo per livello e unità («INTERMEDIO», «MIN»), 12 px, peso 700, spaziatura 0,06em.
@@ -220,7 +225,7 @@ Pillola con il colore del livello, cinque tacche (piene fino al livello) e il no
 Tutta la larghezza, alto almeno 88, arancione con rilievo. A sinistra il cerchio con l'icona (play), poi il verbo grande («Inizia», «Riprendi») e sotto cosa parte («Intermedio · 60 min»). Sotto il testo, la fila dei blocchi come tacche colorate proporzionali alla durata.
 
 ### Altri
-- **Allenamenti** (`WeekDays`): la settimana in sette cerchi o il mese intero con i numeri dei giorni; pieno se fatto, anello se previsto, oggi in evidenza. Ogni giorno si tocca e apre il Diario su quel giorno.
+- **Questa settimana** (`WeekDays`): la settimana in sette cerchi; pieno se fatto, anello se previsto, oggi in evidenza. Ogni giorno si tocca e apre il Diario su quel giorno.
 - **Foglio del mese** (`MonthSheet`): il dettaglio del tema del mese, aperto da Oggi.
 - **Tessera numero** (`StatTile`): icona colorata, numero grande, etichetta corta.
 

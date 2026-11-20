@@ -14,6 +14,7 @@
   import Crosshair from '@lucide/svelte/icons/crosshair';
   import Trash from '@lucide/svelte/icons/trash-2';
   import NoteRow from '../ui/NoteRow.svelte';
+  import { FEEL } from '../ui/FeelPicker.svelte';
   import Plus from '@lucide/svelte/icons/plus';
   import { notesOf, feelSummary, fmtFeel } from '../engine/notes.js';
 
@@ -25,11 +26,18 @@
   const stat = $derived(weaknesses(app.events).strokes.find((s) => s.id === id));
   const notes = $derived(notesOf(app.notes, id));
   const feel = $derived(feelSummary(app.notes, id));
-  const FEEL = ['Dura', 'Così così', 'Bene', 'Molto bene', 'Ottima'];
 
   function remove() {
-    app.removeCustom('strokes', id);
-    ui.close();
+    ui.open('confirm', {
+      title: `Eliminare «${stroke.name}»?`,
+      text: notes.length ? 'Le note che hai scritto su questo colpo restano, ma senza il suo nome.' : 'Non si può annullare.',
+      action: 'Elimina',
+      danger: true,
+      onconfirm: () => {
+        app.removeCustom('strokes', id);
+        ui.closeAll();
+      }
+    });
   }
 </script>
 

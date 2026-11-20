@@ -317,10 +317,10 @@
     border-top: 3px solid var(--c);
   }
   .letter {
-    font-family: var(--serif);
-    font-size: 22px;
-    line-height: 1;
-    font-weight: 500;
+    font-size: 18px;
+    line-height: 1.1;
+    font-weight: 750;
+    letter-spacing: -0.01em;
   }
 
   .stepper {

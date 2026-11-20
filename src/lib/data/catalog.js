@@ -10,7 +10,7 @@
 import { TRACKS, BLOCKS, SCHEMES, DEFAULT_SCHEME } from './program.js';
 import { TEMPLATES, DEFAULT_TEMPLATE, AUTO_TEMPLATE, normalizeTemplate } from './templates.js';
 import { PACKAGES } from './packages.js';
-import { LIBRARY, LIBRARY_BY_ID, SEQUENCES, LEGACY_LEVELS, SERVE_EXERCISE, LEVEL_IDS, MODES } from './library.js';
+import { LIBRARY_BY_ID, SEQUENCES, LEGACY_LEVELS, SERVE_EXERCISE, LEVEL_IDS, MODES } from './library.js';
 import { FAMILY } from './taxonomy.js';
 
 export const MAX_LEVELS = 8;
@@ -201,21 +201,6 @@ export function resolveExercise(id, catalog = BASE) {
   if (p?.serve) return serveExercise(p.serve);
   if (p?.track) return legacyExercise(p.track, p.n, catalog);
   return null;
-}
-
-/** Tutti gli esercizi selezionabili, raggruppati per famiglia. */
-export function exerciseOptions(catalog = BASE) {
-  const out = [];
-  const families = [...new Set(LIBRARY.map((e) => e.family))];
-  for (const f of families) {
-    for (const e of LIBRARY.filter((x) => x.family === f)) out.push({ id: e.id, group: FAMILY[f]?.name ?? f, label: e.name });
-  }
-  for (const id of catalog.activeExerciseIds) {
-    const e = catalog.exercise(id);
-    if (e.custom) out.push({ id, group: 'I tuoi esercizi', label: e.name });
-  }
-  for (const [id, label] of Object.entries(OTHER)) out.push({ id, group: 'Altro', label });
-  return out;
 }
 
 export function exerciseLabel(id, catalog = BASE) {

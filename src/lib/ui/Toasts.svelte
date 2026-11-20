@@ -50,7 +50,7 @@
   }
   .toast.error {
     background: var(--down);
-    color: #fff;
+    color: var(--paper);
   }
   button {
     font-weight: 620;

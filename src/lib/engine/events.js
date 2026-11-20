@@ -69,14 +69,6 @@ export function eventTitle(e, catalog = BASE) {
   return KIND[e.kind]?.name ?? 'Attività';
 }
 
-/** Colore e nome di un appuntamento previsto (dal ritmo o aggiunto a mano). */
-export function itemColor(item, catalog = BASE) {
-  return item.kind === 'training' ? (catalog.template(item.template)?.color ?? 'blue') : (KIND[item.kind]?.color ?? 'slate');
-}
-export function itemTitle(item, catalog = BASE) {
-  return item.kind === 'training' ? (catalog.template(item.template)?.name ?? 'Allenamento') : (KIND[item.kind]?.name ?? 'Attività');
-}
-
 /**
  * Gli appuntamenti del ritmo fra due date, ciascuno con la voce che lo soddisfa (o null).
  *

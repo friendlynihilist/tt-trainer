@@ -21,7 +21,7 @@
 </script>
 
 <div class="page enter guide">
-  <PageHead eyebrow="Guida" title="Come funziona" actions={false} />
+  <PageHead title="Guida" back />
   <p class="intro">Un colpo al mese, gli allenamenti che vuoi, una medaglia per ogni traguardo. Niente è bloccato.</p>
 
   <ol class="steps">
@@ -84,7 +84,7 @@
       </div>
       <ul class="rules">
         <li><b>Il cambio.</b> A metà di ogni esercizio in due suona un doppio bip e il riquadro del tempo diventa scuro: tocca al compagno. Se comincia lui, tocca l’etichetta «Tocca a te» e i turni si invertono. Nel palleggio e negli esercizi da solo non c’è cambio.</li>
-        <li><b>Le pause.</b> Fra una fase e l’altra c’è {PAUSE_MINUTES} minuto di pausa, con il conto alla rovescia. Si può saltare. Il minuto si toglie alla fase dopo: il totale non cambia.</li>
+        <li><b>Le pause.</b> Fra una fase e l’altra c’è {PAUSE_MINUTES} minuto di pausa, con il conto alla rovescia. Puoi saltarla. Le pause sono già contate nella durata dell’allenamento.</li>
       </ul>
     </Collapse>
 
@@ -153,7 +153,7 @@
     height: 34px;
     border-radius: 11px;
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-on);
     font-size: 16px;
     font-weight: 800;
     box-shadow: 0 3px 0 color-mix(in srgb, var(--accent) 62%, #000);

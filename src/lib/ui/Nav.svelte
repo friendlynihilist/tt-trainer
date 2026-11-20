@@ -122,7 +122,7 @@
     margin-top: -18px;
     border-radius: 50%;
     background: var(--accent);
-    color: #15171a;
+    color: var(--accent-on);
     box-shadow:
       0 0 0 5px var(--paper),
       0 8px 20px -6px color-mix(in srgb, var(--accent) 70%, transparent);
@@ -159,10 +159,9 @@
       gap: 10px;
       padding: 0 10px;
       text-decoration: none;
-      font-family: var(--serif);
-      font-size: 20px;
-      font-weight: 520;
-      letter-spacing: -0.01em;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
     }
     .new {
       height: 44px;

@@ -35,6 +35,7 @@
   import { FAMILY } from '../data/taxonomy.js';
   import { fmtClock } from '../util/dates.js';
   import { chime, keepAwake, unlockAudio } from '../util/device.js';
+  import { lockScroll } from '../util/scroll.js';
   import { pickExercise } from '../ui/pickers.js';
   import StepBody from '../ui/StepBody.svelte';
   import GoalPad, { startGoal, goalTries } from '../ui/GoalPad.svelte';
@@ -45,6 +46,7 @@
   import { celebrateFinish } from '../util/celebrate.js';
   import FocusEditor from '../ui/FocusEditor.svelte';
   import PartnerField, { lastPartner } from '../ui/PartnerField.svelte';
+  import FeelPicker from '../ui/FeelPicker.svelte';
 
   const uid = app.user.uid;
 
@@ -224,6 +226,7 @@
       return;
     }
     const release = keepAwake();
+    const unlock = lockScroll();
     unlockAudio();
     if (!resumed && !closing && step) play(step.id);
     const tick = setInterval(() => {
@@ -234,6 +237,7 @@
     return () => {
       clearInterval(tick);
       release();
+      unlock();
     };
   });
 
@@ -428,8 +432,6 @@
     const full = won.filter((w) => !w.half);
     ui.toast(full.length ? `Sessione salvata · ${full.length === 1 ? 'una medaglia nuova' : `${full.length} medaglie nuove`}` : 'Sessione salvata nel diario');
   }
-
-  const FEEL = ['Dura', 'Così così', 'Bene', 'Molto bene', 'Ottima'];
 
   /** I minuti fatti (dai timer), oppure quelli previsti se i timer non sono stati usati. */
   const doneMinutes = $derived.by(() => {
@@ -626,22 +628,7 @@
 
             <section class="group">
               <h2 class="t-caps muted">Sensazione</h2>
-              <div class="feel" role="radiogroup" aria-label="Sensazione">
-                {#each FEEL as label, i (label)}
-                  <button
-                    role="radio"
-                    aria-checked={draft.feel === i + 1}
-                    class:on={draft.feel != null && i + 1 <= draft.feel}
-                    style:--h="{30 + i * 14}%"
-                    onclick={() => {
-                      buzz();
-                      draft.feel = draft.feel === i + 1 ? null : i + 1;
-                    }}
-                    aria-label={label}
-                  ><i></i></button>
-                {/each}
-              </div>
-              <p class="small muted feel-label">{draft.feel ? FEEL[draft.feel - 1] : ' '}</p>
+              <FeelPicker value={draft.feel} onchange={(v) => (draft.feel = v)} />
             </section>
 
             <section class="group">
@@ -720,6 +707,7 @@
     height: 36px;
   }
   .steps button {
+    position: relative;
     flex-basis: 0;
     min-width: 6px;
     height: 8px;
@@ -728,6 +716,12 @@
     transition:
       height var(--dur) var(--spring),
       background var(--dur) var(--ease);
+  }
+  /* Il segmento è sottile, ma si tocca su tutta l'altezza della barra. */
+  .steps button::after {
+    content: '';
+    position: absolute;
+    inset: -14px -1.5px;
   }
   .steps button.past {
     background: var(--f);
@@ -738,6 +732,7 @@
     box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--f);
   }
   .end {
+    position: relative;
     display: grid;
     place-items: center;
     flex: none;
@@ -750,10 +745,15 @@
       background var(--dur) var(--ease),
       color var(--dur) var(--ease);
   }
+  .end::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
+  }
   .end.on {
     background: var(--accent);
     box-shadow: none;
-    color: #fff;
+    color: var(--accent-on);
   }
 
   .scroll {
@@ -1108,39 +1108,6 @@
     display: block;
   }
 
-  .feel {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-    height: 64px;
-  }
-  .feel button {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding: 8px;
-    border-radius: 14px;
-    background: var(--sunk);
-    transition: transform var(--dur) var(--spring);
-  }
-  .feel button i {
-    width: 100%;
-    height: var(--h);
-    border-radius: 6px;
-    background: var(--line-strong);
-    transition: background var(--dur) var(--ease);
-  }
-  .feel button.on i {
-    background: var(--accent);
-  }
-  .feel button:active {
-    transform: scale(0.92);
-  }
-  .feel-label {
-    margin-top: -4px;
-    min-height: 19px;
-  }
-
   /* ── In basso ── */
   footer {
     flex: none;
@@ -1174,7 +1141,7 @@
   .go.accent {
     --edge-c: color-mix(in srgb, var(--accent) 62%, #000);
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-on);
   }
   .next-dot {
     flex: none;

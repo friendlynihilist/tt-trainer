@@ -4,8 +4,6 @@
 // Dalla 0.3 un percorso è una sequenza di esercizi della libreria (library.js, SEQUENCES). I suoi
 // cinque livelli restano qui solo per leggere i test salvati con le versioni di prima.
 
-export const TEST_ATTEMPTS = 10;
-
 /** Fasi della sessione da 90 minuti, con il minuto di pausa preso dalla fase dopo. */
 export const PHASES = [
   { id: 'warmup', name: 'Riscaldamento', minutes: 10 },
@@ -44,8 +42,6 @@ export const SCHEMES = {
 export const DEFAULT_SCHEME = 'ap-d';
 
 export const WARMUP_TEXT = 'Dritto e rovescio in diagonale, top su block da tutti e due i lati.';
-export const VALID_ATTEMPT =
-  'Un tentativo vale se la palla entra e dopo il colpo torni in posizione di attesa.';
 
 function track(id, name, short, side, strokes, levels) {
   return {
@@ -267,8 +263,6 @@ export const TRACKS = {
     ]
   ])
 };
-
-export const TRACK_IDS = Object.keys(TRACKS);
 
 /**
  * I blocchi del ciclo. '1'..'3' sono i tre mesi; 'R' è la settimana di recupero

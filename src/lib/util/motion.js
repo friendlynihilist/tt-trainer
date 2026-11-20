@@ -8,9 +8,6 @@ export function reducedMotion() {
   return Boolean(query?.matches);
 }
 
-/** Le durate delle regole grafiche (docs/design.md, 3.6). */
-export const DUR = { fast: 120, base: 220, slow: 380 };
-
 /** Una durata, oppure zero se il movimento è ridotto. */
 export function dur(ms) {
   return reducedMotion() ? 0 : ms;

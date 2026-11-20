@@ -1,12 +1,17 @@
 <script>
   // Foglio: sale dal basso sul telefono, finestra centrata su schermi larghi.
   // Si chiude con lo sfondo, con Esc o trascinandolo giù dalla maniglia.
+  import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import X from '@lucide/svelte/icons/x';
+  import { lockScroll } from '../util/scroll.js';
 
   // sans: titolo in Geist, come nelle schermate rifatte (docs/design.md).
   let { title = '', onclose, children, footer = null, tall = false, sans = true } = $props();
+
+  // Finché il foglio è aperto la pagina sotto non scorre.
+  onMount(() => lockScroll());
 
   let drag = $state(0);
   let dragging = $state(false);

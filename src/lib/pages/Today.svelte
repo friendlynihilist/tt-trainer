@@ -1,13 +1,13 @@
 <script>
-  // «Oggi», dal generale al particolare: in alto il mese («Dritto», il dettaglio in un foglio), poi
-  // l'allenamento di oggi con un solo pulsante grande, la settimana o il mese, le medaglie (quelle
-  // prese oggi e una da prendere). I blocchi della sessione stanno in un foglio: lì si cambia ogni
-  // esercizio. Niente è bloccato e tutto si può cambiare.
+  // «Oggi», dal generale al particolare: in alto la tappa («Dritto», il dettaglio in un foglio), poi
+  // l'allenamento di oggi con un solo pulsante grande, la settimana, le medaglie (quelle prese oggi
+  // e una da prendere). Sotto il pulsante una riga sola apre il foglio dell'allenamento: lì ci sono
+  // i blocchi, si cambia ogni esercizio, si sceglie un altro allenamento o si registra senza timer.
+  // Niente è bloccato e tutto si può cambiare.
   import Coffee from '@lucide/svelte/icons/coffee';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import Shuffle from '@lucide/svelte/icons/shuffle';
-  import ListIcon from '@lucide/svelte/icons/list';
   import PencilLine from '@lucide/svelte/icons/pencil-line';
   import Target from '@lucide/svelte/icons/target';
   import Crosshair from '@lucide/svelte/icons/crosshair';
@@ -128,7 +128,7 @@
 
   let sheet = $state(false);
 
-  const title = $derived(fmtLong(app.today).replace(/^./, (c) => c.toUpperCase()));
+  const dateLabel = $derived(fmtLong(app.today));
 
   const monthInfo = $derived.by(() => {
     if (!plan || !stage || app.phase === 'done') return null;
@@ -181,6 +181,7 @@
     startItem(trainingToday ?? null, { template, overrides });
   }
   function logTraining() {
+    sheet = false;
     if (trainingToday) logItem({ ...trainingToday, template: templateId ?? trainingToday.template });
     else ui.open('event', { draft: { kind: 'training', template: templateId, date: app.today } });
   }
@@ -194,7 +195,7 @@
 </script>
 
 <div class="page enter today">
-  <PageHead eyebrow="Oggi" {title} sans />
+  <PageHead title="Oggi" sub={dateLabel} />
 
   <!-- La tappa: «Questo mese · Dritto» in grande, come un promemoria. Il dettaglio si apre toccandolo. -->
   {#if monthInfo}
@@ -213,10 +214,12 @@
         </span>
         {#if monthInfo.tracks}<span class="m-tracks">{monthInfo.tracks}</span>{/if}
       </button>
-      <span class="m-level"><LevelBadge level={app.player.level} small onclick={() => ui.open('level')} /></span>
     </section>
-  {:else}
-    <div class="lvrow"><LevelBadge level={app.player.level} onclick={() => ui.open('level')} /></div>
+  {:else if !plan}
+    <section class="note-card">
+      <p class="grow muted">Non hai ancora un piano: scegli su cosa lavorare e in quali giorni.</p>
+      <button class="btn primary small" onclick={() => ui.open('plan', { fresh: true })}>Crea il piano</button>
+    </section>
   {/if}
 
   {#if offer}
@@ -249,9 +252,7 @@
     <section class="hero">
       <span class="t-caps label">Sessione a metà</span>
       <BigButton verb="Riprendi" sub="{draft.title ?? `Sessione ${draft.slot}`} · {fmtRelative(draft.date)}" icon={RotateCcw} onclick={() => (ui.live = { resume: true })} />
-      <div class="tools">
-        <button class="tool" onclick={discard}><Trash size={20} /><span>Scarta</span></button>
-      </div>
+      <button class="quiet" onclick={discard}><Trash size={18} /> Scarta questa sessione</button>
     </section>
   {:else if testToday && !trainingToday}
     <section class="hero">
@@ -267,24 +268,23 @@
           {/each}
         </div>
       {/if}
-      <div class="tools">
-        <button class="tool" onclick={() => logItem(testToday)}><PencilLine size={20} /><span>Registra</span></button>
-      </div>
+      <button class="quiet" onclick={() => logItem(testToday)}><PencilLine size={18} /> L’ho già fatto: registra i risultati</button>
     </section>
   {:else if session}
     <section class="hero">
       <span class="t-caps label">{inCalendar ? 'In calendario oggi' : trainingToday ? 'Cambiato per oggi' : 'Fuori calendario'}</span>
       <BigButton verb="Inizia" sub={template.name} minutes={session.minutes} onclick={startTraining} />
-      <button class="strip" onclick={() => (sheet = true)} aria-label="Blocchi della sessione">
-        {#each blocks as b (b.key)}
-          <span class="seg" data-fam={b.fam} style:flex-grow={b.minutes}></span>
-        {/each}
+      <button class="inside" onclick={() => (sheet = true)}>
+        <span class="strip" aria-hidden="true">
+          {#each blocks as b (b.key)}
+            <span class="seg" data-fam={b.fam} style:flex-grow={b.minutes}></span>
+          {/each}
+        </span>
+        <span class="inside-txt">
+          <span class="inside-n">{blocks.length} {blocks.length === 1 ? 'blocco' : 'blocchi'}{#if changed}<b> · con i tuoi cambi</b>{/if}</span>
+          <span class="inside-more">Vedi e cambia <ChevronRight size={16} /></span>
+        </span>
       </button>
-      <div class="tools">
-        <button class="tool" onclick={() => (sheet = true)}><ListIcon size={20} /><span>Blocchi</span>{#if changed}<i class="dot-on"></i>{/if}</button>
-        <button class="tool" onclick={moreTemplates}><Shuffle size={20} /><span>Cambia</span></button>
-        <button class="tool" onclick={logTraining}><PencilLine size={20} /><span>Registra</span></button>
-      </div>
     </section>
 
     {#if testToday}
@@ -378,16 +378,21 @@
       <p class="muted small">In sessione tocca «Prova l’obiettivo»: arriva la prima medaglia.</p>
     {/if}
   </section>
-
-  {#if !plan}
-    <button class="btn ghost wide" onclick={() => ui.open('plan', { fresh: true })}>Crea un piano</button>
-  {/if}
 </div>
 
 <!-- I blocchi della sessione: fuori dalla pagina, così il foglio sta sopra a tutto. -->
 {#if sheet && session}
   <Sheet title={template.name} onclose={() => (sheet = false)} tall sans>
     <div class="blocks">
+      <!-- In cima: scegliere un altro allenamento. Sotto, i blocchi di questo. -->
+      <div class="others">
+        <button class="other" onclick={moreTemplates}>
+          <Shuffle size={20} />
+          <span class="grow"><strong>Scegli un altro allenamento</strong></span>
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
       {#each blocks as b, i (b.key)}
         {@const exSteps = b.steps.filter((s) => s.ex)}
         {#if i > 0}
@@ -416,6 +421,15 @@
           </ul>
         {/if}
       {/each}
+
+      <!-- In fondo: registrare l'allenamento a cose fatte, senza il timer. -->
+      <div class="others last">
+        <button class="other" onclick={logTraining}>
+          <PencilLine size={20} />
+          <span class="grow"><strong>L’ho già fatto</strong><span class="small muted block">Registra com’è andata, senza il timer</span></span>
+          <ChevronRight size={18} />
+        </button>
+      </div>
     </div>
     {#snippet footer()}
       <div class="row g-8">
@@ -433,10 +447,6 @@
   .today :global(.head) {
     margin-bottom: 4px;
   }
-  .lvrow {
-    margin-top: 12px;
-  }
-
   /* ── La tappa ── */
   .mantra {
     position: relative;
@@ -513,12 +523,6 @@
     font-size: 13px;
     color: var(--ink-3);
   }
-  .m-level {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-  }
-
   section,
   .focus,
   .test-pill {
@@ -537,56 +541,73 @@
   .label {
     color: var(--ink-3);
   }
-  .strip {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    width: 100%;
-    height: 32px;
-    margin: -4px 0;
-  }
-  .seg {
-    display: grid;
-    place-items: center;
-    flex-basis: 0;
-    min-width: 10px;
-    height: 14px;
-    border-radius: 7px;
-    background: var(--f);
-    color: var(--f-on);
-  }
-  .tools {
-    display: flex;
-    gap: 8px;
-    margin-top: 2px;
-  }
-  .tool {
-    position: relative;
-    flex: 1;
+  /* La riga sotto il pulsante: la scaletta a colori e, sotto, quanti blocchi. Apre il foglio. */
+  .inside {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 10px 4px 8px;
-    border-radius: 16px;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 12px 6px 16px;
+    border-radius: var(--r-card);
     background: var(--card);
     border: 1px solid var(--line);
     color: var(--ink);
-    font-size: 12.5px;
-    font-weight: 650;
+    text-align: left;
     transition: transform var(--dur-fast) var(--ease);
   }
-  .tool:active {
-    transform: scale(0.95);
+  .inside:active {
+    transform: scale(0.985);
   }
-  .dot-on {
-    position: absolute;
-    top: 8px;
-    right: calc(50% - 18px);
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent);
+  .strip {
+    display: flex;
+    gap: 4px;
+    padding-right: 4px;
+  }
+  .seg {
+    flex-basis: 0;
+    min-width: 10px;
+    height: 12px;
+    border-radius: 6px;
+    background: var(--f);
+  }
+  .inside-txt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 36px;
+  }
+  .inside-n {
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .inside-n b {
+    font-weight: 650;
+    color: var(--accent-ink);
+  }
+  .inside-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 14px;
+    font-weight: 650;
+  }
+  .inside-more :global(svg) {
+    color: var(--ink-3);
+  }
+  /* Un'azione secondaria, scritta per esteso. */
+  .quiet {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 8px;
+    min-height: 44px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+  .quiet :global(svg) {
+    color: var(--ink-3);
   }
   .rings {
     display: flex;
@@ -797,7 +818,32 @@
     gap: 4px;
   }
   .round.sm {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
+  }
+  .others {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 6px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .other {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 56px;
+    padding: 8px 14px 8px 16px;
+    text-align: left;
+    color: var(--ink);
+  }
+  .others.last {
+    margin: 14px 0 0;
+  }
+  .other :global(svg) {
+    flex: none;
+    color: var(--ink-3);
   }
 </style>

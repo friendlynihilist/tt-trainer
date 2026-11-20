@@ -23,7 +23,7 @@
   import { currentInSequence } from '../engine/player.js';
   import { composeSession } from '../engine/compose.js';
   import { sessionBlocks, blockFamily } from '../ui/design.js';
-  import { reducedMotion } from '../util/motion.js';
+  import { dur } from '../util/motion.js';
   import PageHead from '../ui/PageHead.svelte';
   import Segmented from '../ui/Segmented.svelte';
   import Collapse from '../ui/Collapse.svelte';
@@ -34,7 +34,6 @@
   const TABS = ['allenamenti', 'esercizi', 'colpi'];
   const asked = ui.route.params[0] === 'percorsi' ? 'allenamenti' : ui.route.params[0];
   let tab = $state(TABS.includes(asked) ? asked : 'allenamenti');
-  const motion = (n) => (reducedMotion() ? 0 : n);
 
   // ── Allenamenti ──
   const templates = $derived(Object.values(app.catalog.templates));
@@ -99,6 +98,15 @@
       .map((f) => ({ ...f, strokes: app.strokes.filter((s) => s.family === f.id && (side === 'all' || s.side === side || !s.side)) }))
       .filter((f) => f.strokes.length);
   });
+  function removeError(e) {
+    ui.open('confirm', {
+      title: `Eliminare «${e.name}»?`,
+      text: 'Nelle voci del diario in cui l’hai già usato non comparirà più.',
+      action: 'Elimina',
+      danger: true,
+      onconfirm: () => app.removeCustom('errors', e.id)
+    });
+  }
   function addStroke() {
     ui.open('pick', {
       title: 'Nuovo colpo',
@@ -117,7 +125,7 @@
 {/snippet}
 
 <div class="page enter library">
-  <PageHead eyebrow="Libreria" title={tab === 'allenamenti' ? 'Allenamenti' : tab === 'esercizi' ? 'Esercizi' : 'Colpi'} sans />
+  <PageHead title="Libreria" />
 
   <div class="tabs">
     <Segmented
@@ -132,7 +140,7 @@
   </div>
 
   {#key tab}
-    <div in:fly={{ y: 10, duration: motion(280), easing: cubicOut }}>
+    <div in:fly={{ y: 10, duration: dur(280), easing: cubicOut }}>
       {#if tab === 'allenamenti'}
         <!-- I modelli: la scaletta in segmenti colorati, la durata a destra. -->
         <div class="section">
@@ -320,7 +328,7 @@
                     <div class="chips">
                       {#each list as e (e.id)}
                         {#if e.custom}
-                          <button class="tag line" onclick={() => app.removeCustom('errors', e.id)} title="Tocca per eliminare">{e.name} ×</button>
+                          <button class="tag line" onclick={() => removeError(e)} aria-label="Elimina l’errore {e.name}">{e.name} ×</button>
                         {:else}
                           <span class="tag line">{e.name}</span>
                         {/if}

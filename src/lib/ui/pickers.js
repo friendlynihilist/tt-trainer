@@ -2,7 +2,7 @@
 
 import { app } from '../store/app.svelte.js';
 import { ui } from '../store/ui.svelte.js';
-import { FAMILIES, ERROR_GROUPS, BALLS, POINT_PHASES } from '../data/taxonomy.js';
+import { FAMILIES, ERROR_GROUPS } from '../data/taxonomy.js';
 import { OTHER } from '../data/catalog.js';
 import { LEVEL_IDS, PLAYER_LEVEL, TIERS, TIER, MODES } from '../data/library.js';
 
@@ -57,9 +57,9 @@ export function variantsOf(exId) {
 /** I filtri della libreria: famiglia, livello, formato. */
 export function exerciseFilters() {
   return [
-    { key: 'family', label: 'Famiglia', options: FAMILIES.map((f) => ({ id: f.id, label: f.name })) },
-    { key: 'level', label: 'Livello', options: LEVEL_IDS.map((l) => ({ id: l, label: PLAYER_LEVEL[l].name })) },
-    { key: 'modes', label: 'Formato', options: MODES.map((m) => ({ id: m.id, label: m.name })) }
+    { key: 'family', label: 'Famiglia', all: 'Tutte le famiglie', options: FAMILIES.map((f) => ({ id: f.id, label: f.name })) },
+    { key: 'level', label: 'Livello', all: 'Tutti i livelli', options: LEVEL_IDS.map((l) => ({ id: l, label: PLAYER_LEVEL[l].name })) },
+    { key: 'modes', label: 'Formato', all: 'Ogni formato', options: MODES.map((m) => ({ id: m.id, label: m.name })) }
   ];
 }
 
@@ -104,26 +104,6 @@ export function pickExercise({ title = 'Esercizio', value = null, onpick, family
 /** Uno schema della partitella, fra gli esercizi della famiglia schemi. */
 export function pickScheme({ value = null, onpick }) {
   pickExercise({ title: 'Schema della partitella', value, onpick, only: (e) => e.family === 'schemi' });
-}
-
-export function pickBall({ value = null, onpick }) {
-  ui.open('pick', {
-    title: 'Palla in arrivo',
-    value,
-    clearable: true,
-    groups: [{ options: BALLS.map((b) => ({ id: b.id, label: b.name })) }],
-    onpick
-  });
-}
-
-export function pickPhase({ value = null, onpick }) {
-  ui.open('pick', {
-    title: 'Fase del punto',
-    value,
-    clearable: true,
-    groups: [{ options: POINT_PHASES.map((p) => ({ id: p.id, label: p.name, hint: p.hint })) }],
-    onpick
-  });
 }
 
 /** Un percorso fra tutti quelli disponibili, raggruppati: del piano, di base, tuoi. */

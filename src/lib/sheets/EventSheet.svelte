@@ -25,6 +25,7 @@
   import Counter from '../ui/Counter.svelte';
   import FocusEditor from '../ui/FocusEditor.svelte';
   import PartnerField from '../ui/PartnerField.svelte';
+  import FeelPicker from '../ui/FeelPicker.svelte';
 
   let { id = null, draft = null } = $props();
 
@@ -202,7 +203,6 @@
     if (!minutesTouched) minutes = defaultMinutes('training', t);
   }
 
-  const FEEL = ['Dura', 'Così così', 'Bene', 'Molto bene', 'Ottima'];
   const title = $derived(isLevel ? 'Livello impostato' : kind === 'training' ? app.catalog.template(template).name : (KIND[kind]?.name ?? 'Attività'));
   // I modelli, più l'allenamento della voce se è un pacchetto.
   const templates = $derived.by(() => {
@@ -345,21 +345,13 @@
       </section>
 
       <section class="stack g-8">
-        <h3 class="heading">Diario</h3>
+        <h3 class="heading">Note</h3>
         <textarea class="field" placeholder="Cosa ha funzionato, cosa no" bind:value={note}></textarea>
-        <div class="feel" role="radiogroup" aria-label="Sensazione">
-          {#each FEEL as label, i (label)}
-            <button
-              role="radio"
-              aria-checked={feel === i + 1}
-              aria-label={label}
-              class:on={feel === i + 1}
-              class:under={feel != null && i + 1 < feel}
-              onclick={() => (feel = feel === i + 1 ? null : i + 1)}
-            ></button>
-          {/each}
-        </div>
-        <p class="small muted">{feel ? FEEL[feel - 1] : 'Sensazione'}</p>
+      </section>
+
+      <section class="stack g-8">
+        <h3 class="heading">Sensazione</h3>
+        <FeelPicker value={feel} onchange={(v) => (feel = v)} />
       </section>
     {/if}
 
@@ -394,7 +386,7 @@
   }
   .chip.tpl[aria-pressed='true'] {
     background: var(--c);
-    color: #fff;
+    color: var(--paper);
     box-shadow: inset 0 0 0 1px var(--c);
   }
   .trow {
@@ -434,28 +426,5 @@
   }
   .del {
     align-self: center;
-  }
-  .feel {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-    margin-top: 4px;
-  }
-  .feel button {
-    height: 32px;
-    border-radius: 9px;
-    background: var(--sunk);
-    transition:
-      background 0.25s var(--ease),
-      transform 0.35s var(--spring);
-  }
-  .feel button.under {
-    background: color-mix(in srgb, var(--ink) 35%, var(--sunk));
-  }
-  .feel button.on {
-    background: var(--ink);
-  }
-  .feel button:active {
-    transform: scale(0.92);
   }
 </style>

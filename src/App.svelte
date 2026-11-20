@@ -73,10 +73,6 @@
   });
 
   $effect(() => {
-    document.body.classList.toggle('no-scroll', ui.sheets.length > 0 || ui.live != null);
-  });
-
-  $effect(() => {
     if (app.error) {
       ui.toast(app.error, { tone: 'error' });
       app.clearError();

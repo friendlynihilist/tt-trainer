@@ -187,7 +187,7 @@
   .now .mark {
     box-shadow: none;
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-on);
   }
   .when {
     flex: none;

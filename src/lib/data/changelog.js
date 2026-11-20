@@ -10,6 +10,18 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.6.2',
+    date: '2026-11-20',
+    title: 'Pagine più semplici',
+    items: [
+      { icon: 'calendar', text: 'In Oggi, sotto «Inizia», c’è una riga sola: toccala per vedere i blocchi, cambiare un esercizio o scegliere un altro allenamento.' },
+      { icon: 'trending', text: 'In Progressi trovi tre anelli per il livello dopo: argento, oro e costanza. Sotto c’è scritto cosa ti manca.' },
+      { icon: 'gauge', text: 'La sensazione ha un nome sotto ogni barra, da «Dura» a «Ottima».' },
+      { icon: 'palette', text: 'I testi grigi si leggono meglio. Guida e Impostazioni hanno la freccia per tornare indietro.' }
+    ],
+    note: 'La Guida ora si apre da Impostazioni. I compagni del gruppo li trovi in Impostazioni.'
+  },
+  {
     version: '0.6.1',
     date: '2026-11-20',
     title: 'Correzioni',

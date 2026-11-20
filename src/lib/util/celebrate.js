@@ -49,8 +49,3 @@ export function celebrateFinish(families = []) {
   confetti({ particleCount: 70, angle: 60, spread: 60, origin: { x: 0, y: 0.75 }, colors: palette });
   confetti({ particleCount: 70, angle: 120, spread: 60, origin: { x: 1, y: 0.75 }, colors: palette });
 }
-
-/** Un tocco leggero. */
-export function tap() {
-  vibrate(8);
-}

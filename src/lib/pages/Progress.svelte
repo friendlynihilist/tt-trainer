@@ -1,10 +1,10 @@
 <script>
-  // Progressi, dal generale al particolare. In alto il livello: il badge, poi la costanza (la fiamma
-  // nell'anello, le settimane di fila) con accanto ore e attività, sotto gli anelli di argento e oro
-  // negli esercizi chiave; gli esercizi chiave e le regole si aprono a richiesta. Poi il medagliere: le medaglie per gradino, il filtro per famiglia
-  // (che è anche il quadro per famiglia) e la griglia degli esercizi misurati. Poi il ritmo delle
-  // settimane. Da correggere, il gruppo e i test di prima sono chiusi di partenza.
-  // Le medaglie sono solo un indicatore: non bloccano niente.
+  // Progressi, dal generale al particolare. In alto tre numeri: le settimane di fila (con la fiamma),
+  // le ore e le attività. Poi il livello: il badge e le tre condizioni per il livello dopo, ognuna con
+  // il suo anello (argento e oro negli esercizi chiave, la costanza) e una frase su cosa manca; gli
+  // esercizi chiave si aprono a richiesta. Poi il medagliere: le medaglie per gradino, il filtro per
+  // famiglia e la griglia degli esercizi misurati. Poi il ritmo delle settimane. Da correggere e i
+  // test di prima sono chiusi di partenza. Le medaglie sono solo un indicatore: non bloccano niente.
   import { fly } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { cubicOut } from 'svelte/easing';
@@ -17,10 +17,9 @@
   import { levelProgress } from '../engine/player.js';
   import { medalCount, nextGoal, shortValue } from '../engine/medals.js';
   import { fmtDay } from '../util/dates.js';
-  import { reducedMotion } from '../util/motion.js';
+  import { dur, reducedMotion } from '../util/motion.js';
   import PageHead from '../ui/PageHead.svelte';
   import TestBars from '../ui/TestBars.svelte';
-  import Avatar from '../ui/Avatar.svelte';
   import MedalRing from '../ui/MedalRing.svelte';
   import MedalBadge from '../ui/MedalBadge.svelte';
   import LevelBadge from '../ui/LevelBadge.svelte';
@@ -46,11 +45,23 @@
     if (c.sessions < c.need) return { have: c.sessions, need: c.need, unit: 'sedute', value: (c.sessions / c.need) * 0.5 };
     return { have: Math.min(c.span, c.needSpan), need: c.needSpan, unit: 'giorni', value: 0.5 + Math.min(1, c.span / c.needSpan) * 0.5 };
   });
-  // Argento e oro negli esercizi chiave; la costanza sta in alto, con la fiamma.
+  // Le tre condizioni per il livello dopo, una accanto all'altra e con lo stesso disegno.
   const rings = $derived([
     { id: 'A', name: 'Argento', sub: 'esercizi chiave', have: progress.coverage.have, need: progress.coverage.need, value: progress.coverage.have / Math.max(1, progress.coverage.need), ok: progress.coverage.ok, color: 'var(--medal-A)' },
-    { id: 'O', name: 'Oro', sub: 'esercizi chiave', have: progress.solidity.have, need: progress.solidity.need, value: progress.solidity.have / Math.max(1, progress.solidity.need), ok: progress.solidity.ok, color: 'var(--medal-O)' }
+    { id: 'O', name: 'Oro', sub: 'esercizi chiave', have: progress.solidity.have, need: progress.solidity.need, value: progress.solidity.have / Math.max(1, progress.solidity.need), ok: progress.solidity.ok, color: 'var(--medal-O)' },
+    { id: 'C', name: 'Costanza', sub: progress.consistency.ok ? 'sedute regolari' : steady.unit, have: steady.have, need: steady.need, value: steady.value, ok: progress.consistency.ok, color: 'var(--accent)' }
   ]);
+  const plural = (n, one, many) => (n === 1 ? one : many.replace('#', n));
+  /** Che cosa manca per il livello dopo, in una frase: la prima condizione non ancora raggiunta. */
+  const lacking = $derived.by(() => {
+    const { coverage: c, solidity: o, consistency: k } = progress;
+    if (missing.length) return `Manca un argento in ${missing.length > 1 ? `${missing.slice(0, -1).join(', ')} e ${missing.at(-1)}` : missing[0]}.`;
+    if (c.have < c.need) return `Ti ${plural(c.need - c.have, 'manca un argento', 'mancano # argenti')} negli esercizi chiave.`;
+    if (o.have < o.need) return `Ti ${plural(o.need - o.have, 'manca un oro', 'mancano # ori')} negli esercizi chiave.`;
+    if (k.sessions < k.need) return `Ti ${plural(k.need - k.sessions, 'manca una seduta', 'mancano # sedute')} con un risultato da argento.`;
+    if (k.span < k.needSpan) return `Fra la prima e l’ultima seduta da argento devono passare ${k.needSpan} giorni: ne sono passati ${k.span}.`;
+    return '';
+  });
 
   // ── Le medaglie ──
   const count = $derived(medalCount(app.medals));
@@ -81,42 +92,35 @@
     return g ? `${TIER[g.tier].name} · ${shortValue(ex, g.goal)}` : 'Tutte prese';
   }
 
-  const motion = (n) => (reducedMotion() ? 0 : n);
 </script>
 
 <div class="page enter progress">
-  <PageHead eyebrow="Progressi" title="Come stai andando" sans />
+  <PageHead title="Progressi" />
 
-  <!-- Il livello: prima la costanza, accanto ore e attività; sotto argento e oro. -->
+  <!-- Tre numeri: da quante settimane ti alleni di fila, quante ore, quante attività. -->
+  <section class="nums">
+    <div class="num streak">
+      <MedalBadge tier="F" on={streak > 0} size={30} label={false} shine />
+      <b class="t-num">{streak}</b>
+      <span>{streak === 1 ? 'settimana' : 'settimane'} di fila</span>
+    </div>
+    <div class="num"><b class="t-num">{Math.round(sum.minutes / 60)}</b><span>{Math.round(sum.minutes / 60) === 1 ? 'ora' : 'ore'}</span></div>
+    <div class="num"><b class="t-num">{sum.sessions}</b><span>attività</span></div>
+  </section>
+
+  <!-- Il livello e le tre condizioni per il livello dopo. -->
   <section class="lv card" data-level={app.player.level}>
     <div class="lv-top">
+      <span class="t-caps lv-label">Il tuo livello</span>
       <LevelBadge level={app.player.level} onclick={() => ui.open('level')} />
     </div>
 
-    <div class="head-row">
-      <div class="steady">
-        <ProgressRing value={progress.consistency.ok ? 1 : steady.value} color="var(--accent)" size={80} stroke={7} label="Costanza: {streak} settimane di fila">
-          <MedalBadge tier="F" on={streak > 0} size={40} label={false} shine />
-        </ProgressRing>
-        <div class="steady-txt">
-          <span class="t-caps cap-label">Costanza</span>
-          <span class="streak"><b class="t-num">{streak}</b><span>{streak === 1 ? 'settimana' : 'settimane'} di fila</span></span>
-          <span class="cond" class:ok={progress.consistency.ok}>
-            {#if progress.consistency.ok}<Check size={14} strokeWidth={3} /> {progress.consistency.need} sedute in {progress.consistency.needSpan} giorni{:else}Per il livello: {steady.have} {steady.unit} su {steady.need}{/if}
-          </span>
-        </div>
-      </div>
-      <div class="side">
-        <div><b class="t-num">{Math.round(sum.minutes / 60)}</b><span>ore</span></div>
-        <div><b class="t-num">{sum.sessions}</b><span>attività</span></div>
-      </div>
-    </div>
-
     {#if progress.next}
+      <p class="lv-goal">Per passare al livello <b>{PLAYER_LEVEL[progress.next].name.toLowerCase()}</b></p>
       <div class="rings">
         {#each rings as r, i (r.id)}
-          <div class="rg" in:fly={{ y: 10, duration: motion(320), delay: motion(i * 80), easing: cubicOut }}>
-            <ProgressRing value={r.value} color={r.color} size={76} label="{r.name}: {r.have} su {r.need} {r.sub}">
+          <div class="rg" in:fly={{ y: 10, duration: dur(320), delay: dur(i * 80), easing: cubicOut }}>
+            <ProgressRing value={r.ok ? 1 : r.value} color={r.color} size={72} label="{r.name}: {r.ok ? 'fatto' : `${r.have} su ${r.need} ${r.sub}`}">
               {#if r.ok}
                 <span class="done" style:color={r.color}><Check size={26} strokeWidth={3} /></span>
               {:else}
@@ -133,10 +137,8 @@
       <p class="lv-note">
         {#if progress.ready}
           Ci sei: l’app ti propone il livello {PLAYER_LEVEL[progress.next].name.toLowerCase()}.
-        {:else if missing.length}
-          Manca un argento in {missing.length > 1 ? `${missing.slice(0, -1).join(', ')} e ${missing.at(-1)}` : missing[0]}.
         {:else}
-          Quando gli anelli sono pieni, l’app ti propone il livello dopo.
+          {lacking || 'Quando i tre anelli sono pieni, l’app ti propone il livello dopo.'}
         {/if}
       </p>
       <Collapse title="Esercizi chiave" count={progress.slots.length} open={false} key="progressi-chiave">
@@ -183,7 +185,7 @@
       {#if measured.length}
         <div class="grid">
           {#each measured as x (x.id)}
-            <button class="ex" animate:flip={{ duration: motion(260) }} in:fly={{ y: 8, duration: motion(220) }} onclick={() => ui.open('exercise', { id: x.id })}>
+            <button class="ex" animate:flip={{ duration: dur(260) }} in:fly={{ y: 8, duration: dur(220) }} onclick={() => ui.open('exercise', { id: x.id })}>
               <MedalRing exercise={x.ex} medals={x.m} size={60} />
               <span class="ex-name">{x.ex.name}</span>
               {#if x.m.stale}
@@ -238,26 +240,6 @@
     </Collapse>
   </div>
 
-  {#if app.cloud}
-    <div class="section">
-      <Collapse title="Il gruppo" count={app.mates.length || null} open={false} key="progressi-gruppo">
-        {#if app.mates.length}
-          <div class="card flush list">
-            {#each app.mates as m (m.id)}
-              <div class="mate row g-12">
-                <Avatar name={m.name} photo={m.photo} size={32} />
-                <strong class="grow">{m.name}</strong>
-              </div>
-            {/each}
-          </div>
-        {:else}
-          <p class="muted small">Quando un compagno entra nel gruppo, lo vedi qui.</p>
-        {/if}
-        <p class="small faint after">Il gruppo vede solo i nomi. Medaglie, livello e diario restano tuoi.</p>
-      </Collapse>
-    </div>
-  {/if}
-
   {#if old.length}
     <div class="section">
       <Collapse title="I test della versione 0.2" open={false} key="progressi-v02">
@@ -276,13 +258,52 @@
 </div>
 
 <style>
-  /* ── Il livello ── */
-  .lv {
+  /* ── I tre numeri ── */
+  .nums {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr;
+    gap: 8px;
     margin-top: 16px;
+  }
+  .num {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 16px 18px 10px;
+    justify-content: flex-end;
+    gap: 2px;
+    min-height: 92px;
+    padding: 12px 14px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    border: 1px solid var(--line);
+  }
+  .num b {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .num span {
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .num.streak {
+    position: relative;
+    background: color-mix(in srgb, var(--accent) 9%, var(--card));
+    border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+  }
+  .num.streak :global(.badge) {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+  }
+
+  /* ── Il livello ── */
+  .lv {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 12px 18px 10px;
     background: color-mix(in srgb, var(--lv) 7%, var(--card));
     border-color: color-mix(in srgb, var(--lv) 30%, var(--line));
   }
@@ -291,82 +312,26 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    min-height: 44px;
   }
-  .head-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .steady {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .steady-txt {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .cap-label {
-    color: var(--accent-ink);
-  }
-  .streak {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    font-size: 14px;
-    font-weight: 600;
+  .lv-label {
     color: var(--ink-2);
-    white-space: nowrap;
   }
-  .streak b {
-    font-size: 30px;
-    font-weight: 800;
-    line-height: 1.1;
-    color: var(--ink);
+  .lv-goal {
+    margin: 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 15px;
+    color: var(--ink-2);
   }
-  .cond {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    color: var(--ink-3);
-    white-space: nowrap;
-  }
-  .cond.ok {
-    color: var(--up, var(--ink-2));
-  }
-  .side {
-    flex: none;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding-left: 12px;
-    border-left: 1px solid var(--line);
-  }
-  .side div {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-  }
-  .side b {
-    font-size: 18px;
+  .lv-goal b {
     font-weight: 700;
-    line-height: 1.1;
-  }
-  .side span {
-    font-size: 12px;
-    color: var(--ink-3);
+    color: var(--ink);
   }
   .rings {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    padding-top: 14px;
-    border-top: 1px solid var(--line);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
   }
   .rg {
     display: flex;
@@ -634,13 +599,7 @@
     }
   }
 
-  /* ── Gruppo e test di prima ── */
-  .mate {
-    padding: 12px 18px;
-  }
-  .after {
-    margin-top: 10px;
-  }
+  /* ── I test di prima ── */
   .tracks {
     display: grid;
     grid-template-columns: 1fr 1fr;

@@ -38,7 +38,7 @@
   }
   .prog i.now {
     background: var(--accent);
-    color: #fff;
+    color: var(--accent-on);
     font-weight: 800;
     box-shadow:
       0 0 0 2px var(--paper),

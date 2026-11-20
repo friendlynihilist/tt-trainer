@@ -8,11 +8,6 @@ import { testProposal } from '../engine/player.js';
 import { weekFor, stageInfo, stagePeriod } from '../engine/plan.js';
 import { fmtLong } from '../util/dates.js';
 
-/** Cosa c'è ancora da fare in un giorno. */
-export function todoOn(date) {
-  return agenda(app.plan, app.events, app.planned, date, date, app.catalog).get(date)?.todo ?? [];
-}
-
 export function weekOf(date) {
   return weekFor(app.plan, date, app.catalog);
 }

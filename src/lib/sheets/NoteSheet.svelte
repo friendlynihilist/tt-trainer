@@ -5,12 +5,13 @@
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import Trash from '@lucide/svelte/icons/trash';
   import { app } from '../store/app.svelte.js';
-  import { ui, buzz } from '../store/ui.svelte.js';
+  import { ui } from '../store/ui.svelte.js';
   import { isValidNote } from '../engine/notes.js';
   import { exerciseLabel } from '../data/catalog.js';
   import { fmtLong } from '../util/dates.js';
   import { pickStroke, pickExercise } from '../ui/pickers.js';
   import Sheet from '../ui/Sheet.svelte';
+  import FeelPicker from '../ui/FeelPicker.svelte';
 
   let { id = null, draft = null, onsaved = null, quick = false } = $props();
 
@@ -24,7 +25,6 @@
   let ex = $state(base.ex ?? null);
 
   const valid = $derived(isValidNote({ stroke, date, text, feel }));
-  const FEEL = ['Dura', 'Così così', 'Bene', 'Molto bene', 'Ottima'];
 
   function save() {
     const n = app.saveNote({ ...(original ?? {}), id: original?.id, stroke, date, text, feel, ex, eventId: base.eventId ?? null });
@@ -60,22 +60,8 @@
     <textarea class="field big" placeholder="Come lo senti? Cosa vuoi migliorare?" bind:value={text}></textarea>
 
     <div class="stack g-8">
-      <div class="feel" role="radiogroup" aria-label="Sensazione">
-        {#each FEEL as label, i (label)}
-          <button
-            role="radio"
-            aria-checked={feel === i + 1}
-            aria-label={label}
-            class:on={feel === i + 1}
-            class:under={feel != null && i + 1 < feel}
-            onclick={() => {
-              buzz();
-              feel = feel === i + 1 ? null : i + 1;
-            }}
-          ></button>
-        {/each}
-      </div>
-      <p class="small muted">{feel ? FEEL[feel - 1] : 'Sensazione'}</p>
+      <span class="heading">Come lo senti</span>
+      <FeelPicker value={feel} onchange={(v) => (feel = v)} />
     </div>
 
     {#if !quick}
@@ -126,28 +112,6 @@
   }
   .when::first-letter {
     text-transform: uppercase;
-  }
-  .feel {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-  }
-  .feel button {
-    height: 40px;
-    border-radius: 10px;
-    background: var(--sunk);
-    transition:
-      background 0.25s var(--ease),
-      transform 0.35s var(--spring);
-  }
-  .feel button.under {
-    background: color-mix(in srgb, var(--ink) 35%, var(--sunk));
-  }
-  .feel button.on {
-    background: var(--ink);
-  }
-  .feel button:active {
-    transform: scale(0.92);
   }
   .del {
     align-self: center;
