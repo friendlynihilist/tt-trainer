@@ -30,13 +30,24 @@
   import FamilyIcon from '../ui/FamilyIcon.svelte';
   import MedalRing from '../ui/MedalRing.svelte';
   import LevelBadge from '../ui/LevelBadge.svelte';
+  import Pills from '../ui/Pills.svelte';
+  import { SKILLS, bricksOf, brickExercises, proposals, totalMinutes, BRICK } from '../data/bricks.js';
+  import { agenda } from '../engine/events.js';
+  import { buildNew } from '../store/actions.js';
 
   const TABS = ['allenamenti', 'esercizi', 'colpi'];
   const asked = ui.route.params[0] === 'percorsi' ? 'allenamenti' : ui.route.params[0];
   let tab = $state(TABS.includes(asked) ? asked : 'allenamenti');
 
   // ── Allenamenti ──
-  const templates = $derived(Object.values(app.catalog.templates));
+  // In alto i tuoi, con i loro mattoni; poi i colpi (ognuno apre la sua mappa) e tre idee attorno ai
+  // colpi che hai scelto. Modelli di base, pacchetti, mesi e percorsi stanno sotto, chiusi.
+  const mine = $derived((app.meta?.custom?.templates ?? []).filter((t) => !t.archived).map((t) => app.catalog.template(t.id)).reverse());
+  const todayTemplate = $derived((agenda(app.plan, app.events, app.planned, app.today, app.today, app.catalog).get(app.today)?.todo ?? []).find((x) => x.kind === 'training')?.template ?? null);
+  const pillsOf = (t) => bricksOf(t, app.catalog, composeSession({ week: app.week, template: t, catalog: app.catalog, medals: app.medals }));
+  const ideas = $derived(proposals(app.meta?.focus ?? [], app.player.level, app.catalog, app.medals));
+  const ideaPills = (w) => w.bricks.map((b) => ({ name: BRICK[b.type].name, fam: BRICK[b.type].fam, minutes: b.minutes }));
+  const templates = $derived(Object.values(app.catalog.templates).filter((t) => !t.custom));
   const blocks = $derived(Object.values(app.catalog.blocks));
   const tracks = $derived(app.catalog.activeTrackIds);
   const archived = $derived(app.catalog.trackIds.filter((id) => app.catalog.track(id).archived));
@@ -149,9 +160,58 @@
   {#key tab}
     <div in:fly={{ y: 10, duration: dur(280), easing: cubicOut }}>
       {#if tab === 'allenamenti'}
-        <!-- I modelli: la scaletta in segmenti colorati, la durata a destra. -->
+        <!-- I tuoi allenamenti: il nome, la durata e i mattoni. Toccandone uno si apre. -->
         <div class="section">
-          <Collapse title="Modelli" count={templates.length} key="lib-modelli">
+          <h2 class="t-name sec">I tuoi allenamenti</h2>
+          {#if mine.length}
+            <div class="card flush list">
+              {#each mine as t (t.id)}
+                <button class="wk" onclick={() => ui.open('workout', { id: t.id })}>
+                  <span class="wk-top">
+                    <strong class="grow">{t.name}</strong>
+                    {#if t.id === todayTemplate}<span class="tag accent">oggi</span>{/if}
+                    <span class="muted">{templateMinutes(t)} min</span>
+                    <ChevronRight size={18} />
+                  </span>
+                  <Pills bricks={pillsOf(t)} />
+                </button>
+              {/each}
+            </div>
+          {:else}
+            <p class="muted">Ancora nessuno: costruiscine uno con il tasto +.</p>
+          {/if}
+        </div>
+
+        <!-- I colpi: ognuno apre la sua mappa, in Progressi. -->
+        <div class="section">
+          <h2 class="t-name sec">I mattoni</h2>
+          <div class="mat">
+            {#each SKILLS as b (b.id)}
+              <button data-fam={b.fam} onclick={() => ui.go('progressi', 'mappa', b.id)}>{b.name}<small>{brickExercises(b.id, app.catalog).length} esercizi</small></button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Tre idee: un allenamento corto, uno completo e uno lungo. Si aprono nel costruttore. -->
+        <div class="section">
+          <h2 class="t-name sec">Idee</h2>
+          <div class="card flush list">
+            {#each ideas as w, i (i)}
+              <button class="wk" onclick={() => buildNew(w.bricks)}>
+                <span class="wk-top">
+                  <strong class="grow">{w.name}</strong>
+                  <span class="muted">{totalMinutes(w.bricks)} min</span>
+                  <ChevronRight size={18} />
+                </span>
+                <Pills bricks={ideaPills(w)} />
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- I modelli di base: la scaletta in segmenti colorati, la durata a destra. -->
+        <div class="section">
+          <Collapse title="Modelli di base" count={templates.length} open={false} key="lib-base">
             <div class="cards">
               {#each templates as t (t.id)}
                 {@const segs = strip(t)}
@@ -170,7 +230,6 @@
                 </button>
               {/each}
             </div>
-            {@render addRow('Nuovo modello', () => ui.open('template'))}
           </Collapse>
         </div>
 
@@ -194,7 +253,7 @@
 
         <!-- I mesi: su cosa lavori, con la famiglia e i percorsi. -->
         <div class="section">
-          <Collapse title="Mesi" count={blocks.length} key="lib-mesi">
+          <Collapse title="Mesi" count={blocks.length} open={false} key="lib-temi">
             <div class="card flush list">
               {#each blocks as b (b.id)}
                 {@const fam = blockFamily(b, app.catalog, app.medals, currentInSequence)}
@@ -363,6 +422,49 @@
 </div>
 
 <style>
+  .sec {
+    margin: 0 0 10px;
+  }
+  .wk {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    padding: 14px 16px;
+    text-align: left;
+  }
+  .wk-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mat {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .mat button {
+    min-height: 62px;
+    padding: 10px 14px;
+    border-radius: 16px;
+    background: var(--f);
+    color: var(--f-on);
+    font-weight: 750;
+    text-align: left;
+    box-shadow: 0 4px 0 var(--f-edge);
+    transition:
+      transform var(--dur-fast),
+      box-shadow var(--dur-fast);
+  }
+  .mat button:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 var(--f-edge);
+  }
+  .mat small {
+    display: block;
+    font-weight: 500;
+    opacity: 0.9;
+  }
   .tabs {
     margin-top: 16px;
   }
@@ -432,11 +534,6 @@
   }
   .add :global(svg) {
     color: var(--ink-3);
-  }
-  .cards + .add {
-    margin-top: 4px;
-    border-radius: var(--r-card);
-    border: 1px dashed var(--line-strong);
   }
 
   /* ── Modelli ── */

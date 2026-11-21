@@ -279,3 +279,13 @@ Nessun problema vero. La pagina principale pesa 144 kB compressi, Firebase altri
 5. La logica della sessione nel motore, con i test (4.2).
 6. Un solo foglio di stile (4.3, 4.4).
 7. Test delle regole e schermate nel flusso di pubblicazione (8.1).
+
+## Dopo la revisione: il rifacimento a mattoni (0.8.0)
+
+Scelto dall'utente su un prototipo da provare. Fatto: colori nuovi, Oggi con il tavolo, costruttore a mattoni,
+primo avvio in sette passi, guida a fuoco, mappa dei colpi in Progressi, Libreria con i propri allenamenti in
+alto, note per colpo alla chiusura, finestra delle novità nello stesso stile. Provato con gesti veri in Chrome
+senza finestra (primo avvio completo e passaggio da una 0.7.0 con dati), non su un telefono.
+
+Resta da fare: il foglio «Il piano» in Impostazioni lavora ancora a tappe e a mesi; chi ha un piano di prima
+continua a usarlo com'è.

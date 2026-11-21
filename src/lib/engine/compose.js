@@ -90,7 +90,7 @@ export function composeSession({ week, template, catalog = BASE, medals = {}, pa
       const items = b.items ?? [];
       const parts = splitMinutes(minutes, Math.max(1, items.length));
       items.forEach((it, j) => {
-        const info = { index: i, name: b.name, n: j + 1, of: items.length };
+        const info = { index: i, name: b.name, n: j + 1, of: items.length, brick: b.brick ?? null };
         if (it.free) {
           group.push({ id: `${id}-${j}`, kind: 'free', name: it.name || b.name || STEP_TYPES.free.name, minutes: parts[j], text: it.text ?? '', block: info });
           return;
@@ -106,7 +106,8 @@ export function composeSession({ week, template, catalog = BASE, medals = {}, pa
     if (changed.length) groups.push(changed);
   });
 
-  const all = pauses ? withPauses(groups) : groups.flat();
+  // Gli allenamenti a mattoni non hanno pause: la durata è la somma dei mattoni.
+  const all = pauses && t?.gaps !== false ? withPauses(groups) : groups.flat();
   return {
     block: month,
     template: t ? { id: t.id, name: t.name, color: t.color } : null,
@@ -142,7 +143,7 @@ export function templateWithOverrides(template, overrides = {}) {
     if (m[2] != null && blk.items[Number(m[2])]) blk.items[Number(m[2])] = { ex };
     else if (m[2] == null && blk.role === 'serve') blk.ex = ex;
   }
-  const { id: _id, custom: _c, package: _p, level: _l, about: _a, minutes: _m, ...rest } = t;
+  const { id: _id, custom: _c, package: _p, level: _l, about: _a, minutes: _m, gaps: _g, ...rest } = t;
   return { ...rest, blocks };
 }
 

@@ -29,7 +29,10 @@
   function save() {
     const n = app.saveNote({ ...(original ?? {}), id: original?.id, stroke, date, text, feel, ex, eventId: base.eventId ?? null });
     ui.close();
-    ui.toast(original ? 'Nota aggiornata' : 'Nota salvata');
+    // La prima volta si dice dove restano le note.
+    const first = !original && !app.meta?.noteTold;
+    if (first) app.patchMeta({ noteTold: true });
+    ui.toast(original ? 'Nota aggiornata' : first ? 'Nota salvata. Le note sono in Progressi, nella mappa del colpo.' : 'Nota salvata', first ? { ms: 5200 } : undefined);
     onsaved?.(n);
   }
 

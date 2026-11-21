@@ -20,7 +20,7 @@
   --fam-gambe-on: #ffffff;
   --fam-schemi: #d63384;
   --fam-schemi-on: #ffffff;
-  --fam-partita: #ec5b13;
+  --fam-partita: #5d6470;
   --fam-partita-on: #ffffff;
   --fam-libero: #6b7280;
   --fam-libero-on: #ffffff;
@@ -32,7 +32,7 @@
   --lv-intermedio: #1e6fe0;
   --lv-avanzato: #7c3aed;
   --lv-esperto: #dc2626;
-  --lv-pro: #16181d;
+  --lv-pro: #d4a017;
   --lv-on-all: #ffffff;
 
   /* Medaglie. */
@@ -70,8 +70,8 @@
     --fam-gambe-on: #052e16;
     --fam-schemi: #f472b6;
     --fam-schemi-on: #3b0a24;
-    --fam-partita: #ff7a36;
-    --fam-partita-on: #2a1000;
+    --fam-partita: #9aa3b2;
+    --fam-partita-on: #111317;
     --fam-libero: #9ca3af;
     --fam-libero-on: #111317;
     --ink-mix: 100%;
@@ -79,7 +79,7 @@
     --lv-intermedio: #60a5fa;
     --lv-avanzato: #b794f6;
     --lv-esperto: #f87171;
-    --lv-pro: #f4f4f5;
+    --lv-pro: #e8b93a;
     --lv-on-all: #0b0d10;
     --medal-B: #e39a5e;
     --medal-A: #cbd5e1;
@@ -106,8 +106,8 @@
   --fam-gambe-on: #052e16;
   --fam-schemi: #f472b6;
   --fam-schemi-on: #3b0a24;
-  --fam-partita: #ff7a36;
-  --fam-partita-on: #2a1000;
+  --fam-partita: #9aa3b2;
+  --fam-partita-on: #111317;
   --fam-libero: #9ca3af;
   --fam-libero-on: #111317;
   --ink-mix: 100%;
@@ -115,7 +115,7 @@
   --lv-intermedio: #60a5fa;
   --lv-avanzato: #b794f6;
   --lv-esperto: #f87171;
-  --lv-pro: #f4f4f5;
+  --lv-pro: #e8b93a;
   --lv-on-all: #0b0d10;
   --medal-B: #e39a5e;
   --medal-A: #cbd5e1;

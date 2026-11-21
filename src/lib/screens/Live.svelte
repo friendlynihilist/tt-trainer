@@ -23,6 +23,8 @@
   import Users from '@lucide/svelte/icons/users';
   import Save from '@lucide/svelte/icons/save';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
+  import { BRICK, brickOfExercise } from '../data/bricks.js';
+  import Collapse from '../ui/Collapse.svelte';
   import { app, newId } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
   import { loadLive, saveLive, clearLive } from '../store/live.js';
@@ -464,6 +466,21 @@
     ui.open('note', { quick: true, draft: { stroke: strokeOf(ex), ex: ex.id, date: draft.date, eventId: draft.newId } });
   }
 
+  /** I colpi allenati in questa sessione: per ognuno il colpo e l'esercizio a cui legare la nota. */
+  const trained = $derived.by(() => {
+    const out = [];
+    for (const s of steps) {
+      const ex = s.ex && app.catalog.exercise(s.ex);
+      const brick = ex && brickOfExercise(ex);
+      if (brick && strokeOf(ex) && !out.some((x) => x.brick === brick)) out.push({ brick, stroke: strokeOf(ex), ex: ex.id });
+    }
+    return out;
+  });
+  function noteOn(t) {
+    draft.newId ??= draft.eventId ?? newId();
+    ui.open('note', { draft: { stroke: t.stroke, ex: t.ex, date: draft.date, eventId: draft.newId } });
+  }
+
   function addNote() {
     draft.newId ??= draft.eventId ?? newId();
     ui.open('note', { draft: { stroke: lastDone?.stroke ?? null, ex: lastDone?.ex ?? null, date: draft.date, eventId: draft.newId } });
@@ -634,28 +651,38 @@
               <FeelPicker value={draft.feel} onchange={(v) => (draft.feel = v)} />
             </section>
 
+            <!-- Una nota per ogni colpo allenato: si scrive qui, si rilegge in Progressi e nel Diario. -->
             <section class="group">
-              <h2 class="t-caps muted">Con chi</h2>
-              <PartnerField value={draft.partner ?? null} onchange={(p) => (draft.partner = p)} />
-            </section>
-
-            <section class="group">
-              <h2 class="t-caps muted">Nota sul colpo</h2>
-              <button class="btn ghost self" onclick={addNote}>
-                <NotebookPen size={16} /> {lastDone?.stroke ? app.strokeName(lastDone.stroke) : 'Aggiungi nota'}
-              </button>
+              <h2 class="t-name">Una nota sui colpi?</h2>
+              {#if !app.meta?.noteTold}<p class="small muted">Le ritrovi in Progressi, nella mappa di ogni colpo.</p>{/if}
+              <div class="hands">
+                {#each trained as t (t.brick)}
+                  <button class="hand" data-fam={BRICK[t.brick].fam} onclick={() => noteOn(t)}>
+                    <i></i><span class="grow">{BRICK[t.brick].name}</span><span class="small muted">Scrivi</span>
+                  </button>
+                {:else}
+                  <button class="hand" onclick={addNote}><span class="grow">Scegli il colpo</span><span class="small muted">Scrivi</span></button>
+                {/each}
+              </div>
               {#if sessionNotes}<p class="small muted">{sessionNotes === 1 ? '1 nota salvata' : `${sessionNotes} note salvate`}</p>{/if}
             </section>
 
-            <section class="group">
-              <h2 class="t-caps muted">Da correggere la prossima volta</h2>
-              <FocusEditor value={draft.focus} onchange={(v) => (draft.focus = v)} />
-            </section>
+            <Collapse title="Altri dettagli" open={false} key="live-altro">
+              <section class="group">
+                <h2 class="t-caps muted">Con chi</h2>
+                <PartnerField value={draft.partner ?? null} onchange={(p) => (draft.partner = p)} />
+              </section>
 
-            <section class="group">
-              <h2 class="t-caps muted">Note</h2>
-              <textarea class="field" placeholder="Cosa ha funzionato, cosa no" bind:value={draft.note}></textarea>
-            </section>
+              <section class="group">
+                <h2 class="t-caps muted">Da correggere la prossima volta</h2>
+                <FocusEditor value={draft.focus} onchange={(v) => (draft.focus = v)} />
+              </section>
+
+              <section class="group">
+                <h2 class="t-caps muted">Appunti sull’allenamento</h2>
+                <textarea class="field" placeholder="Cosa ha funzionato, cosa no" bind:value={draft.note}></textarea>
+              </section>
+            </Collapse>
           {/if}
         </div>
       {/key}
@@ -684,6 +711,30 @@
 {/if}
 
 <style>
+  .hands {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .hand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 52px;
+    padding: 8px 14px;
+    border-radius: 14px;
+    background: var(--card);
+    box-shadow: inset 0 0 0 1px var(--line);
+    text-align: left;
+    font-weight: 650;
+  }
+  .hand i {
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+    background: var(--f);
+  }
   .live {
     position: fixed;
     inset: 0;
@@ -1100,9 +1151,6 @@
   }
   .wrap {
     flex-wrap: wrap;
-  }
-  .self {
-    align-self: flex-start;
   }
   strong {
     font-weight: 650;

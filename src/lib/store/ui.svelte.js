@@ -16,6 +16,14 @@ class UI {
   toasts = $state.raw([]);
   /** La finestra delle novità aperta a mano: { history: true } oppure null. */
   news = $state.raw(null);
+  /** Il costruttore di allenamenti aperto: { title, cta, bricks, onsave } oppure null. */
+  builder = $state.raw(null);
+  /** La guida in corso (ui/tours.js): { tour, i, bid } oppure null. */
+  coach = $state.raw(null);
+  /** Quello che la guida deve sapere della schermata: { count, own }. */
+  coachCtx = $state.raw({});
+  /** Durante un trascinamento, o con un foglio aperto dentro una schermata, la guida si fa da parte. */
+  coachBusy = $state(false);
 
   /** Le pagine visitate dentro l'app, per sapere se «indietro» resta nell'app. */
   #trail = [typeof location === 'undefined' ? '' : location.hash];

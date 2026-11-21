@@ -1,20 +1,20 @@
 /* Terza palla — sistema visivo.
-   Carta calda, inchiostro, e un solo accento: l'arancione della pallina.
-   Verde e rosso compaiono soltanto per dire «sali» e «scendi». */
+   Schede bianche su un grigio freddo, inchiostro, e un solo accento: il blu.
+   Verde e rosso compaiono soltanto per dire «sali» e «scendi»; il rosso anche per la fiamma. */
 
 :root {
-  --paper: #f5f2eb;
-  --card: #fcfbf8;
-  --sunk: #ece8df;
-  --ink: #15171a;
-  --ink-2: #565a61;
+  --paper: #f2f2f6;
+  --card: #ffffff;
+  --sunk: #e9e9ef;
+  --ink: #111216;
+  --ink-2: #555962;
   /* Il grigio dei testi piccoli: almeno 4,5:1 sul fondo, così si legge anche in palestra. */
   --ink-3: #6a6e75;
   --line: rgba(21, 23, 26, 0.1);
   --line-strong: rgba(21, 23, 26, 0.2);
-  --accent: #ec5b13;
-  --accent-ink: #b8430a;
-  --accent-soft: #fbe5d7;
+  --accent: #1f5fe0;
+  --accent-ink: #1a4fc0;
+  --accent-soft: #e2ebfd;
   /* Il testo sopra l'arancione: bianco sul tema chiaro, scuro sul tema scuro (dove l'arancione è più chiaro). */
   --accent-on: #ffffff;
   --up: #12735e;
@@ -36,7 +36,11 @@
   --c-brown: #8d5f34;
   --c-plum: #973b9a;
   --c-slate: #687080;
-  --c-orange: var(--accent);
+  --c-orange: #5d6470;
+  /* La fiamma delle settimane di fila. */
+  --fire: #e5383b;
+  /* Il tavolo visto dall'alto, in Oggi. */
+  --court: #1463a8;
 
   /* Medaglie. --m-empty: quanto si vede l'anello di una medaglia ancora da prendere. */
   --m-bronze: #b0703a;
@@ -68,18 +72,20 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --paper: #0e1012;
-    --card: #16181b;
-    --sunk: #1e2125;
-    --ink: #f1eee7;
+    --paper: #0d0e12;
+    --card: #181a20;
+    --sunk: #23262e;
+    --ink: #f2f3f6;
     --ink-2: #a5a8ae;
     --ink-3: #858a91;
     --line: rgba(255, 255, 255, 0.09);
     --line-strong: rgba(255, 255, 255, 0.2);
-    --accent: #ff7a36;
-    --accent-ink: #ff9459;
-    --accent-soft: #38200f;
-    --accent-on: #1f0d02;
+    --accent: #5b8dff;
+    --accent-ink: #8eb0ff;
+    --accent-soft: #17233f;
+    --accent-on: #06122e;
+    --fire: #ff5c5f;
+    --court: #12548f;
     --up: #46c9a8;
     --up-soft: #12302a;
     --down: #ff7466;
@@ -107,18 +113,20 @@
 }
 
 :root[data-theme='dark'] {
-  --paper: #0e1012;
-  --card: #16181b;
-  --sunk: #1e2125;
-  --ink: #f1eee7;
+  --paper: #0d0e12;
+  --card: #181a20;
+  --sunk: #23262e;
+  --ink: #f2f3f6;
   --ink-2: #a5a8ae;
   --ink-3: #858a91;
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.2);
-  --accent: #ff7a36;
-  --accent-ink: #ff9459;
-  --accent-soft: #38200f;
-  --accent-on: #1f0d02;
+  --accent: #5b8dff;
+  --accent-ink: #8eb0ff;
+  --accent-soft: #17233f;
+  --accent-on: #06122e;
+  --fire: #ff5c5f;
+  --court: #12548f;
   --up: #46c9a8;
   --up-soft: #12302a;
   --down: #ff7466;

@@ -7,7 +7,8 @@
   import { ui } from '../store/ui.svelte.js';
   import Avatar from './Avatar.svelte';
 
-  let { title, sub = '', back = false, children = null } = $props();
+  // aside: qualcosa accanto al profilo (in Oggi la fiamma delle settimane di fila).
+  let { title, sub = '', back = false, children = null, aside = null } = $props();
 </script>
 
 <header class="head">
@@ -16,6 +17,7 @@
       <button class="icon-btn back" onclick={() => ui.back()} aria-label="Indietro"><ArrowLeft size={22} /></button>
     {/if}
     <h1 class="t-title big">{title}</h1>
+    {#if aside}{@render aside()}{/if}
     {#if !back}
       <a class="me" href="#/impostazioni" aria-label="Impostazioni">
         <Avatar name={app.name} photo={app.photo} size={34} />

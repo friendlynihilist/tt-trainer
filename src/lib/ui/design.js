@@ -6,6 +6,7 @@ import Target from '@lucide/svelte/icons/target';
 import LinkIcon from '@lucide/svelte/icons/link';
 import Hourglass from '@lucide/svelte/icons/hourglass';
 import Hash from '@lucide/svelte/icons/hash';
+import { BRICK } from '../data/bricks.js';
 
 /** Icona e testo breve di come si misura un esercizio. */
 export const MEASURE_ICON = { su: Target, fila: LinkIcon, tempo: Hourglass, conta: Hash };
@@ -40,13 +41,17 @@ export function stepFamily(step, catalog) {
 export function sessionBlocks(session, catalog) {
   const out = [];
   let cur = null;
+  // Un blocco nuovo comincia dopo una pausa, oppure (negli allenamenti a mattoni, senza pause)
+  // quando cambia il blocco del modello: i passi di un blocco si chiamano «b2», «b2-0», «b2-1»…
+  const blockOf = (id) => /^b\d+/.exec(String(id))?.[0] ?? null;
   for (const s of session?.steps ?? []) {
     if (s.kind === 'pause') {
       cur = null;
       continue;
     }
-    if (!cur) {
-      cur = { key: s.id, name: s.block?.name ?? s.name, minutes: 0, fam: stepFamily(s, catalog), fams: [], steps: [] };
+    if (!cur || (blockOf(s.id) && blockOf(s.id) !== cur.block)) {
+      const brick = BRICK[s.block?.brick] ?? null;
+      cur = { key: s.id, block: blockOf(s.id), name: s.block?.name ?? s.name, minutes: 0, fam: brick?.fam ?? stepFamily(s, catalog), fams: [], steps: [] };
       out.push(cur);
     }
     cur.minutes += s.minutes;

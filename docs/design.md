@@ -1,5 +1,10 @@
 # Terza palla: regole grafiche
 
+> **Dalla 0.8.0** l'accento è il blu (`--accent: #1f5fe0`), il fondo un grigio freddo con schede bianche,
+> la fiamma è rossa, «Pro» è color oro e la partita è grigia. In Oggi l'allenamento sta su un tavolo visto
+> dall'alto (`--court`), con i mattoni in pillole piene. Niente arancione. Le regole qui sotto su famiglie,
+> rilievo, medaglie e caratteri restano valide.
+
 Rifacimento grafico. Stato: proposta. Nel passo 3 le regole valgono solo per **Oggi** e la **sessione dal vivo**; le altre pagine cambiano dopo l'approvazione.
 
 Ispirazioni (cartella `refs/`, Brilliant, Mimo): un solo pulsante grande per cominciare, tessere colorate con un bordo in rilievo, numeri grandi con un'etichetta corta, giorni della settimana come cerchi, poche parole. Sono ispirazioni: niente forme, illustrazioni o colori copiati.

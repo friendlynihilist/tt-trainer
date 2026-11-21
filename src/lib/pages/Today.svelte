@@ -1,48 +1,35 @@
 <script>
-  // «Oggi», dal generale al particolare: in alto la tappa («Dritto», il dettaglio in un foglio), poi
-  // l'allenamento di oggi con un solo pulsante grande, la settimana, le medaglie (quelle prese oggi
-  // e una da prendere). Sotto il pulsante una riga sola apre il foglio dell'allenamento: lì ci sono
-  // i blocchi, si cambia ogni esercizio, si sceglie un altro allenamento o si registra senza timer.
-  // Niente è bloccato e tutto si può cambiare.
-  import Coffee from '@lucide/svelte/icons/coffee';
-  import ArrowRight from '@lucide/svelte/icons/arrow-right';
+  // «Oggi»: tre cose, dall'alto. Il tavolo con l'allenamento di oggi (il nome, i suoi mattoni, un
+  // solo pulsante); la settimana; le medaglie, con quella da andare a prendere. Toccando i mattoni
+  // si apre il foglio dell'allenamento: da lì lo cambi o lo registri senza timer.
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
-  import Shuffle from '@lucide/svelte/icons/shuffle';
   import PencilLine from '@lucide/svelte/icons/pencil-line';
+  import Blocks from '@lucide/svelte/icons/blocks';
   import Target from '@lucide/svelte/icons/target';
-  import Crosshair from '@lucide/svelte/icons/crosshair';
   import Trash from '@lucide/svelte/icons/trash-2';
-  import Save from '@lucide/svelte/icons/save';
-  import Timer from '@lucide/svelte/icons/timer';
   import Play from '@lucide/svelte/icons/play';
-  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+  import Check from '@lucide/svelte/icons/check';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { loadLive, clearLive } from '../store/live.js';
-  import { startItem, logItem, weekOf, proposalFor } from '../store/actions.js';
-  import { weekAt, removeWeek, stageInfo, stagePeriod, stageLength } from '../engine/plan.js';
+  import { startItem, logItem, weekOf, proposalFor, putToday, buildNew } from '../store/actions.js';
   import { agenda } from '../engine/events.js';
-  import { composeSession, templateWithOverrides } from '../engine/compose.js';
+  import { composeSession } from '../engine/compose.js';
   import { packagesOf } from '../data/packages.js';
-  import { pickExercise, pickTemplate } from '../ui/pickers.js';
-  import { nearGoals, currentInSequence } from '../engine/player.js';
-  import { nextGoal, shortValue, measureLabel, goalText } from '../engine/medals.js';
-  import { lastFocus } from '../engine/stats.js';
-  import { exerciseLabel } from '../data/catalog.js';
+  import { nearGoals } from '../engine/player.js';
+  import { nextGoal, medalCount, valueText } from '../engine/medals.js';
+  import { weekStreak } from '../engine/stats.js';
+  import { bricksOf, editableBricks, toTemplate, workoutName } from '../data/bricks.js';
   import { PLAYER_LEVEL, TIER, TIERS } from '../data/library.js';
-  import { addDays, fmtLong, fmtRelative, fmtShort } from '../util/dates.js';
-  import { sessionBlocks, stepFamily, blockFamily, MEASURE_ICON } from '../ui/design.js';
+  import { addDays, fmtLong, fmtRelative } from '../util/dates.js';
+  import { startTour } from '../ui/tours.js';
+  import { unseen } from '../data/changelog.js';
   import PageHead from '../ui/PageHead.svelte';
   import PlannedRow from '../ui/PlannedRow.svelte';
-  import EventRow from '../ui/EventRow.svelte';
-  import BigButton from '../ui/BigButton.svelte';
-  import Brick from '../ui/Brick.svelte';
-  import MedalRing from '../ui/MedalRing.svelte';
   import MedalBadge from '../ui/MedalBadge.svelte';
   import LevelBadge from '../ui/LevelBadge.svelte';
   import WeekDays from '../ui/WeekDays.svelte';
-  import StageProgress from '../ui/StageProgress.svelte';
-  import FamilyIcon from '../ui/FamilyIcon.svelte';
+  import Pills from '../ui/Pills.svelte';
   import Sheet from '../ui/Sheet.svelte';
 
   const plan = $derived(app.plan);
@@ -54,31 +41,32 @@
   const testToday = $derived(todo.find((x) => x.kind === 'test') ?? null);
   const trainingToday = $derived(todo.find((x) => x.kind === 'training') ?? null);
   const others = $derived(todo.filter((x) => x !== trainingToday && x !== testToday));
-  const upcoming = $derived.by(() => {
-    for (const [d, v] of [...days.entries()].sort(([a], [b]) => (a < b ? -1 : 1))) {
-      if (d > app.today && v.todo.length) return v.todo[0];
-    }
-    return null;
-  });
+  const doneToday = $derived(todayInfo.done.find((e) => e.kind === 'training') ?? null);
 
-  // Il modello si può cambiare al volo. Senza niente in calendario si propone un pacchetto del tuo livello.
-  let chosen = $state(null);
-  // Gli esercizi cambiati prima di iniziare: valgono solo per questa sessione.
-  let overrides = $state({});
+  // Senza niente in calendario oggi si propone comunque un allenamento: quello del programma,
+  // l'ultimo dei tuoi, oppure un pacchetto del tuo livello. Ci si può allenare ogni giorno.
   const fallback = $derived.by(() => {
+    const slot = plan?.slots.find((s) => s.kind === 'training' && s.template && app.catalog.hasTemplate(s.template));
+    if (slot) return slot.template;
+    const mine = (app.meta?.custom?.templates ?? []).filter((t) => !t.archived);
+    if (mine.length) return mine[mine.length - 1].id;
     const list = packagesOf(app.player.level);
-    return list.find((t) => t.id.endsWith('-60')) ?? list[0] ?? null;
+    return (list.find((t) => t.id.endsWith('-60')) ?? list[0])?.id ?? null;
   });
-  const weekToday = $derived(weekOf(app.today));
-  const templateId = $derived(chosen ?? trainingToday?.template ?? fallback?.id ?? null);
-  const template = $derived(templateId ? app.catalog.template(templateId) : null);
-  const session = $derived(template ? composeSession({ week: weekToday, template, catalog: app.catalog, medals: app.medals, overrides }) : null);
-  const blocks = $derived(sessionBlocks(session, app.catalog));
-  const changed = $derived(Object.keys(overrides).length > 0);
+  const templateId = $derived(trainingToday?.template ?? doneToday?.template ?? fallback);
+  const template = $derived(templateId && app.catalog.hasTemplate(templateId) ? app.catalog.template(templateId) : null);
+  const session = $derived(template ? composeSession({ week: weekOf(app.today), template, catalog: app.catalog, medals: app.medals }) : null);
+  const bricks = $derived(template ? bricksOf(template, app.catalog, session) : []);
+  // Un tuo allenamento ha il nome che gli hai dato; quelli di prima («Intermedio · 60′») si chiamano
+  // per quello che contengono.
+  const title = $derived(template?.custom ? template.name : workoutName(bricks.filter((b) => b.type)) );
+  const exName = (id) => app.catalog.exercise(id)?.name ?? '';
   const proposal = $derived(testToday ? proposalFor(app.today) : []);
-  const focus = $derived(lastFocus(app.events));
   const offer = $derived(app.levelOffer);
-  const inCalendar = $derived(Boolean(trainingToday) && !chosen);
+  const streak = $derived(weekStreak(app.events));
+
+  // «Settimana 2 di 4» ha senso solo con un programma di più settimane.
+  const weekSteps = $derived(plan && app.phase === 'active' && week?.number && week.total > 1 ? { pos: week.number, of: week.total } : null);
 
   // Le medaglie prese oggi: per ogni esercizio la più alta.
   const wonToday = $derived.by(() => {
@@ -92,32 +80,21 @@
     }
     return out;
   });
+  const counts = $derived(medalCount(app.medals));
 
-  // La tappa in corso, in breve: il tema, a che punto sei, i percorsi. Il resto nel foglio.
-  const stage = $derived(plan ? stageInfo(plan, app.today, app.catalog) : null);
-  // Il periodo della tappa in tempo relativo: «Questo mese», «Questa settimana», «Oggi»…
-  const period = $derived.by(() => {
-    const st = stage?.stages[stage.current];
-    return st ? stagePeriod(st, { isToday: st.start === app.today }) : { title: 'Questo mese', of: 'di questo mese', noun: 'Mese' };
-  });
-  // Una medaglia da prendere, con il perché: prima una vicina che è nell'allenamento di oggi, poi
-  // una vicina dei percorsi del mese, poi la più vicina, poi l'esercizio del mese.
-  const near = $derived(nearGoals({ medals: app.medals, catalog: app.catalog, max: 10 }));
-  const sessionExs = $derived(new Set((session?.steps ?? []).filter((s) => s.ex).map((s) => s.ex)));
-  const monthExs = $derived((week?.focusBlock?.tracks ?? []).map((t) => currentInSequence(t, app.catalog, app.medals)).filter(Boolean));
+  // La medaglia da andare a prendere: una vicina che è nell'allenamento di oggi, poi la prima che
+  // manca fra gli esercizi di oggi, poi la più vicina in assoluto.
+  const ART = { B: 'il bronzo', A: 'l’argento', O: 'l’oro', P: 'il platino' };
   const suggested = $derived.by(() => {
-    const monthSeq = new Set((week?.focusBlock?.tracks ?? []).flatMap((t) => app.catalog.sequence(t)));
-    const pick =
-      near.find((n) => sessionExs.has(n.ex)) ??
-      near.find((n) => monthSeq.has(n.ex)) ??
-      near[0] ??
-      (monthExs[0] ? { ex: monthExs[0] } : null);
-    const ex = pick && app.catalog.exercise(pick.ex);
+    const near = nearGoals({ medals: app.medals, catalog: app.catalog, max: 10 });
+    const inSession = (session?.steps ?? []).filter((s) => s.ex).map((s) => s.ex);
+    const id = near.find((n) => inSession.includes(n.ex))?.ex ?? inSession.find((x) => nextGoal(app.catalog.exercise(x), app.medals[x])) ?? near[0]?.ex ?? null;
+    const ex = id && app.catalog.exercise(id);
     const goal = ex && nextGoal(ex, app.medals[ex.id]);
     if (!goal) return null;
-    const inSession = sessionExs.has(ex.id);
-    const why = inSession ? 'È nell’allenamento di oggi' : near.some((n) => n.ex === ex.id) ? 'Ti manca poco' : `È l’esercizio ${period.of}`;
-    return { ex, goal, inSession, why, best: app.medals[ex.id]?.best ?? null };
+    const best = app.medals[ex.id]?.best;
+    const left = typeof goal.goal === 'number' && typeof best === 'number' && !goal.alt && best < goal.goal ? goal.goal - best : null;
+    return { ex, goal, left };
   });
 
   let draft = $state(null);
@@ -132,61 +109,21 @@
     if (sheet) return ui.hold(() => (sheet = false));
   });
 
-  const dateLabel = $derived(fmtLong(app.today));
-
-  const monthInfo = $derived.by(() => {
-    if (!plan || !stage || app.phase === 'done') return null;
-    // La famiglia (colore e icona) è quella dell'esercizio di adesso nel primo percorso.
-    const famOf = (block) => blockFamily(block, app.catalog, app.medals, currentInSequence);
-    const trackNames = (block) => (block?.tracks ?? []).map((id) => app.catalog.track(id)?.short).filter(Boolean).join(', ');
-    if (app.phase === 'before') {
-      const first = stage.stages.find((st) => st.block);
-      return first ? { label: `Da ${fmtLong(first.start ?? plan.start)}`, theme: first.block.theme, fam: famOf(first.block), where: stageLength(first), tracks: trackNames(first.block), p: null } : null;
-    }
-    const now = stage.stages[stage.current];
-    if (!now || now.b === 'P') return null;
-    const block = now.block ?? week?.focusBlock;
-    if (!block) return null;
-    const p = stage.progress;
-    const where =
-      p.unit === 's' ? (p.of === 1 ? (now.start === app.today ? 'Un allenamento solo' : `Un allenamento solo, ${fmtShort(now.start)}`) : `Allenamento ${p.pos} di ${p.of}`) : p.pos === 0 ? `Comincia ${fmtLong(p.startsOn)}` : `Settimana ${p.pos} di ${p.of}`;
-    return { label: period.title, theme: block.theme, fam: famOf(block), where, tracks: trackNames(block), p };
+  // La prima volta, la guida mostra le medaglie e la mappa (quando non c'è altro aperto).
+  $effect(() => {
+    if (app.meta?.tour?.app || ui.coach || ui.live || ui.news || ui.sheets.length || ui.builder || sheet) return;
+    if (!app.meta?.seenVersion || unseen(app.meta.seenVersion).length) return; // prima le novità
+    const timer = setTimeout(() => startTour('app'), 700);
+    return () => clearTimeout(timer);
   });
-
-  function choose(id) {
-    if (id === templateId) return;
-    chosen = id;
-    overrides = {};
-  }
-  function moreTemplates() {
-    pickTemplate({ value: templateId, onpick: (id) => id && choose(id) });
-  }
-  function change(step) {
-    pickExercise({
-      title: 'Cambia esercizio',
-      value: step.ex,
-      family: app.catalog.exercise(step.ex)?.family,
-      variantsOf: step.ex,
-      onpick: (id) => id && id !== step.ex && (overrides = { ...overrides, [step.id]: id })
-    });
-  }
-  function saveMine() {
-    const t = app.saveCustom('templates', { ...templateWithOverrides(template, overrides), name: `${template.name} (mio)` });
-    chosen = t.id;
-    overrides = {};
-    ui.toast(`«${t.name}» è tra i tuoi allenamenti`);
-  }
-  function resetChanges() {
-    overrides = {};
-  }
 
   function startTraining() {
     sheet = false;
-    startItem(trainingToday ?? null, { template, overrides });
+    startItem(trainingToday ?? null, { template });
   }
   function logTraining() {
     sheet = false;
-    if (trainingToday) logItem({ ...trainingToday, template: templateId ?? trainingToday.template });
+    if (trainingToday) logItem({ ...trainingToday, template: templateId });
     else ui.open('event', { draft: { kind: 'training', template: templateId, date: app.today } });
   }
   function startTest(exercises = null) {
@@ -196,35 +133,39 @@
     clearLive(app.user.uid);
     draft = null;
   }
+
+  // «Cambia i mattoni»: un tuo allenamento si aggiorna; uno di base diventa un allenamento tuo,
+  // che prende il suo posto oggi.
+  function rebuild() {
+    sheet = false;
+    const mine = (app.meta?.custom?.templates ?? []).find((t) => t.id === templateId) ?? null;
+    ui.builder = {
+      title: 'Cambia i mattoni',
+      bricks: editableBricks(template, app.catalog, session),
+      onsave: (list) => {
+        if (mine) {
+          app.saveCustom('templates', { ...mine, ...toTemplate(list, mine.named ? mine.name : null) });
+          ui.toast('Salvato');
+        } else {
+          const t = app.saveCustom('templates', toTemplate(list));
+          putToday(t.id);
+          ui.toast(`«${t.name}» è l’allenamento di oggi`);
+        }
+      }
+    };
+  }
 </script>
 
 <div class="page enter today">
-  <PageHead title="Oggi" sub={dateLabel} />
-
-  <!-- La tappa: «Questo mese · Dritto» in grande, come un promemoria. Il dettaglio si apre toccandolo. -->
-  {#if monthInfo}
-    <section class="mantra">
-      <button class="m-main" data-fam={monthInfo.fam} onclick={() => ui.open('stage')}>
-        <span class="t-caps m-label">{monthInfo.label}</span>
-        <span class="m-head">
-          <span class="m-ico"><FamilyIcon fam={monthInfo.fam} size={34} /></span>
-          <span class="m-theme">{monthInfo.theme}</span>
-          <span class="m-chev"><ChevronRight size={24} strokeWidth={2.6} /></span>
+  <PageHead title="Oggi" sub={fmtLong(app.today)}>
+    {#snippet aside()}
+      {#if streak > 0}
+        <span class="streak" role="img" aria-label="{streak} {streak === 1 ? 'settimana' : 'settimane'} di fila">
+          <MedalBadge tier="F" size={26} label={false} /><b>{streak}</b>
         </span>
-        <!-- A che punto sei e i percorsi: due righe, due stili, perché sono due cose diverse. -->
-        <span class="m-where">
-          {#if monthInfo.p && (monthInfo.p.unit === 'w' || monthInfo.p.of > 1)}<span class="m-prog"><StageProgress unit={monthInfo.p.unit} pos={monthInfo.p.pos} of={monthInfo.p.of} small /></span>{/if}
-          <span>{monthInfo.where}</span>
-        </span>
-        {#if monthInfo.tracks}<span class="m-tracks">{monthInfo.tracks}</span>{/if}
-      </button>
-    </section>
-  {:else if !plan}
-    <section class="note-card">
-      <p class="grow muted">Non hai ancora un piano: scegli su cosa lavorare e in quali giorni.</p>
-      <button class="btn primary small" onclick={() => ui.open('plan', { fresh: true })}>Crea il piano</button>
-    </section>
-  {/if}
+      {/if}
+    {/snippet}
+  </PageHead>
 
   {#if offer}
     <section class="offer" data-level={offer.level}>
@@ -238,616 +179,358 @@
     </section>
   {/if}
 
-  {#if plan && app.phase === 'done'}
-    <section class="note-card">
-      <p class="muted">Ciclo finito. Medaglie e livello restano.</p>
-      <button class="btn primary small" onclick={() => ui.open('plan', { fresh: true })}>Nuovo ciclo <ArrowRight size={16} /></button>
-    </section>
-  {:else if plan && app.phase === 'active' && week.kind === 'P' && !todo.length}
-    <section class="note-card">
-      <span class="badge"><Coffee size={18} /></span>
-      <p class="grow muted">Si riprende {fmtLong(weekAt(plan, week.idx + 1, app.catalog)?.monday ?? week.sunday)}.</p>
-      <button class="btn ghost small" onclick={() => app.setPlan(removeWeek(plan, week.idx))}>Riprendi ora</button>
-    </section>
-  {/if}
-
-  <!-- Il pulsante grande -->
-  {#if draft && !ui.live}
-    <section class="hero">
-      <span class="t-caps label">Sessione a metà</span>
-      <BigButton verb="Riprendi" sub="{draft.title ?? `Sessione ${draft.slot}`} · {fmtRelative(draft.date)}" icon={RotateCcw} onclick={() => (ui.live = { resume: true })} />
-      <button class="quiet" onclick={discard}><Trash size={18} /> Scarta questa sessione</button>
-    </section>
-  {:else if testToday && !trainingToday}
-    <section class="hero">
-      <span class="t-caps label">In calendario oggi</span>
-      <BigButton verb="Inizia il test" sub={proposal.length ? `${proposal.length} esercizi da misurare` : 'Scegli tu cosa misurare'} icon={Target} onclick={() => startTest()} />
-      {#if proposal.length}
-        <div class="rings">
-          {#each proposal as p (p.ex)}
-            {@const ex = app.catalog.exercise(p.ex)}
-            <button class="ring-btn" onclick={() => ui.open('exercise', { id: p.ex })} aria-label={ex.name}>
-              <MedalRing exercise={ex} medals={app.medals[p.ex]} size={40} />
-            </button>
-          {/each}
-        </div>
+  <!-- Il tavolo visto dall'alto: l'allenamento di oggi. -->
+  <section class="court">
+    <span class="ball" aria-hidden="true"></span>
+    {#if draft && !ui.live}
+      <h2>Sessione a metà</h2>
+      <span class="sub">{draft.title ?? 'Allenamento'} · {fmtRelative(draft.date)}</span>
+      <button class="go" onclick={() => (ui.live = { resume: true })}><Play size={18} fill="currentColor" strokeWidth={0} /> Riprendi</button>
+      <button class="quiet" onclick={discard}><Trash size={16} /> Scarta questa sessione</button>
+    {:else if session}
+      <h2>{title}</h2>
+      <button class="open" onclick={() => (sheet = true)} aria-label="Vedi i mattoni di oggi">
+        <Pills {bricks} solid />
+      </button>
+      {#if doneToday && !trainingToday}
+        <span class="done"><Check size={20} strokeWidth={3} /> Fatto, {doneToday.minutes ?? session.minutes} minuti</span>
+      {:else}
+        <button class="go" onclick={startTraining}><Play size={18} fill="currentColor" strokeWidth={0} /> Inizia · {session.minutes} min</button>
       {/if}
-      <button class="quiet" onclick={() => logItem(testToday)}><PencilLine size={18} /> L’ho già fatto: registra i risultati</button>
-    </section>
-  {:else if session}
-    <section class="hero">
-      <span class="t-caps label">{inCalendar ? 'In calendario oggi' : trainingToday ? 'Cambiato per oggi' : 'Fuori calendario'}</span>
-      <BigButton verb="Inizia" sub={template.name} minutes={session.minutes} onclick={startTraining} />
-      <button class="inside" onclick={() => (sheet = true)}>
-        <span class="strip" aria-hidden="true">
-          {#each blocks as b (b.key)}
-            <span class="seg" data-fam={b.fam} style:flex-grow={b.minutes}></span>
-          {/each}
-        </span>
-        <span class="inside-txt">
-          <span class="inside-n">{blocks.length} {blocks.length === 1 ? 'blocco' : 'blocchi'}{#if changed}<b> · con i tuoi cambi</b>{/if}</span>
-          <span class="inside-more">Vedi e cambia <ChevronRight size={16} /></span>
-        </span>
-      </button>
-    </section>
-
-    {#if testToday}
-      <button class="test-pill raise neutral" onclick={() => startTest()}>
-        <span class="tp-ico"><Target size={20} strokeWidth={2.4} /></span>
-        <span class="grow">
-          <strong>Test di oggi</strong>
-          <span class="small muted block">{proposal.length ? `${proposal.length} esercizi da misurare` : 'Scegli tu cosa misurare'}</span>
-        </span>
-        <Play size={18} fill="currentColor" strokeWidth={0} />
-      </button>
+    {:else if testToday}
+      <h2>Test</h2>
+      <span class="sub">{proposal.length ? `${proposal.length} esercizi da misurare` : 'Scegli tu cosa misurare'}</span>
+      <button class="go" onclick={() => startTest()}><Target size={18} /> Inizia il test</button>
+    {:else}
+      <h2>Oggi è libero</h2>
+      <button class="go" onclick={buildNew}>Costruisci un allenamento</button>
     {/if}
-  {/if}
+  </section>
 
-  {#if focus}
-    <button class="focus" onclick={() => ui.open('event', { id: focus.eventId })}>
-      <span class="f-ico"><Crosshair size={20} strokeWidth={2.2} /></span>
+  {#if testToday && session}
+    <button class="test-pill raise neutral" onclick={() => startTest()}>
+      <span class="tp-ico"><Target size={20} strokeWidth={2.4} /></span>
       <span class="grow">
-        <span class="t-caps muted">Da correggere</span>
-        <span class="block"><strong>{app.strokeName(focus.stroke)}</strong>{#if focus.error}<span class="muted"> · {app.errorName(focus.error)}</span>{/if}</span>
-        {#if focus.exercise}<span class="small muted block">{exerciseLabel(focus.exercise, app.catalog)} · {fmtShort(focus.date)}</span>{/if}
+        <strong>Test di oggi</strong>
+        <span class="small muted block">{proposal.length ? `${proposal.length} esercizi da misurare` : 'Scegli tu cosa misurare'}</span>
       </span>
+      <Play size={18} fill="currentColor" strokeWidth={0} />
     </button>
   {/if}
 
-  {#if !draft && !trainingToday && !testToday && (todayInfo.done.length || upcoming)}
-    <section class="section">
-      {#if todayInfo.done.length}
-        <h2 class="heading">Oggi hai già fatto</h2>
-        <div class="card flush list">
-          {#each todayInfo.done as e (e.id)}<EventRow event={e} showDate={false} />{/each}
-        </div>
-      {:else if upcoming}
-        <h2 class="heading">Prossimo</h2>
-        <div class="card flush list"><PlannedRow item={upcoming} showDate /></div>
-      {/if}
-    </section>
-  {/if}
-
   {#if others.length}
-    <section class="section">
-      <h2 class="heading">Anche oggi</h2>
-      <div class="card flush list">
-        {#each others as item (item.key)}<PlannedRow {item} />{/each}
-      </div>
+    <section class="card flush list">
+      {#each others as item (item.key)}<PlannedRow {item} />{/each}
     </section>
   {/if}
 
-  <section class="section">
-    <WeekDays />
+  <section>
+    <WeekDays title={weekSteps ? `Settimana ${weekSteps.pos} di ${weekSteps.of}` : 'Questa settimana'} steps={weekSteps} />
   </section>
 
-  <section class="section">
-    <div class="sec-head">
-      <h2 class="t-name">Medaglie</h2>
-      <button class="more" onclick={() => ui.go('progressi')}>Tutte <ChevronRight size={16} /></button>
-    </div>
-
-    {#if wonToday.length}
-      <div class="won">
-        <span class="t-caps won-label">Prese oggi</span>
-        {#each wonToday as w (w.ex.id)}
-          <button class="won-row" onclick={() => ui.open('exercise', { id: w.ex.id })}>
-            <MedalBadge tier={w.tier} half={w.half} size={40} label={false} />
-            <span class="grow">
-              <strong>{w.half ? 'Metà oro' : TIER[w.tier].name}</strong>
-              <span class="small muted block">{w.ex.name}</span>
-            </span>
-          </button>
-        {/each}
-      </div>
-    {/if}
-
+  <!-- Le medaglie: quelle prese oggi, quella da andare a prendere, e il conto di tutte. -->
+  <section class="medals" id="nearcard">
+    {#each wonToday as w (w.ex.id)}
+      <button class="m-row" onclick={() => ui.open('exercise', { id: w.ex.id })}>
+        <MedalBadge tier={w.tier} half={w.half} size={44} label={false} shine />
+        <span class="grow">
+          <strong>{w.half ? 'Metà oro, presa oggi' : `${TIER[w.tier].name}, preso oggi`}</strong>
+          <span class="small muted block">{w.ex.name}</span>
+        </span>
+      </button>
+    {/each}
     {#if suggested}
       {@const s = suggested}
-      <div class="suggest" data-medal={s.goal.tier}>
-        <button class="s-main" onclick={() => ui.open('exercise', { id: s.ex.id })}>
-          <MedalRing exercise={s.ex} medals={app.medals[s.ex.id]} size={76} />
-          <span class="grow">
-            <span class="t-caps s-why">{s.why}</span>
-            <strong class="t-name block">{s.ex.name}</strong>
-            <span class="small block">{goalText(s.ex, s.goal)}{s.goal.half ? ', per la seconda volta' : ''}</span>
-            {#if s.best != null}<span class="small muted block">Il tuo record: {shortValue(s.ex, s.best)}</span>{/if}
-          </span>
-        </button>
-        {#if !s.inSession && !testToday}
-          <button class="btn ghost small s-try" onclick={() => startTest([s.ex.id])}><Target size={16} /> Provala ora</button>
-        {/if}
-      </div>
+      <button class="m-row" onclick={() => startTest([s.ex.id])}>
+        <MedalBadge tier={s.goal.tier} size={44} label={false} />
+        <span class="grow">
+          <strong>{s.left ? `${s.left === 1 ? 'Ti manca 1' : `Ti mancano ${s.left}`} per ${ART[s.goal.tier]}` : `Prova ${ART[s.goal.tier]}`}</strong>
+          <span class="small muted block">{s.ex.name}: {valueText(s.ex, s.goal.goal, s.goal.tier)}</span>
+        </span>
+        <span class="muted"><ChevronRight size={18} /></span>
+      </button>
     {:else if !wonToday.length}
-      <p class="muted small">In sessione tocca «Prova l’obiettivo»: arriva la prima medaglia.</p>
+      <p class="muted small first">In allenamento tocca «Prova l’obiettivo»: arriva la prima medaglia.</p>
     {/if}
+    <button class="tally" onclick={() => ui.go('progressi')} aria-label="Le tue medaglie: {counts.B} di bronzo, {counts.A} d’argento, {counts.O} d’oro, {counts.P} di platino">
+      {#each TIERS as t (t)}
+        <span><MedalBadge tier={t} on={counts[t] > 0} size={22} label={false} /><b>{counts[t]}</b></span>
+      {/each}
+    </button>
   </section>
 </div>
 
-<!-- I blocchi della sessione: fuori dalla pagina, così il foglio sta sopra a tutto. -->
+<!-- Il foglio dell'allenamento: fuori dalla pagina, così sta sopra a tutto. -->
 {#if sheet && session}
-  <Sheet title={template.name} onclose={() => (sheet = false)} tall sans>
-    <div class="blocks">
-      <!-- In cima: scegliere un altro allenamento. Sotto, i blocchi di questo. -->
-      <div class="others">
-        <button class="other" onclick={moreTemplates}>
-          <Shuffle size={20} />
-          <span class="grow"><strong>Scegli un altro allenamento</strong></span>
-          <ChevronRight size={18} />
-        </button>
-      </div>
-
-      {#each blocks as b, i (b.key)}
-        {@const exSteps = b.steps.filter((s) => s.ex)}
-        {#if i > 0}
-          <div class="gap"><Coffee size={14} /> 1 min</div>
-        {/if}
-        <Brick fam={b.fam} name={b.name} minutes={b.minutes} fams={b.fams} sub={b.steps.length > 1 ? `${b.steps.length} esercizi` : b.steps[0].kind === 'exercise' ? '' : b.steps[0].name !== b.name ? b.steps[0].name : ''} />
-        {#if exSteps.length}
-          <ul class="exs">
-            {#each exSteps as s (s.id)}
-              {@const ex = app.catalog.exercise(s.ex)}
-              {@const MIcon = MEASURE_ICON[ex?.measure?.type]}
-              <li data-fam={stepFamily(s, app.catalog)}>
-                <button class="ex-open" onclick={() => ui.open('exercise', { id: s.ex })}>
-                  <span class="ex-name" class:changed={overrides[s.id]}>{s.name}</span>
-                  <span class="ex-meta">
-                    <span><Timer size={13} /> {s.minutes} min</span>
-                    {#if MIcon}<span><MIcon size={13} /> {measureLabel(ex)}</span>{/if}
-                  </span>
-                </button>
-                {#if ex}<MedalRing exercise={ex} medals={app.medals[s.ex]} size={42} />{/if}
-                {#if s.kind === 'exercise'}
-                  <button class="round sm" onclick={() => change(s)} aria-label="Cambia esercizio: {s.name}"><Shuffle size={17} /></button>
-                {/if}
-              </li>
-            {/each}
-          </ul>
-        {/if}
+  <Sheet {title} onclose={() => (sheet = false)} tall>
+    <div class="stack-b">
+      {#each bricks as b (b.id)}
+        <div class="b" data-fam={b.fam} style:min-height="{Math.max(52, b.minutes * 3)}px">
+          <span class="grow">
+            <b>{b.name}</b>
+            {#if b.exs.length}<small>{b.exs.map(exName).join(', ')}</small>{/if}
+          </span>
+          <span class="b-m">{b.minutes}′</span>
+        </div>
       {/each}
-
-      <!-- In fondo: registrare l'allenamento a cose fatte, senza il timer. -->
-      <div class="others last">
-        <button class="other" onclick={logTraining}>
-          <PencilLine size={20} />
-          <span class="grow"><strong>L’ho già fatto</strong><span class="small muted block">Registra com’è andata, senza il timer</span></span>
-          <ChevronRight size={18} />
-        </button>
-      </div>
+    </div>
+    <div class="rows">
+      <button class="other" onclick={rebuild}>
+        <Blocks size={20} />
+        <span class="grow"><strong>Cambia i mattoni</strong></span>
+        <ChevronRight size={18} />
+      </button>
+      <button class="other" onclick={logTraining}>
+        <PencilLine size={20} />
+        <span class="grow"><strong>L’ho già fatto</strong><span class="small muted block">Registra com’è andata, senza il timer</span></span>
+        <ChevronRight size={18} />
+      </button>
     </div>
     {#snippet footer()}
-      <div class="row g-8">
-        {#if changed}
-          <button class="round" onclick={resetChanges} aria-label="Annulla i cambi"><RotateCcw size={18} /></button>
-          <button class="btn ghost grow" onclick={saveMine}><Save size={16} /> Salva come mio</button>
-        {/if}
-        <button class="btn accent grow" onclick={startTraining}><Play size={18} fill="currentColor" /> Inizia</button>
-      </div>
+      <button class="btn accent wide" onclick={startTraining}><Play size={18} fill="currentColor" /> Inizia</button>
     {/snippet}
   </Sheet>
 {/if}
 
 <style>
-  .today :global(.head) {
-    margin-bottom: 4px;
-  }
-  /* ── La tappa ── */
-  .mantra {
-    position: relative;
-    margin-top: 16px;
-  }
-  .m-main {
+  .today {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    width: 100%;
-    padding: 16px 18px 18px;
-    border-radius: var(--r-card);
-    background: color-mix(in srgb, var(--f) 10%, var(--card));
-    border: 1.5px solid color-mix(in srgb, var(--f) 40%, var(--line));
-    text-align: left;
-    color: var(--ink);
-    transition: transform var(--dur-fast) var(--ease);
+    gap: 14px;
   }
-  .m-main:active {
-    transform: scale(0.985);
-  }
-  .m-label {
-    color: var(--f-ink, var(--ink-2));
-    min-height: 30px;
-    display: flex;
-    align-items: center;
-  }
-  .m-head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 2px 0;
-  }
-  .m-ico {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 52px;
-    height: 52px;
-    border-radius: 16px;
-    background: var(--f);
-    color: var(--f-on);
-    box-shadow: 0 3px 0 var(--f-edge);
-  }
-  .m-theme {
-    min-width: 0;
-    font-size: 38px;
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.05;
-  }
-  .m-chev {
-    display: grid;
-    color: var(--ink-3);
-    margin-top: 4px;
-  }
-  .m-where {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 6px;
-    font-size: 14px;
-    font-weight: 650;
-    color: var(--ink);
-  }
-  .m-prog {
-    flex: 0 1 120px;
-    min-width: 48px;
-    /* Le tacche prendono il colore della famiglia, come il resto della scheda. */
-    --accent: var(--f);
-    --accent-ink: var(--f-ink);
-  }
-  .m-tracks {
-    font-size: 13px;
-    color: var(--ink-3);
-  }
-  section,
-  .focus,
-  .test-pill {
-    margin-top: 20px;
-  }
-  .section {
-    margin-top: 28px;
-  }
-
-  /* ── Pulsante grande ── */
-  .hero {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .label {
-    color: var(--ink-3);
-  }
-  /* La riga sotto il pulsante: la scaletta a colori e, sotto, quanti blocchi. Apre il foglio. */
-  .inside {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    width: 100%;
-    padding: 14px 12px 6px 16px;
-    border-radius: var(--r-card);
-    background: var(--card);
-    border: 1px solid var(--line);
-    color: var(--ink);
-    text-align: left;
-    transition: transform var(--dur-fast) var(--ease);
-  }
-  .inside:active {
-    transform: scale(0.985);
-  }
-  .strip {
-    display: flex;
-    gap: 4px;
-    padding-right: 4px;
-  }
-  .seg {
-    flex-basis: 0;
-    min-width: 10px;
-    height: 12px;
-    border-radius: 6px;
-    background: var(--f);
-  }
-  .inside-txt {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    min-height: 36px;
-  }
-  .inside-n {
-    font-size: 14px;
-    color: var(--ink-2);
-  }
-  .inside-n b {
-    font-weight: 650;
-    color: var(--accent-ink);
-  }
-  .inside-more {
+  .streak {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
-    font-size: 14px;
-    font-weight: 650;
+    gap: 4px;
+    margin-right: 4px;
   }
-  .inside-more :global(svg) {
-    color: var(--ink-3);
+  .streak b {
+    font-size: 22px;
+    font-weight: 800;
   }
-  /* Un'azione secondaria, scritta per esteso. */
+
+  .offer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border-radius: var(--r-card);
+    background: color-mix(in srgb, var(--lv) 12%, var(--card));
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--lv) 40%, transparent);
+  }
+
+  /* Il tavolo visto dall'alto. */
+  .court {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px 18px 18px;
+    border-radius: 24px;
+    background: var(--court);
+    color: #fff;
+    overflow: hidden;
+  }
+  .court::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border: 2px solid #fff;
+    border-radius: 16px;
+    background: linear-gradient(#fff, #fff) center / 100% 2px no-repeat;
+    opacity: 0.22;
+    pointer-events: none;
+  }
+  .court::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 4px;
+    translate: -50% 0;
+    background: repeating-linear-gradient(#fff 0 3px, transparent 3px 6px);
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  .court > :global(*) {
+    position: relative;
+    z-index: 1;
+  }
+  .court h2 {
+    margin: 0;
+    padding-right: 40px;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+  .court .sub {
+    opacity: 0.85;
+  }
+  .ball {
+    position: absolute !important;
+    right: 24px;
+    top: 24px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.2);
+  }
+  .open {
+    text-align: left;
+  }
+  .go {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 56px;
+    border-radius: 999px;
+    background: #fff;
+    color: #10151d;
+    font-size: 17px;
+    font-weight: 750;
+    box-shadow: 0 4px 0 rgba(6, 30, 60, 0.4);
+    transition:
+      transform var(--dur-fast),
+      box-shadow var(--dur-fast);
+  }
+  .go:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 rgba(6, 30, 60, 0.4);
+  }
+  .done {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 56px;
+    font-weight: 700;
+  }
   .quiet {
     display: inline-flex;
     align-items: center;
-    align-self: flex-start;
-    gap: 8px;
+    justify-content: center;
+    gap: 6px;
     min-height: 44px;
-    font-size: 14px;
+    color: #fff;
+    opacity: 0.85;
     font-weight: 600;
-    color: var(--ink-2);
-  }
-  .quiet :global(svg) {
-    color: var(--ink-3);
-  }
-  .rings {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .ring-btn {
-    border-radius: 50%;
   }
 
-  /* ── Test e da correggere ── */
-  .test-pill,
-  .focus {
+  .test-pill {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    text-align: left;
+  }
+  .test-pill .small {
+    display: block;
+  }
+  .tp-ico {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+
+  .medals {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 16px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    box-shadow: var(--shadow);
+  }
+  .m-row {
     display: flex;
     align-items: center;
     gap: 14px;
     width: 100%;
-    padding: 14px 18px 14px 14px;
-    border-radius: var(--r-card);
-    background: var(--card);
-    border: 1px solid var(--line);
+    padding: 12px 0;
     text-align: left;
   }
-  .focus {
-    transition: transform var(--dur-fast) var(--ease);
-  }
-  .focus:active {
-    transform: scale(0.985);
-  }
-  .tp-ico,
-  .f-ico {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--accent) 16%, var(--card));
-    color: var(--accent-ink);
-  }
-  .f-ico {
-    background: color-mix(in srgb, var(--down) 14%, var(--card));
-    color: var(--down);
-  }
-  .block {
+  .m-row .small {
     display: block;
   }
-  strong {
-    font-weight: 650;
+  .m-row + .m-row,
+  .tally {
+    border-top: 1px solid var(--line);
   }
-
-  /* ── Livello proposto e avvisi ── */
-  .offer {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 16px 18px;
-    border-radius: var(--r-card);
-    background: color-mix(in srgb, var(--lv) 12%, var(--card));
-    border: 1.5px solid color-mix(in srgb, var(--lv) 45%, var(--line));
+  .first {
+    padding: 14px 0;
   }
-  .note-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    border-radius: var(--r-card);
-    background: var(--card);
-    border: 1px solid var(--line);
-  }
-  .badge {
+  .tally {
     display: grid;
-    place-items: center;
-    flex: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--sunk);
-    color: var(--ink-2);
+    grid-template-columns: repeat(4, 1fr);
+    width: 100%;
+    padding: 12px 0;
   }
-
-  /* ── Medaglie ── */
-  .sec-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .sec-head h2 {
-    margin: 0;
-  }
-  .more {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    min-height: 44px;
-    padding-left: 12px;
-    font-size: 14px;
-    font-weight: 650;
-    color: var(--ink-2);
-  }
-  .won {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 12px 14px 8px;
-    margin-bottom: 12px;
-    border-radius: var(--r-card);
-    background: var(--card);
-    border: 1px solid var(--line);
-  }
-  .won-label {
-    color: var(--ink-3);
-  }
-  .won-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 6px 0;
-    text-align: left;
-    color: var(--ink);
-  }
-  .suggest {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    border-radius: var(--r-card);
-    background: color-mix(in srgb, var(--md) 12%, var(--card));
-    border: 1.5px solid color-mix(in srgb, var(--md) 45%, var(--line));
-  }
-  .s-main {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    text-align: left;
-    color: var(--ink);
-  }
-  .s-main .t-name {
-    margin: 2px 0 4px;
-  }
-  .s-why {
-    color: var(--ink-2);
-  }
-  .s-try {
-    align-self: flex-start;
-  }
-
-  /* ── Foglio dei blocchi ── */
-  .blocks {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding-bottom: 8px;
-  }
-  .gap {
+  .tally span {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--ink-3);
-    padding: 2px 0;
   }
-  .exs {
-    list-style: none;
-    margin: 0 0 6px;
-    padding: 0;
+  .tally b {
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stack-b {
     display: flex;
     flex-direction: column;
+    gap: 5px;
   }
-  .exs li {
+  .b {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 4px 10px 14px;
-    border-left: 4px solid var(--f);
-    margin-left: 22px;
+    padding: 6px 14px;
+    border-radius: 16px;
+    background: var(--f);
+    color: var(--f-on);
+    box-shadow: 0 4px 0 var(--f-edge);
   }
-  .ex-open {
-    flex: 1;
-    min-width: 0;
+  .b b {
+    display: block;
+    font-weight: 750;
+  }
+  .b small {
+    display: block;
+    font-size: 13px;
+    opacity: 0.9;
+  }
+  .b-m {
+    flex: none;
+    font-size: 20px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .rows {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    text-align: left;
-  }
-  .ex-name {
-    font-size: 15.5px;
-    font-weight: 650;
-    line-height: 1.25;
-  }
-  .ex-name.changed {
-    color: var(--accent-ink);
-  }
-  .ex-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    font-size: 12.5px;
-    color: var(--ink-2);
-  }
-  .ex-meta span {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .round.sm {
-    width: 44px;
-    height: 44px;
-  }
-  .others {
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 6px;
-    border-radius: var(--r-card);
-    background: var(--card);
-    border: 1px solid var(--line);
-    overflow: hidden;
+    margin-top: 16px;
   }
   .other {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
+    width: 100%;
     min-height: 56px;
-    padding: 8px 14px 8px 16px;
+    padding: 8px 2px;
     text-align: left;
-    color: var(--ink);
   }
-  .others.last {
-    margin: 14px 0 0;
-  }
-  .other :global(svg) {
-    flex: none;
-    color: var(--ink-3);
+  .other + .other {
+    border-top: 1px solid var(--line);
   }
 </style>

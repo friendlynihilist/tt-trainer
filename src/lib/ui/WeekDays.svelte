@@ -25,16 +25,26 @@
       };
     })
   );
+  // title: «Questa settimana», oppure «Settimana 2 di 4» con i trattini (steps) quando c'è un programma
+  // di più settimane.
+  let { title = 'Questa settimana', steps = null } = $props();
+
   const done = $derived(days.filter((d) => d.done).length);
   const total = $derived(days.filter((d) => d.done || d.todo).length);
 </script>
 
 <div class="week">
   <button class="top" onclick={() => ui.go('calendario')}>
-    <span class="t-name">Questa settimana</span>
+    <span class="t-name">{title}</span>
     <span class="count">{#if total}<b class="t-num">{done}</b> su {total}{/if}</span>
     <ChevronRight size={18} />
   </button>
+
+  {#if steps}
+    <div class="segs" aria-hidden="true">
+      {#each Array(steps.of) as _, k (k)}<i class:past={k < steps.pos - 1} class:now={k === steps.pos - 1}></i>{/each}
+    </div>
+  {/if}
 
   <div class="grid">
     {#each days as d, i (d.date)}
@@ -55,6 +65,24 @@
 </div>
 
 <style>
+  .segs {
+    display: flex;
+    gap: 4px;
+    margin: 2px 0 14px;
+  }
+  .segs i {
+    flex: 1 1 0;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--sunk);
+  }
+  .segs i.past {
+    background: var(--up);
+  }
+  .segs i.now {
+    background: var(--accent);
+  }
+
   .week {
     display: flex;
     flex-direction: column;

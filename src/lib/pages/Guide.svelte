@@ -3,7 +3,7 @@
   // l'allenamento, il piano, la libreria, i dati) in sezioni chiuse, una per argomento. Qui stanno
   // le spiegazioni lunghe tolte dalle altre pagine.
   import { app } from '../store/app.svelte.js';
-  import { BLOCKS, CYCLE_BLOCKS, PHASES, MATCH_TYPES, SCHEMES, PAUSE_MINUTES } from '../data/program.js';
+  import { MATCH_TYPES, SCHEMES, PAUSE_MINUTES } from '../data/program.js';
   import { LIBRARY, PLAYER_LEVELS, TIERS, TIER } from '../data/library.js';
   import PageHead from '../ui/PageHead.svelte';
   import MedalBadge from '../ui/MedalBadge.svelte';
@@ -12,17 +12,17 @@
 
   const STEPS = [
     ['Il tuo livello', 'Scegli il livello che ti somiglia di più. Serve solo a proporti esercizi adatti: puoi fare qualsiasi esercizio, a qualsiasi livello.'],
-    ['Allenarsi', 'Apri Oggi e tocca Inizia: trovi l’allenamento in calendario, già composto con gli esercizi del mese, e il timer. Il modello e ogni esercizio si cambiano al volo.'],
-    ['Provare un obiettivo', 'Su ogni esercizio puoi toccare «Prova l’obiettivo»: l’app ti mostra il prossimo gradino da prendere, per esempio «Raggiungi l’argento! 10 di fila».'],
-    ['Misurarsi', 'Il test è un appuntamento a parte, solo per misurarsi. L’app propone gli esercizi da misurare e ti dice perché. Puoi aggiungerne altri.'],
-    ['Alla fine', 'Segna il colpo da correggere: l’app propone un esercizio per lavorarci e te lo ricorda.']
+    ['Costruire un allenamento', 'Tocca il tasto + in basso. Ogni mattone è una cosa da allenare: aggiungi quelli che vuoi, decidi quanto durano e scegli gli esercizi.'],
+    ['Allenarsi', 'Apri Oggi e tocca Inizia: trovi l’allenamento del giorno con il timer. Puoi allenarti anche nei giorni che non hai messo in programma.'],
+    ['Provare un obiettivo', 'Su ogni esercizio puoi toccare «Prova l’obiettivo»: l’app ti mostra la prossima medaglia, per esempio «Argento: 10 di fila».'],
+    ['Alla fine', 'Di’ com’è andata e, se vuoi, scrivi una nota per ogni colpo. Le note le rileggi in Progressi, nella mappa del colpo.']
   ];
   const example = LIBRARY.find((e) => e.id === 'top-d-block');
 </script>
 
 <div class="page enter guide">
   <PageHead title="Guida" back />
-  <p class="intro">Un colpo al mese, gli allenamenti che vuoi, una medaglia per ogni traguardo. Niente è bloccato.</p>
+  <p class="intro">Gli allenamenti li costruisci tu, un mattone per colpo. Ogni esercizio ha le sue medaglie. Niente è bloccato.</p>
 
   <ol class="steps">
     {#each STEPS as [title, text], i (title)}
@@ -72,42 +72,35 @@
     </Collapse>
 
     <Collapse title="Durante l’allenamento" open={false} key="guida-sessione">
-      <div class="bar" role="img" aria-label="Le cinque fasi del modello Completo">
-        {#each PHASES as p (p.id)}<span style:flex={p.minutes} class:hot={p.id.startsWith('ex')}></span>{/each}
-      </div>
-      <div class="card flush list phases">
-        <div class="ph"><b class="t-num">10′</b><span><strong>Riscaldamento</strong>Dritto e rovescio in diagonale, top su block. Dal secondo mese gli ultimi 5 minuti sono il mantenimento del mese prima.</span></div>
-        <div class="ph"><b class="t-num">14′</b><span><strong>Servizi e ricezione</strong>Metà tempo serve uno, metà l’altro. Chi non serve allena la ricezione.</span></div>
-        <div class="ph"><b class="t-num">24′</b><span><strong>Esercizio 1</strong>Il primo percorso del mese: l’app propone il primo esercizio che non ha ancora l’argento.</span></div>
-        <div class="ph"><b class="t-num">24′</b><span><strong>Esercizio 2</strong>Il secondo percorso del mese, allo stesso modo.</span></div>
-        <div class="ph"><b class="t-num">14′</b><span><strong>Partitella</strong>Metà tempo {MATCH_TYPES.risk.name.toLowerCase()}: {MATCH_TYPES.risk.text.charAt(0).toLowerCase() + MATCH_TYPES.risk.text.slice(1)} Metà tempo {MATCH_TYPES.scheme.name.toLowerCase()}: si sceglie uno schema.</span></div>
-      </div>
+      <p>Un allenamento è una fila di mattoni. Ogni mattone ha la sua durata; se ha più esercizi, il tempo si divide in parti uguali. La partita si gioca metà {MATCH_TYPES.risk.name.toLowerCase()} e metà {MATCH_TYPES.scheme.name.toLowerCase()}.</p>
       <ul class="rules">
         <li><b>Il cambio.</b> A metà di ogni esercizio in due suona un doppio bip e il riquadro del tempo diventa scuro: tocca al compagno. Se comincia lui, tocca l’etichetta «Tocca a te» e i turni si invertono. Nel palleggio e negli esercizi da solo non c’è cambio.</li>
-        <li><b>Le pause.</b> Fra una fase e l’altra c’è {PAUSE_MINUTES} minuto di pausa, con il conto alla rovescia. Puoi saltarla. Le pause sono già contate nella durata dell’allenamento.</li>
+        <li><b>Le pause.</b> Gli allenamenti a mattoni non hanno pause: la durata è la somma dei mattoni. Nei modelli di base fra una fase e l’altra c’è {PAUSE_MINUTES} minuto di pausa, che puoi saltare.</li>
       </ul>
     </Collapse>
 
-    <Collapse title="Il piano" open={false} key="guida-piano">
-      <p>Il piano è una fila di tappe: per ognuna scegli su cosa lavori e per quanto, un allenamento o una, due o quattro settimane. Il programma di base dura tre mesi:</p>
-      <div class="card flush list">
-        {#each CYCLE_BLOCKS as b (b)}
-          {@const block = BLOCKS[b]}
-          <div class="month">
-            <span class="big t-num">{b}</span>
-            <span><strong>{block.theme}</strong><span class="small muted block">{block.tracks.map((t) => app.catalog.track(t).short).join(', ')}</span></span>
-          </div>
-        {/each}
-      </div>
-      <p class="small muted">Una settimana saltata? Nel piano metti una pausa e tutto slitta in avanti.</p>
+    <Collapse title="Il programma" open={false} key="guida-programma">
+      <ul class="rules">
+        <li>Al primo avvio scegli per quanto tempo fare il tuo allenamento: solo oggi, una settimana o un mese, e in quali giorni.</li>
+        <li>In Oggi trovi sempre un allenamento pronto. Per cambiarlo, apri la Libreria, tocca uno dei tuoi allenamenti e poi «Mettilo oggi».</li>
+        <li>Lezioni, partite e tornei si aggiungono dal Diario: tocca un giorno e poi «Aggiungi a questo giorno».</li>
+      </ul>
+    </Collapse>
+
+    <Collapse title="La mappa" open={false} key="guida-mappa">
+      <ul class="rules">
+        <li>In Progressi, alla voce Mappa, ogni colpo ha la sua mappa: una casella per esercizio, con la medaglia più alta che hai vinto.</li>
+        <li>Più scendi, più il livello sale. La pallina indica l’esercizio su cui lavorare adesso: il primo senza argento.</li>
+        <li>Tocca una casella per vedere quanto serve per ogni medaglia e per misurarti subito.</li>
+      </ul>
     </Collapse>
 
     <Collapse title="La libreria" open={false} key="guida-libreria">
       <ul class="rules">
         <li><b>Esercizi.</b> {LIBRARY.length} esercizi in otto famiglie, con il livello suggerito, il formato, come deve venire, gli errori comuni e le medaglie.</li>
-        <li><b>Modelli.</b> La scaletta di un allenamento. Ne crei quanti vuoi.</li>
-        <li><b>Percorsi.</b> Una sequenza di esercizi, dal più guidato al più libero.</li>
-        <li><b>Mesi.</b> Su cosa lavori: fino a tre percorsi, il mantenimento, i servizi e gli schemi della partitella.</li>
+        <li><b>I tuoi allenamenti.</b> Quelli che hai costruito. Toccane uno per cambiargli nome, metterlo a oggi, cambiare i mattoni o eliminarlo.</li>
+        <li><b>I mattoni.</b> Uno per colpo: Dritto, Rovescio, Servizio, Ricezione, Gambe, Gioco tagliato e Schemi. Ognuno apre la sua mappa.</li>
+        <li><b>Modelli di base, pacchetti, mesi e percorsi.</b> Gli allenamenti già pronti delle versioni di prima: restano in fondo, chiusi.</li>
         <li>Si può anche importare un file preparato da un assistente.</li>
       </ul>
     </Collapse>
@@ -215,9 +208,6 @@
   strong {
     font-weight: 700;
   }
-  .block {
-    display: block;
-  }
   .lvl {
     display: flex;
     flex-direction: column;
@@ -230,51 +220,5 @@
   }
   .lvl.me {
     background: color-mix(in srgb, var(--accent) 8%, var(--card));
-  }
-  .bar {
-    display: flex;
-    gap: 3px;
-    height: 10px;
-    margin-bottom: 12px;
-  }
-  .bar span {
-    border-radius: 5px;
-    background: color-mix(in srgb, var(--ink) 35%, var(--sunk));
-  }
-  .bar span.hot {
-    background: var(--accent);
-  }
-  .ph {
-    display: flex;
-    gap: 12px;
-    padding: 12px 16px;
-    font-size: 14px;
-    color: var(--ink-2);
-  }
-  .ph + .ph {
-    border-top: 1px solid var(--line);
-  }
-  .ph b {
-    flex: none;
-    width: 32px;
-    color: var(--ink);
-  }
-  .ph strong {
-    display: block;
-    color: var(--ink);
-  }
-  .month {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 12px 16px;
-  }
-  .month + .month {
-    border-top: 1px solid var(--line);
-  }
-  .big {
-    font-size: 28px;
-    font-weight: 800;
-    color: var(--accent);
   }
 </style>

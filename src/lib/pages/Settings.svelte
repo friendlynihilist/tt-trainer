@@ -16,6 +16,7 @@
   import Upload from '@lucide/svelte/icons/upload';
   import Trash from '@lucide/svelte/icons/trash-2';
   import Sparkles from '@lucide/svelte/icons/sparkles';
+  import Compass from '@lucide/svelte/icons/compass';
   import BookOpen from '@lucide/svelte/icons/book-open';
   import LogOut from '@lucide/svelte/icons/log-out';
   import Signal from '@lucide/svelte/icons/signal';
@@ -109,6 +110,12 @@
       danger: true,
       onconfirm: () => app.wipe()
     });
+  }
+
+  /** Fa ripartire le due guide: quella di medaglie e mappa subito, quella dei mattoni nel costruttore. */
+  function replay() {
+    app.patchMeta({ tour: { build: false, app: false } });
+    ui.go('oggi');
   }
 </script>
 
@@ -248,6 +255,7 @@
     <div class="card flush list">
       {#snippet ver()}<span class="ver t-num">v{VERSION}</span>{/snippet}
       {@render row(Sparkles, 'Novità', '', () => (ui.news = { history: true }), ver)}
+      {@render row(Compass, 'Rivedi la guida', 'Medaglie e mappa subito, i mattoni al prossimo allenamento che costruisci', replay)}
       {@render row(BookOpen, 'Guida', '', () => ui.go('guida'))}
       {#if app.cloud}{@render row(LogOut, 'Esci', '', () => app.signOut(), null, true)}{/if}
     </div>

@@ -9,6 +9,7 @@
   import Settings from '@lucide/svelte/icons/settings';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
+  import { buildNew } from '../store/actions.js';
   import Avatar from './Avatar.svelte';
   import Mark from './Mark.svelte';
 
@@ -30,7 +31,7 @@
       <span>{item.label}</span>
     </a>
   {/each}
-  <button class="add" onclick={() => ui.open('add')} aria-label="Aggiungi">
+  <button class="add" onclick={buildNew} aria-label="Costruisci un allenamento">
     <Plus size={24} strokeWidth={2.2} />
   </button>
   {#each MAIN.slice(2) as item (item.id)}
@@ -48,8 +49,8 @@
     <span>Terza palla</span>
   </a>
 
-  <button class="btn accent new" onclick={() => ui.open('add')}>
-    <Plus size={18} strokeWidth={2.4} /> Aggiungi
+  <button class="btn accent new" onclick={buildNew}>
+    <Plus size={18} strokeWidth={2.4} /> Nuovo allenamento
   </button>
 
   <div class="links">

@@ -7,6 +7,7 @@ import { agenda } from '../engine/events.js';
 import { testProposal } from '../engine/player.js';
 import { weekFor, stageInfo, stagePeriod } from '../engine/plan.js';
 import { fmtLong } from '../util/dates.js';
+import { toTemplate } from '../data/bricks.js';
 
 export function weekOf(date) {
   return weekFor(app.plan, date, app.catalog);
@@ -69,6 +70,28 @@ export function removeItem(item) {
       run: () => (ev ? app.saveEvent(ev) : app.restoreOccurrence(item.key))
     }
   });
+}
+
+/** Mette un allenamento a oggi, al posto di quello che c'era in calendario. */
+export function putToday(templateId) {
+  const day = agenda(app.plan, app.events, app.planned, app.today, app.today, app.catalog).get(app.today);
+  for (const item of day?.todo ?? []) if (item.kind === 'training') app.removeItem(item);
+  app.planEvent({ kind: 'training', template: templateId, date: app.today });
+}
+
+/** Il tasto +: apre il costruttore su un allenamento nuovo, che si salva fra i tuoi e va a oggi. */
+export function buildNew(bricks = []) {
+  ui.builder = {
+    title: 'Nuovo allenamento',
+    cta: 'Salva e mettilo oggi',
+    bricks: Array.isArray(bricks) ? bricks : [],
+    onsave: (list) => {
+      const t = app.saveCustom('templates', toTemplate(list));
+      putToday(t.id);
+      ui.go('oggi');
+      ui.toast(`«${t.name}» è l’allenamento di oggi`);
+    }
+  };
 }
 
 /** Mette in calendario qualcosa fuori dal ritmo. */

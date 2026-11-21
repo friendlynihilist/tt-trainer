@@ -1,5 +1,6 @@
 <script>
-  // Le novità: compaiono una volta sola dopo un aggiornamento, oppure da Impostazioni.
+  // Le novità: compaiono una volta sola dopo un aggiornamento, oppure da Impostazioni. La versione
+  // più recente sta sul tavolo blu, come l'allenamento in Oggi; ogni novità ha il suo mattoncino.
   import { fade } from 'svelte/transition';
   import { cubicOut, backOut } from 'svelte/easing';
   import CalendarDays from '@lucide/svelte/icons/calendar-days';
@@ -14,12 +15,15 @@
   import Pencil from '@lucide/svelte/icons/pencil';
   import Coffee from '@lucide/svelte/icons/coffee';
   import Swords from '@lucide/svelte/icons/swords';
+  import Blocks from '@lucide/svelte/icons/blocks';
+  import MapIcon from '@lucide/svelte/icons/map';
   import { CHANGELOG, VERSION } from '../data/changelog.js';
   import { fmtLong } from '../util/dates.js';
 
   let { entries = CHANGELOG.slice(0, 1), history = false, onclose } = $props();
 
-  const ICONS = { calendar: CalendarDays, gauge: Gauge, palette: Palette, library: LibraryBig, sparkles: Sparkles, coffee: Coffee, swords: Swords, medal: MedalIcon, trending: TrendingUp, users: Users, swap: Repeat, pencil: Pencil };
+  const FAMS = ['attacco', 'servizio', 'controllo', 'ricezione', 'gambe', 'taglio', 'schemi', 'palleggio'];
+  const ICONS = { blocks: Blocks, map: MapIcon, calendar: CalendarDays, gauge: Gauge, palette: Palette, library: LibraryBig, sparkles: Sparkles, coffee: Coffee, swords: Swords, medal: MedalIcon, trending: TrendingUp, users: Users, swap: Repeat, pencil: Pencil };
   const list = $derived(history ? CHANGELOG : entries);
 
   /** Sale e si assesta: un po' di scala, un po' di spostamento. */
@@ -46,17 +50,20 @@
     <div class="scroll">
       {#each list as entry, n (entry.version)}
         <section class:older={n > 0}>
-          <p class="eyebrow">
-            <span class="ver mono">v{entry.version}</span>
-            {#if n === 0 && entry.version === VERSION && !history}<span class="new">Novità</span>{/if}
-            <span class="faint">{fmtLong(entry.date)}</span>
-          </p>
-          <h2 id={n === 0 ? 'wn-title' : undefined} class="title">{entry.title}</h2>
+          <div class="head" class:court={n === 0}>
+            {#if n === 0}<span class="ball" aria-hidden="true"></span>{/if}
+            <p class="eyebrow">
+              <span class="ver">v{entry.version}</span>
+              {#if n === 0 && entry.version === VERSION && !history}<span class="new">Novità</span>{/if}
+              <span class="when">{fmtLong(entry.date)}</span>
+            </p>
+            <h2 id={n === 0 ? 'wn-title' : undefined} class="title">{entry.title}</h2>
+          </div>
           <ul>
             {#each entry.items as item, i (i)}
               {@const Icon = ICONS[item.icon] ?? Sparkles}
               <li style:animation-delay="{180 + i * 70}ms">
-                <span class="ic"><Icon size={17} /></span>
+                <span class="ic" data-fam={FAMS[i % FAMS.length]}><Icon size={18} strokeWidth={2.2} /></span>
                 <span>{item.text}</span>
               </li>
             {/each}
@@ -66,7 +73,7 @@
       {/each}
     </div>
     <footer>
-      <button class="btn primary wide" onclick={onclose}>{history ? 'Chiudi' : 'Andiamo'}</button>
+      <button class="btn accent wide" onclick={onclose}>{history ? 'Chiudi' : 'Andiamo'}</button>
     </footer>
   </div>
 </div>
@@ -103,15 +110,63 @@
   }
   .scroll {
     overflow-y: auto;
-    padding: 26px 24px 8px;
+    padding: 12px 12px 8px;
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 22px;
+  }
+  section > :not(.court) {
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+  /* Il tavolo visto dall'alto, come in Oggi. */
+  .court {
+    position: relative;
+    padding: 20px 18px 18px;
+    border-radius: 18px;
+    background: var(--court);
+    color: #fff;
+    overflow: hidden;
+  }
+  .court::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border: 2px solid #fff;
+    border-radius: 12px;
+    opacity: 0.22;
+  }
+  .court::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 4px;
+    translate: -50% 0;
+    background: repeating-linear-gradient(#fff 0 3px, transparent 3px 6px);
+    opacity: 0.3;
+  }
+  .court > * {
+    position: relative;
+    z-index: 1;
+  }
+  .ball {
+    position: absolute !important;
+    right: 22px;
+    top: 22px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.2);
+  }
+  .when {
+    opacity: 0.75;
   }
   section.older {
-    padding-top: 22px;
+    padding-top: 20px;
     border-top: 1px solid var(--line);
-    opacity: 0.8;
   }
   .eyebrow {
     display: flex;
@@ -120,21 +175,29 @@
     font-size: 12px;
   }
   .ver {
-    font-weight: 600;
-    color: var(--ink-2);
+    font-weight: 700;
   }
   .new {
     padding: 2px 8px;
     border-radius: 999px;
-    background: var(--accent);
-    color: #15171a;
-    font-weight: 650;
+    background: #fff;
+    color: #10151d;
+    font-weight: 700;
     font-size: 11px;
     animation: pop 0.5s var(--spring) 0.25s both;
   }
   .title {
-    margin-top: 8px;
+    margin: 8px 0 0;
+    padding-right: 34px;
+    font-family: var(--sans);
     font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+  .older .title {
+    font-size: 20px;
   }
   ul {
     list-style: none;
@@ -148,7 +211,7 @@
     display: flex;
     gap: 12px;
     align-items: flex-start;
-    font-size: 15px;
+    font-size: 15.5px;
     line-height: 1.4;
     animation: rise 0.5s var(--ease-out) both;
   }
@@ -156,15 +219,17 @@
     display: grid;
     place-items: center;
     flex: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    background: var(--accent-soft);
-    color: var(--accent-ink);
+    width: 36px;
+    height: 34px;
+    border-radius: 11px;
+    background: var(--f);
+    color: var(--f-on);
+    box-shadow: 0 3px 0 var(--f-edge);
   }
   .older .ic {
     background: var(--sunk);
     color: var(--ink-2);
+    box-shadow: none;
   }
   .note {
     margin-top: 18px;

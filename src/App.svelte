@@ -12,6 +12,8 @@
   import NoAccess from './lib/screens/NoAccess.svelte';
   import Wizard from './lib/screens/Wizard.svelte';
   import Live from './lib/screens/Live.svelte';
+  import Builder from './lib/screens/Builder.svelte';
+  import Coach from './lib/ui/Coach.svelte';
   import WhatsNew from './lib/ui/WhatsNew.svelte';
   import { VERSION, unseen } from './lib/data/changelog.js';
 
@@ -40,6 +42,7 @@
   import NoteSheet from './lib/sheets/NoteSheet.svelte';
   import StageSheet from './lib/sheets/StageSheet.svelte';
   import ItemSheet from './lib/sheets/ItemSheet.svelte';
+  import WorkoutSheet from './lib/sheets/WorkoutSheet.svelte';
 
   const PAGES = { oggi: Today, calendario: Calendar, progressi: Progress, libreria: Library, guida: Guide, impostazioni: Settings };
   const SHEETS = {
@@ -60,7 +63,8 @@
     level: LevelSheet,
     note: NoteSheet,
     stage: StageSheet,
-    item: ItemSheet
+    item: ItemSheet,
+    workout: WorkoutSheet
   };
 
   onMount(() => {
@@ -142,6 +146,10 @@
   <Live />
 {/if}
 
+{#if inApp && ui.builder}
+  <Builder {...ui.builder} />
+{/if}
+
 {#if inApp && (ui.news || autoNews)}
   <WhatsNew entries={fresh} history={Boolean(ui.news?.history)} onclose={closeNews} />
 {/if}
@@ -153,6 +161,10 @@
 
 {#if !app.online && app.cloud && inApp}
   <div class="offline" transition:fade={{ duration: 200 }}>Offline · sincronizza al ritorno della rete</div>
+{/if}
+
+{#if app.stage === 'ready'}
+  <Coach />
 {/if}
 
 <Toasts />

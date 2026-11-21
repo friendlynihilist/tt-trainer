@@ -26,6 +26,14 @@
   import ProgressRing from '../ui/ProgressRing.svelte';
   import FamilyIcon from '../ui/FamilyIcon.svelte';
   import Collapse from '../ui/Collapse.svelte';
+  import Segmented from '../ui/Segmented.svelte';
+  import BrickMap from '../ui/BrickMap.svelte';
+  import { BRICK } from '../data/bricks.js';
+
+  // Due viste: i numeri (livello, medaglie, settimane) e la mappa dei colpi. L'indirizzo le ricorda:
+  // #/progressi/mappa/rovescio apre la mappa del rovescio.
+  const view = $derived(ui.route.params[0] === 'mappa' ? 'mappa' : 'numeri');
+  const brick = $derived(BRICK[ui.route.params[1]] && !BRICK[ui.route.params[1]].extra ? ui.route.params[1] : (app.meta?.focus?.[0] ?? 'dritto'));
 
   const sum = $derived(totals(app.events, app.attempts));
   const weak = $derived(weaknesses(app.events));
@@ -96,6 +104,21 @@
 
 <div class="page enter progress">
   <PageHead title="Progressi" />
+
+  <div class="views">
+    <Segmented
+      options={[
+        { id: 'numeri', label: 'Numeri' },
+        { id: 'mappa', label: 'Mappa' }
+      ]}
+      value={view}
+      onchange={(v) => (v === 'mappa' ? ui.go('progressi', 'mappa', brick) : ui.go('progressi'))}
+    />
+  </div>
+
+  {#if view === 'mappa'}
+    <BrickMap {brick} onpick={(id) => ui.go('progressi', 'mappa', id)} />
+  {:else}
 
   <!-- Tre numeri: da quante settimane ti alleni di fila, quante ore, quante attività. -->
   <section class="nums">
@@ -255,9 +278,13 @@
       </Collapse>
     </div>
   {/if}
+  {/if}
 </div>
 
 <style>
+  .views {
+    margin-bottom: 14px;
+  }
   /* ── I tre numeri ── */
   .nums {
     display: grid;

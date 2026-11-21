@@ -70,6 +70,9 @@ function seed(theme, stages = null) {
   const meta = {
     onboarded: true,
     seenVersion: '9.9.9',
+    // Le guide già viste: nelle schermate non devono coprire la pagina.
+    tour: { build: true, app: true },
+    focus: ['dritto', 'servizio'],
     profile: { name: 'Carlo' },
     settings: { theme, sound: false },
     player: { level: 'intermedio', since: daysAgo(20), history: [{ date: daysAgo(20), level: 'intermedio', how: 'scelto' }], declined: null },
@@ -164,9 +167,13 @@ const SHOTS = [
   { name: 'foglio-voce', hash: 'calendario', steps: [click('/^Test/', 'button.item')] },
   { name: 'foglio-livello', hash: 'progressi', steps: [`document.querySelector('.lv-top button').click()`] },
   { name: 'foglio-percorso', hash: 'libreria/allenamenti', steps: [click('/^Percorsi/'), click('/^Top di dritto/', 'button.item')] },
-  { name: 'foglio-mese', hash: 'libreria/allenamenti', steps: [click('/^Dritto/', 'button.item')] },
+  { name: 'foglio-mese', hash: 'libreria/allenamenti', steps: [click('/^Mesi/'), click('/^Dritto/', 'button.item')] },
   { name: 'foglio-nota', hash: 'libreria/colpi', steps: [click('/^Attacco/'), click('/^Apertura di dritto su taglio/', 'button.item'), click('/^Aggiungi una nota/')] },
-  { name: 'foglio-aggiungi', hash: 'oggi', steps: [`document.querySelector('nav button.add').click()`], viewport: true },
+  // Il foglio per aggiungere un'attività si apre dal Diario; il tasto + apre il costruttore.
+  { name: 'foglio-aggiungi', hash: 'calendario', steps: [click('/Aggiungi a/', 'button.add')], viewport: true },
+  { name: 'costruttore', hash: 'oggi', steps: [`document.querySelector('nav button.add').click()`, `document.querySelector('[data-tile=dritto]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 5, clientY: 5 })); window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 5, clientY: 5 }))`], viewport: true },
+  { name: 'mappa', hash: 'progressi/mappa/dritto' },
+  { name: 'novita', hash: 'oggi', patch: (d) => ({ ...d, meta: { ...d.meta, seenVersion: '0.7.0' } }), viewport: true },
   { name: 'scheda-esercizio', hash: 'libreria/esercizi', steps: [click('/^Attacco/'), click('/^Top di dritto contro block/', 'button.item')] },
   { name: 'scheda-allenamento', hash: 'libreria/allenamenti', steps: [click('/^Pacchetti/'), click('/^90′$/', '.pk button')] },
   { name: 'scheda-colpo', hash: 'libreria/colpi', steps: [click('/^Attacco/'), click('/^Apertura di dritto su taglio/', 'button.item')] },
@@ -177,15 +184,10 @@ const SHOTS = [
     viewport: true
   },
   { name: 'sessione-chiusura', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/'), `document.querySelector('[role=tab][aria-label=Chiusura]').click()`], viewport: true },
-  // Dopo il rifacimento: il foglio dei blocchi, l'inizio della sessione, una medaglia presa e la chiusura con la medaglia.
-  { name: 'oggi-blocchi', hash: 'oggi', steps: [`document.querySelector('.inside').click()`], viewport: true },
-  // La scelta di un esercizio: dal foglio dell'allenamento, «Cambia esercizio» sul primo.
-  { name: 'foglio-scegli-esercizio', hash: 'oggi', steps: [`document.querySelector('.inside').click()`, `document.querySelector('.exs .round').click()`], viewport: true },
-  // Il primo avvio: le schermate di benvenuto, per chi non ha ancora un piano.
+  // Il foglio dell'allenamento di oggi, con i suoi mattoni.
+  { name: 'oggi-mattoni', hash: 'oggi', steps: [`document.querySelector('.court .open').click()`], viewport: true },
+  // Il primo avvio: la prima schermata, per chi arriva ora.
   { name: 'primo-avvio', hash: 'oggi', patch: (d) => ({ ...d, meta: { settings: d.meta.settings } }), viewport: true },
-  { name: 'oggi-tappa', hash: 'oggi', steps: [click('/^(Questo mese|Queste|Questa settimana|Oggi|Questo allenamento|Questi)/', '.m-main')] },
-  { name: 'oggi-allenamento-solo-tappa', hash: 'oggi', stages: 'solo', steps: [click('/^(Questo mese|Queste|Questa settimana|Oggi|Questo allenamento|Questi)/', '.m-main')] },
-  { name: 'oggi-piano', hash: 'oggi', steps: [click('/^(Questo mese|Queste|Questa settimana|Oggi|Questo allenamento|Questi)/', '.m-main'), click('/^Modifica il piano/')] },
   // Oggi un tema per un allenamento solo, in mezzo ad altri: Dritto 2 settimane, poi Rovescio,
   // Primi colpi (oggi) e Dritto per un allenamento ciascuno, poi Rovescio 2 settimane.
   {

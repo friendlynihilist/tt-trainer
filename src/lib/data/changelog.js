@@ -10,6 +10,20 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.8.0',
+    date: '2026-11-21',
+    title: 'Allenamenti a mattoni',
+    items: [
+      { icon: 'blocks', text: 'Un allenamento ora si costruisce con i mattoni, uno per colpo. Tocca il tasto + in basso, scegli i mattoni, decidi quanto durano e quali esercizi fare.' },
+      { icon: 'palette', text: 'L’app ha un aspetto nuovo: schede bianche e blu al posto dell’arancione. In Oggi trovi il tavolo visto dall’alto, con l’allenamento del giorno.' },
+      { icon: 'map', text: 'In Progressi c’è la mappa di ogni colpo: una casella per esercizio, con la medaglia che hai vinto. La pallina indica l’esercizio da fare adesso.' },
+      { icon: 'library', text: 'In Libreria trovi i tuoi allenamenti. Toccane uno per cambiargli nome, metterlo a oggi, cambiare i mattoni o eliminarlo.' },
+      { icon: 'pencil', text: 'Alla fine dell’allenamento puoi scrivere una nota per ogni colpo. Le rileggi in Progressi, nella mappa del colpo.' },
+      { icon: 'calendar', text: 'Lezioni, partite e tornei si aggiungono dal Diario: tocca un giorno e poi «Aggiungi a questo giorno».' }
+    ],
+    note: 'Il diario, le medaglie e il programma che avevi restano come sono.'
+  },
+  {
     version: '0.7.0',
     date: '2026-11-20',
     title: 'Indietro e copia dei dati',
