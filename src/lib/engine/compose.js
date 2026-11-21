@@ -106,7 +106,7 @@ export function composeSession({ week, template, catalog = BASE, medals = {}, pa
     if (changed.length) groups.push(changed);
   });
 
-  // Gli allenamenti a mattoni non hanno pause: la durata è la somma dei mattoni.
+  // Gli allenamenti costruiti con i fondamentali non hanno pause: la durata è la somma dei fondamentali.
   const all = pauses && t?.gaps !== false ? withPauses(groups) : groups.flat();
   return {
     block: month,

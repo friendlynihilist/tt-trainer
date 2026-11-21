@@ -22,10 +22,11 @@
   let { brick = 'dritto', onpick } = $props();
 
   const X = [74, 182, 290]; // il centro delle tre file, su 336
-  const ROW = 118;
+  // Fra una riga e l'altra resta posto per la pallina che rimbalza sopra l'esercizio di adesso.
+  const ROW = 134;
 
   const map = $derived(brickMap(brick, app.catalog, app.medals));
-  const top = $derived(map.heads ? 30 : 0);
+  const top = $derived(map.heads ? 46 : 16);
   const y = (row) => top + 8 + row * ROW;
   const height = $derived(map.nodes.length ? y(Math.max(...map.nodes.map((n) => n.row))) + 110 : 0);
   const has = (i) => medalRank(app.medals[map.nodes[i].ex.id]) > 0;
@@ -302,14 +303,14 @@
     height: 60px;
     border-radius: 20px;
     background: var(--card);
-    box-shadow: 0 5px 0 var(--line-strong);
+    box-shadow: 0 5px 0 var(--line);
     transition:
       transform 0.12s,
       box-shadow 0.12s;
   }
   .nd:active i {
     transform: translateY(4px);
-    box-shadow: 0 1px 0 var(--line-strong);
+    box-shadow: 0 1px 0 var(--line);
   }
   .nd.now i {
     background: var(--accent);

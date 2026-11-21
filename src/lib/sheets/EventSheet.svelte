@@ -396,7 +396,7 @@
     gap: 10px;
     padding: 14px 10px 14px 16px;
     border-radius: var(--r);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     background: var(--card);
   }
   .trow .icon-btn {
@@ -418,7 +418,7 @@
     padding: 12px 14px;
     border-radius: var(--r-s);
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     text-align: left;
     font-size: 14px;
   }

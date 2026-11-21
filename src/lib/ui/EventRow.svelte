@@ -1,6 +1,6 @@
 <script>
   // Una voce del diario in elenco. Ogni informazione ha il suo posto e il suo stile, così cose
-  // diverse non si confondono: il tipo in grassetto, il modello in grigio, la data a destra; durata,
+  // diverse non si confondono: il nome in grassetto, la data a destra; durata,
   // compagno e cosa correggere con la loro icona; i risultati come chip («Pendolo laterale 8/10»).
   import Timer from '@lucide/svelte/icons/timer';
   import UsersIcon from '@lucide/svelte/icons/users';
@@ -8,6 +8,7 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { KIND } from '../data/taxonomy.js';
+  import { eventName } from '../data/bricks.js';
   import { attemptsOf } from '../engine/attempts.js';
   import { shortValue, size } from '../engine/medals.js';
   import { TRIES_PER_DAY } from '../data/library.js';
@@ -26,18 +27,16 @@
       .filter(Boolean)
   );
   const color = $derived(KIND[event.kind]?.color ?? 'slate');
-  // Il titolo è il tipo («Allenamento», «Test»); il modello, se c'è, sta accanto in tono minore.
-  const kind = $derived(event.kind === 'livello' ? 'Livello' : (KIND[event.kind]?.short ?? 'Attività'));
-  const model = $derived(event.kind === 'training' ? (app.catalog.template(event.template)?.name ?? '') : '');
+  // Un allenamento si chiama per quello che contiene («Dritto e servizio»); il resto con il suo tipo.
+  const kind = $derived(event.kind === 'livello' ? 'Livello' : event.kind === 'training' ? eventName(event, app.catalog) : (KIND[event.kind]?.short ?? 'Attività'));
   const minutes = $derived(event.minutes && event.kind !== 'test' ? fmtDuration(event.minutes) : '');
 </script>
 
-<button class="item" onclick={() => ui.open('event', { id: event.id })}>
+<button class="item" onclick={() => ui.open(event.kind === 'livello' ? 'event' : 'done', { id: event.id })}>
   <span class="dot" data-color={color} aria-hidden="true"></span>
   <span class="grow stack">
     <span class="top">
       <strong>{kind}</strong>
-      {#if model}<span class="model">{model}</span>{/if}
       {#if showDate}<span class="date">{fmtShort(event.date)}</span>{/if}
     </span>
     {#if minutes || event.partner?.name || event.focus?.stroke}

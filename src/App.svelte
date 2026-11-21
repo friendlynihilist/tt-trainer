@@ -43,6 +43,8 @@
   import StageSheet from './lib/sheets/StageSheet.svelte';
   import ItemSheet from './lib/sheets/ItemSheet.svelte';
   import WorkoutSheet from './lib/sheets/WorkoutSheet.svelte';
+  import DoneSheet from './lib/sheets/DoneSheet.svelte';
+  import WhenSheet from './lib/sheets/WhenSheet.svelte';
 
   const PAGES = { oggi: Today, calendario: Calendar, progressi: Progress, libreria: Library, guida: Guide, impostazioni: Settings };
   const SHEETS = {
@@ -64,7 +66,9 @@
     note: NoteSheet,
     stage: StageSheet,
     item: ItemSheet,
-    workout: WorkoutSheet
+    workout: WorkoutSheet,
+    done: DoneSheet,
+    when: WhenSheet
   };
 
   onMount(() => {
@@ -99,7 +103,7 @@
   const inApp = $derived(app.stage === 'ready' && app.welcomed);
 
   // Le novità compaiono una volta sola per account dopo un aggiornamento. Chi passa dal primo avvio
-  // (chi arriva ora, e chi usava l'app prima dei mattoni) non le vede: il primo avvio segna già la versione.
+  // (chi arriva ora, e chi usava l'app prima dei fondamentali) non le vede: il primo avvio segna già la versione.
   let dismissed = $state(false);
   const fresh = $derived(inApp && app.meta ? unseen(app.meta.seenVersion ?? '0.1.0') : []);
   const autoNews = $derived(!dismissed && fresh.length > 0 && !ui.live && !ui.sheets.length);

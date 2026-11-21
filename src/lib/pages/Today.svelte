@@ -1,6 +1,6 @@
 <script>
-  // «Oggi»: tre cose, dall'alto. Il tavolo con l'allenamento di oggi (il nome, i suoi mattoni, un
-  // solo pulsante); la settimana; le medaglie, con quella da andare a prendere. Toccando i mattoni
+  // «Oggi»: tre cose, dall'alto. Il tavolo con l'allenamento di oggi (il nome, i suoi fondamentali, un
+  // solo pulsante); la settimana; le medaglie, con quella da andare a prendere. Toccando i fondamentali
   // si apre il foglio dell'allenamento: da lì lo cambi o lo registri senza timer.
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import PencilLine from '@lucide/svelte/icons/pencil-line';
@@ -135,13 +135,13 @@
     draft = null;
   }
 
-  // «Cambia i mattoni»: un tuo allenamento si aggiorna; uno di base diventa un allenamento tuo,
+  // «Cambia i fondamentali»: un tuo allenamento si aggiorna; uno di base diventa un allenamento tuo,
   // che prende il suo posto oggi.
   function rebuild() {
     sheet = false;
     const mine = (app.meta?.custom?.templates ?? []).find((t) => t.id === templateId) ?? null;
     ui.builder = {
-      title: 'Cambia i mattoni',
+      title: 'Cambia i fondamentali',
       bricks: editableBricks(template, app.catalog, session),
       onsave: (list) => {
         if (mine) {
@@ -190,7 +190,7 @@
       <button class="quiet" onclick={discard}><Trash size={16} /> Scarta questa sessione</button>
     {:else if session}
       <h2>{title}</h2>
-      <button class="open" onclick={() => (sheet = true)} aria-label="Vedi i mattoni di oggi">
+      <button class="open" onclick={() => (sheet = true)} aria-label="Vedi i fondamentali di oggi">
         <Pills {bricks} solid />
       </button>
       {#if doneToday && !trainingToday}
@@ -278,7 +278,7 @@
     <div class="rows">
       <button class="other" onclick={rebuild}>
         <Blocks size={20} />
-        <span class="grow"><strong>Cambia i mattoni</strong></span>
+        <span class="grow"><strong>Cambia i fondamentali</strong></span>
         <ChevronRight size={18} />
       </button>
       <button class="other" onclick={logTraining}>

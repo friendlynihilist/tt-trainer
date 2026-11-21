@@ -12,7 +12,7 @@
 //
 // Un allenamento: { id, name, color, blocks }. Fra un blocco e l'altro c'è un minuto di pausa, che
 // si aggiunge alla durata dei blocchi (90 minuti = 85 di blocchi + 5 pause). Gli allenamenti a
-// mattoni (bricks.js) hanno `gaps: false`: niente pause, la durata è la somma dei mattoni.
+// fondamentali (bricks.js) hanno `gaps: false`: niente pause, la durata è la somma dei fondamentali.
 //
 // Prima della 0.4 la pausa si toglieva al blocco dopo. I modelli salvati così (`steps`, oppure
 // blocchi con `pauses: 'inside'`) si leggono convertiti (normalizeTemplate): ogni blocco dopo il

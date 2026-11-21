@@ -50,7 +50,7 @@
     padding: 14px 14px 12px;
     border-radius: var(--r-card);
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
   }
   .read {
     display: flex;

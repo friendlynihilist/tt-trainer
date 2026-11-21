@@ -1,15 +1,15 @@
-// I mattoni: le cose che si allenano, una per colpo. Un allenamento è una fila di mattoni, ognuno
+// I fondamentali: le cose che si allenano, una per colpo. Un allenamento è una fila di fondamentali, ognuno
 // con una durata e gli esercizi scelti fra quelli del colpo. Sotto resta il formato di sempre: un
-// allenamento è un modello a blocchi (templates.js), e ogni mattone è un blocco con `brick`.
+// allenamento è un modello a blocchi (templates.js), e ogni fondamentale è un blocco con `brick`.
 //
 // · Dritto e Rovescio prendono dalle famiglie palleggio, attacco e block, secondo il lato dei colpi
-//   allenati (taxonomy.js). Un esercizio che allena tutti e due i lati sta in tutti e due i mattoni.
-// · Gli altri mattoni sono una famiglia ciascuno.
+//   allenati (taxonomy.js). Un esercizio che allena tutti e due i lati sta in tutti e due i fondamentali.
+// · Gli altri fondamentali sono una famiglia ciascuno.
 // · Riscaldamento (il palleggio) e Partita non sono colpi: si possono mettere in un allenamento, ma
 //   non hanno una mappa.
 //
-// Gli allenamenti a mattoni non hanno la pausa di un minuto fra un blocco e l'altro (`gaps: false`):
-// la durata è la somma dei mattoni, come si vede mentre li costruisci.
+// Gli allenamenti per fondamentali non hanno la pausa di un minuto fra un blocco e l'altro (`gaps: false`):
+// la durata è la somma dei fondamentali, come si vede mentre li costruisci.
 
 import { STROKE } from './taxonomy.js';
 import { LEVEL_IDS } from './library.js';
@@ -20,7 +20,7 @@ const HAND = ['palleggio', 'attacco', 'controllo'];
 /** I nomi delle tre file di Dritto e Rovescio. */
 export const LANE = { palleggio: 'Palleggio', attacco: 'Attacco', controllo: 'Block' };
 
-/** Un mattone dura almeno dieci minuti e si allunga di cinque in cinque. */
+/** Un fondamentale dura almeno dieci minuti e si allunga di cinque in cinque. */
 export const MIN_MINUTES = 10;
 export const MAX_MINUTES = 45;
 export const STEP_MINUTES = 5;
@@ -47,14 +47,14 @@ export const BRICKS = [
   { id: 'partita', name: 'Partita', fam: 'partita', color: 'slate', minutes: 10, extra: true, match: true, has: () => false }
 ];
 export const BRICK = Object.fromEntries(BRICKS.map((b) => [b.id, b]));
-/** I colpi: i mattoni con una mappa. */
+/** I colpi: i fondamentali con una mappa. */
 export const SKILLS = BRICKS.filter((b) => !b.extra);
 
 const levelIndex = (level) => Math.max(0, LEVEL_IDS.indexOf(level));
 /** 0 nessuna medaglia, 1 bronzo, 2 argento, 3 oro. */
 export const medalRank = (m) => (m?.O ? 3 : m?.A ? 2 : m?.B ? 1 : 0);
 
-/** Gli esercizi di un mattone, dal livello più basso; a pari livello prima quelli già premiati. */
+/** Gli esercizi di un fondamentale, dal livello più basso; a pari livello prima quelli già premiati. */
 export function brickExercises(id, catalog = BASE, medals = {}) {
   const b = BRICK[id];
   if (!b) return [];
@@ -64,21 +64,21 @@ export function brickExercises(id, catalog = BASE, medals = {}) {
     .sort((x, y) => levelIndex(x.level) - levelIndex(y.level) || medalRank(medals[y.id]) - medalRank(medals[x.id]));
 }
 
-/** Il mattone di un esercizio (per i colori e per le note): Dritto se il lato non è il rovescio. */
+/** Il fondamentale di un esercizio (per i colori e per le note): Dritto se il lato non è il rovescio. */
 export function brickOfExercise(ex) {
   if (!ex?.family) return null;
   if (HAND.includes(ex.family)) return sideOf(ex) === 'R' ? 'rovescio' : 'dritto';
   return BRICKS.find((b) => !b.extra && b.fam === ex.family)?.id ?? null;
 }
 
-/** Il mattone di un colpo della tassonomia (le note si scrivono per colpo). */
+/** Il fondamentale di un colpo della tassonomia (le note si scrivono per colpo). */
 export function brickOfStroke(stroke) {
   if (!stroke?.family) return null;
   if (HAND.includes(stroke.family)) return stroke.side === 'R' ? 'rovescio' : 'dritto';
   return BRICKS.find((b) => !b.extra && b.fam === stroke.family)?.id ?? null;
 }
 
-/** Le file di un mattone: per famiglia in Dritto e Rovescio, tre file a giro negli altri. */
+/** Le file di un fondamentale: per famiglia in Dritto e Rovescio, tre file a giro negli altri. */
 export function lanesOf(id, catalog = BASE, medals = {}) {
   const b = BRICK[id];
   const list = brickExercises(id, catalog, medals);
@@ -89,7 +89,7 @@ export function lanesOf(id, catalog = BASE, medals = {}) {
 }
 
 /**
- * La mappa di un mattone. Le righe seguono i livelli: tutti gli esercizi di un livello stanno sopra
+ * La mappa di un fondamentale. Le righe seguono i livelli: tutti gli esercizi di un livello stanno sopra
  * quelli del livello dopo. In ogni fila l'esercizio «di adesso» è il primo senza argento.
  * @returns { nodes: [{ ex, lane, col, row, lv, now }], edges: [[da, a]], heads: string[] | null, cols: number[] }
  */
@@ -120,7 +120,7 @@ export function brickMap(id, catalog = BASE, medals = {}) {
 const hasGoals = (ex) => ex?.goals?.B != null;
 
 /**
- * Gli esercizi che l'app propone per un mattone: quelli del tuo livello (o del più vicino sotto),
+ * Gli esercizi che l'app propone per un fondamentale: quelli del tuo livello (o del più vicino sotto),
  * prima l'attacco e prima quelli dove ti manca di più.
  */
 export function suggest(id, level, catalog = BASE, medals = {}, n = 1) {
@@ -137,7 +137,7 @@ export function suggest(id, level, catalog = BASE, medals = {}, n = 1) {
 }
 
 let seq = 0;
-/** Un mattone nuovo, con gli esercizi proposti per il tuo livello. */
+/** Un fondamentale nuovo, con gli esercizi proposti per il tuo livello. */
 export function makeBrick(type, { minutes = null, exs = null, level = null, catalog = BASE, medals = {} } = {}) {
   const b = BRICK[type];
   const min = minutes ?? b.minutes;
@@ -174,7 +174,7 @@ export function proposals(focus, level, catalog = BASE, medals = {}) {
   ];
 }
 
-/** I mattoni → un allenamento da salvare (un modello a blocchi, senza id). */
+/** I fondamentali → un allenamento da salvare (un modello a blocchi, senza id). */
 export function toTemplate(bricks, name = null) {
   const first = bricks.find((b) => !BRICK[b.type]?.extra) ?? bricks[0];
   return {
@@ -191,7 +191,7 @@ export function toTemplate(bricks, name = null) {
   };
 }
 
-/** Il mattone di un blocco: quello salvato, o quello che gli somiglia nei modelli di prima. */
+/** Il fondamentale di un blocco: quello salvato, o quello che gli somiglia nei modelli di prima. */
 export function brickOfBlock(block, catalog = BASE) {
   if (BRICK[block?.brick]) return block.brick;
   if (block?.role === 'warmup') return 'riscaldamento';
@@ -202,7 +202,7 @@ export function brickOfBlock(block, catalog = BASE) {
 }
 
 /**
- * Un allenamento → i suoi mattoni, per mostrarlo e per cambiarlo. `session` (la sessione composta)
+ * Un allenamento → i suoi fondamentali, per mostrarlo e per cambiarlo. `session` (la sessione composta)
  * serve ai modelli di prima, dove gli esercizi «del mese» si conoscono solo componendo.
  */
 export function bricksOf(template, catalog = BASE, session = null) {
@@ -218,9 +218,61 @@ export function bricksOf(template, catalog = BASE, session = null) {
   });
 }
 
-/** I mattoni di un allenamento pronti per il costruttore: solo quelli che sono davvero mattoni. */
+/** I fondamentali di un allenamento pronti per il costruttore: solo quelli che sono davvero fondamentali. */
 export function editableBricks(template, catalog = BASE, session = null) {
   return bricksOf(template, catalog, session)
     .filter((b) => BRICK[b.type])
     .map((b) => ({ id: b.id, type: b.type, minutes: Math.max(MIN_MINUTES, Math.round(b.minutes / STEP_MINUTES) * STEP_MINUTES), exs: BRICK[b.type].match ? [] : b.exs.filter((x) => BRICK[b.type].has(catalog.exercise(x), sideOf(catalog.exercise(x)))) }));
+}
+
+/**
+ * I fondamentali di una sessione composta, come si sono fatti: tipo, minuti ed esercizi. Si salvano
+ * nella voce del diario, così la voce resta com'era anche se poi l'allenamento cambia.
+ */
+export function sessionBricks(session, catalog = BASE) {
+  const out = [];
+  for (const s of session?.steps ?? []) {
+    if (s.kind === 'pause') continue;
+    const key = s.id.split('-')[0];
+    const type =
+      BRICK[s.block?.brick]?.id ??
+      (s.kind === 'warmup' ? 'riscaldamento' : s.kind === 'serve' ? 'servizio' : s.kind === 'match' ? 'partita' : s.ex ? brickOfExercise(catalog.exercise(s.ex)) : null);
+    let g = out.find((b) => b.key === key);
+    if (!g) out.push((g = { key, type, minutes: 0, exs: [] }));
+    g.minutes += s.minutes;
+    if (s.ex && !g.exs.includes(s.ex)) g.exs.push(s.ex);
+  }
+  return out.filter((b) => b.type).map(({ type, minutes, exs }) => ({ type, minutes, exs }));
+}
+
+/**
+ * I fondamentali di una voce del diario, per mostrarla: quelli salvati con la voce; altrimenti quelli
+ * dell'allenamento, se è fatto di fondamentali; altrimenti gli esercizi fatti, raccolti per colpo
+ * (senza minuti: le voci di prima non li hanno).
+ */
+export function eventBricks(ev, catalog = BASE) {
+  const shape = (b, i) => ({ id: `e${i}`, type: b.type, name: BRICK[b.type]?.name ?? '', fam: BRICK[b.type]?.fam ?? 'libero', minutes: b.minutes ?? null, exs: (b.exs ?? []).filter((x) => catalog.exercise(x)) });
+  if (ev?.bricks?.length) return ev.bricks.filter((b) => BRICK[b.type]).map(shape);
+  const t = ev?.template ? catalog.template(ev.template) : null;
+  if (t?.blocks?.some((b) => BRICK[b.brick])) return bricksOf(t, catalog).filter((b) => BRICK[b.type]);
+  const out = [];
+  // Le voci più vecchie non hanno nemmeno l'elenco degli esercizi: restano quelli misurati.
+  const done = ev?.exercises?.length ? ev.exercises : (ev?.attempts ?? []).map((x) => x.ex);
+  for (const id of done) {
+    const type = brickOfExercise(catalog.exercise(id));
+    if (!type) continue;
+    let g = out.find((b) => b.type === type);
+    if (!g) out.push((g = { type, exs: [] }));
+    if (g.exs.includes(id)) continue;
+    g.exs.push(id);
+  }
+  return out.map(shape);
+}
+
+/** Il nome di un allenamento fatto: quello che gli hai dato, oppure quello che contiene. */
+export function eventName(ev, catalog = BASE) {
+  const t = ev?.template ? catalog.template(ev.template) : null;
+  if (t?.custom && t.name) return t.name;
+  const bricks = eventBricks(ev, catalog);
+  return bricks.length ? workoutName(bricks) : 'Allenamento';
 }

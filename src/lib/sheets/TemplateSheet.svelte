@@ -368,7 +368,7 @@
     gap: 8px;
     padding: 12px 8px 12px 14px;
     border-radius: var(--r);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     border-left: 5px solid var(--f);
     background: color-mix(in srgb, var(--f) 6%, var(--card));
   }

@@ -1,9 +1,10 @@
 <script>
   // Il primo avvio: tre domande (il livello, in cosa vuoi sentirti più sicuro, per quanto tempo) e
-  // in mezzo il primo allenamento, scelto fra tre proposte o costruito con i mattoni. Alla fine
+  // in mezzo il primo allenamento, scelto fra tre proposte o costruito con i fondamentali. Alla fine
   // l'allenamento è salvato fra i tuoi e sta in calendario: solo oggi, per una settimana o per un mese.
-  // Lo fa anche chi usava l'app prima dei mattoni, alla prima apertura: il livello è già segnato,
+  // Lo fa anche chi usava l'app prima dei fondamentali, alla prima apertura: il livello è già segnato,
   // medaglie, diario e note restano, e il programma nuovo prende il posto di quello vecchio.
+  import { onMount } from 'svelte';
   import { fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
@@ -11,13 +12,12 @@
   import Plus from '@lucide/svelte/icons/plus';
   import { app, newId } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
-  import { createPlan, occurrenceKey } from '../engine/plan.js';
   import { VERSION } from '../data/changelog.js';
   import { PLAYER_LEVELS } from '../data/library.js';
   import { SKILLS, BRICK, proposals, toTemplate, totalMinutes, workoutName } from '../data/bricks.js';
-  import { addDays, mondayOf, weekday, WEEKDAYS, WEEKDAYS_MIN } from '../util/dates.js';
+  import { WEEKDAYS, WEEKDAYS_MIN } from '../util/dates.js';
   import { startTour, coachSkip } from '../ui/tours.js';
-  import { putToday } from '../store/actions.js';
+  import { putToday, weeksPlan } from '../store/actions.js';
   import Court from '../ui/Court.svelte';
   import Tower from '../ui/Tower.svelte';
   import Pills from '../ui/Pills.svelte';
@@ -32,6 +32,12 @@
 
   const returning = app.onboarded;
   const was = app.meta?.player?.level ?? null;
+
+  // Chi aveva già visto le guide (nella 0.8.0, da solo) le rivede qui: fanno parte del primo avvio.
+  onMount(() => {
+    const seen = app.meta?.tour;
+    if (returning && (seen?.build || seen?.app)) app.patchMeta({ tour: { build: false, app: false } });
+  });
 
   let stage = $state('intro');
   let dir = $state(1);
@@ -102,7 +108,7 @@
     const template = { ...toTemplate($state.snapshot(bricks)), id, custom: true };
     const patch = {
       onboarded: true,
-      intro: 2,
+      intro: 3,
       seenVersion: VERSION,
       focus: $state.snapshot(focus),
       custom: { templates: [...(app.meta?.custom?.templates ?? []), template] }
@@ -115,17 +121,7 @@
       const history = [...(app.meta?.player?.history ?? []), { date: app.today, level, how: 'scelto' }];
       patch.player = { level, since: app.today, history, declined: null };
     }
-    if (span !== 'once') {
-      // Si parte da questa settimana; se i giorni scelti sono già passati, dalla prossima.
-      const wd = weekday(app.today);
-      const late = !sortedDays.some((d) => d >= wd);
-      const start = late ? addDays(mondayOf(app.today), 7) : mondayOf(app.today);
-      const slots = sortedDays.map((day) => ({ id: `t${day}`, day, kind: 'training', template: id }));
-      const plan = createPlan({ start, slots, stages: [{ b: '1', n: weeks, u: 'w' }] });
-      // I giorni di questa settimana già passati non contano come saltati.
-      if (!late) plan.skip = slots.filter((s) => s.day < wd).map((s) => occurrenceKey(plan, addDays(start, s.day - 1), s));
-      patch.plan = plan;
-    }
+    if (span !== 'once') patch.plan = weeksPlan(id, days, weeks);
     app.patchMeta(patch);
     if (span === 'once') putToday(id);
   }
@@ -147,7 +143,7 @@
         <Court />
         {#if returning}
           <h1 class="hero">Terza palla è cambiata.</h1>
-          <p class="lead muted">Adesso l’allenamento lo costruisci tu, un mattone alla volta. Rispondi a tre domande e prepariamo insieme il primo.</p>
+          <p class="lead muted">Adesso l’allenamento lo costruisci tu, un fondamentale alla volta. Rispondi a tre domande e prepariamo insieme il primo.</p>
           <p class="lead muted">Le tue medaglie, il diario e le note sono rimasti al loro posto.</p>
         {:else}
           <h1 class="hero">Costruisci il tuo allenamento.</h1>

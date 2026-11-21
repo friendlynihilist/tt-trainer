@@ -13,7 +13,7 @@
 import { app } from '../store/app.svelte.js';
 import { ui } from '../store/ui.svelte.js';
 
-/** Il mattone della guida: quello appena aggiunto, altrimenti il primo. */
+/** Il fondamentale della guida: quello appena aggiunto, altrimenti il primo. */
 const myBrick = () => {
   const mine = ui.coach?.bid ? `#tower .brk[data-id="${ui.coach.bid}"]` : null;
   return mine && document.querySelector(mine) ? mine : '#tower .brk';
@@ -24,15 +24,15 @@ export const TOURS = {
     {
       holes: ['#tray'],
       on: 'add',
-      title: 'Aggiungi un mattone',
+      title: 'Aggiungi un fondamentale',
       get text() {
-        return ui.coachCtx.count ? 'Ogni mattone è una cosa da allenare. Se vuoi aggiungerne uno, toccalo.' : 'Ogni mattone è una cosa da allenare. Toccane uno per aggiungerlo al tuo allenamento.';
+        return ui.coachCtx.count ? 'Ogni fondamentale è una cosa da allenare. Se vuoi aggiungerne uno, toccalo.' : 'Ogni fondamentale è una cosa da allenare. Toccane uno per aggiungerlo al tuo allenamento.';
       },
       need: () => ui.coachCtx.count > 0
     },
-    { holes: [myBrick], on: 'stretch', title: 'Decidi quanto dura', text: 'Trascina in giù il bordo del mattone. Più il mattone è alto, più dura.' },
-    { holes: [myBrick], on: 'edit', title: 'Scegli gli esercizi', text: 'Tocca il mattone per scegliere quali esercizi fare.' },
-    { holes: [{ all: '#tower .brk' }], on: 'order', title: 'Cambia l’ordine', text: 'Per spostare un mattone, trascinalo su o giù.' }
+    { holes: [myBrick], on: 'stretch', title: 'Decidi quanto dura', text: 'Trascina in giù il bordo del fondamentale. Più il fondamentale è alto, più dura.' },
+    { holes: [myBrick], on: 'edit', title: 'Scegli gli esercizi', text: 'Tocca il fondamentale per scegliere quali esercizi fare.' },
+    { holes: [{ all: '#tower .brk' }], on: 'order', title: 'Cambia l’ordine', text: 'Per spostare un fondamentale, trascinalo su o giù.' }
   ],
   app: [
     { holes: ['#nearcard'], look: true, medals: true, title: 'Le medaglie', text: 'Ogni esercizio ha tre medaglie. Le vinci quando ti misuri e superi una soglia. Qui trovi la prossima che puoi vincere.' },

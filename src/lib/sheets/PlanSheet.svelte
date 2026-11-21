@@ -202,7 +202,7 @@
     padding: 10px 10px 12px 14px;
     border-radius: var(--r-card);
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
   }
   .stage.now {
     border-color: color-mix(in srgb, var(--accent) 55%, var(--line));

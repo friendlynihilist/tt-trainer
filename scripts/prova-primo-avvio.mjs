@@ -48,28 +48,28 @@ check('senza colpi non si va avanti', await ev(`[...document.querySelectorAll('b
 await tapText('/^Dritto/', '.mat button'); await tapText('/^Servizio/', '.mat button'); await tapText('/^Avanti$/'); await sleep(300); await shot('2-scelta');
 check('tre allenamenti proposti', await ev(`[...document.querySelectorAll('.choice.col .row > b')].map((b) => b.textContent)`), ['Dritto e servizio', 'Dritto, servizio e ricezione', 'Dritto, servizio, ricezione e gambe']);
 await tapText('/Preferisco costruirlo io/'); await sleep(1200); await shot('3-guida-aggiungi');
-check('la guida parte dal vassoio', await coach(), 'Aggiungi un mattone');
+check('la guida parte dal vassoio', await coach(), 'Aggiungi un fondamentale');
 check('il fuoco è sul vassoio', await ev(`(() => { const a = document.querySelector('.coach .ring').getBoundingClientRect(), b = document.getElementById('tray').getBoundingClientRect(); return Math.abs(a.top - b.top) < 10 && Math.abs(a.bottom - b.bottom) < 10; })()`), true);
 check('si va avanti solo aggiungendo', await ev(`Boolean(document.querySelector('.coach .next'))`), false);
 check('i colpi scelti sono i primi del vassoio', await ev(`[...document.querySelectorAll('[data-tile]')].slice(0, 2).map((b) => b.dataset.tile)`), ['dritto', 'servizio']);
 await tap('[data-tile=dritto]', 1100); await shot('3-guida-durata');
 check('aggiunto, la guida passa alla durata', await coach(), 'Decidi quanto dura');
-check('il fuoco è sul mattone', await sameBox('.coach .ring', '#tower .brk'), true);
+check('il fuoco è sul fondamentale', await sameBox('.coach .ring', '#tower .brk'), true);
 check('fuori dal fuoco non si tocca', await ev(`(() => { const r = document.getElementById('tray').getBoundingClientRect(); return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.className.split(' ')[0]; })()`), 'dim');
 { const g = await at('#tower .brk [data-grip]', 0.5, 0.4); await drag(g, { x: g.x, y: g.y + 50 }); await sleep(900); }
 check('allungato, la guida passa agli esercizi', [await coach(), await total()], ['Scegli gli esercizi', '30']);
-check('il fuoco segue il mattone allungato', await sameBox('.coach .ring', '#tower .brk'), true);
+check('il fuoco segue il fondamentale allungato', await sameBox('.coach .ring', '#tower .brk'), true);
 await shot('3-guida-esercizi');
-await tap('#tower .brk', 900); await shot('5-dentro-il-mattone');
-check('nel mattone ci sono gli esercizi del dritto', await ev(`document.querySelectorAll('.opt').length > 12`), true);
+await tap('#tower .brk', 900); await shot('5-dentro-il-fondamentale');
+check('nel fondamentale ci sono gli esercizi del dritto', await ev(`document.querySelectorAll('.opt').length > 12`), true);
 check('si parte da 10 minuti', await ev(`document.querySelector('.mins button').textContent`), '10′');
 await tap('.opt[aria-pressed=false]'); await tapText('/^Fatto$/'); await sleep(1100);
-check('due esercizi sul mattone', await ev(`document.querySelector('#tower .brk small').textContent.includes(', ')`), true);
-check('chiuso il mattone, la guida passa all’ordine', await coach(), 'Cambia l’ordine');
+check('due esercizi sul fondamentale', await ev(`document.querySelector('#tower .brk small').textContent.includes(', ')`), true);
+check('chiuso il fondamentale, la guida passa all’ordine', await coach(), 'Cambia l’ordine');
 await shot('3-guida-ordine'); await tap('.coach .next');
 check('guida finita e ricordata', [await coach(), (await store()).meta.tour], [null, { build: true }]);
 await tap('[data-tile=servizio]'); await tap('[data-tile=partita]');
-check('tre mattoni', [await names(), await total()], [['Dritto', 'Servizio', 'Partita'], '50']);
+check('tre fondamentali', [await names(), await total()], [['Dritto', 'Servizio', 'Partita'], '50']);
 { const g = await at('#tower .brk:nth-child(2) [data-grip]', 0.5, 0.4); await drag(g, { x: g.x, y: g.y - 40 }); }
 check('mai sotto i 10 minuti', await total(), '50');
 { const s1 = await at('#tower .brk:nth-child(2)'); const d1 = await at('#tower .brk:nth-child(1)', 0.5, 0.1); await drag(s1, { x: s1.x, y: d1.y - 10 }, 20); await sleep(300); }
@@ -95,29 +95,31 @@ check('Oggi: il nome dell’allenamento', await ev(`document.querySelector('.cou
 check('la guida non riparte', await coach(), null);
 // Il foglio dell'allenamento e la sessione
 await tap('.court .open', 700); await shot('9-foglio');
-check('nel foglio i quattro mattoni', await ev(`document.querySelectorAll('.stack-b .b').length`), 4);
+check('nel foglio i quattro fondamentali', await ev(`document.querySelectorAll('.stack-b .b').length`), 4);
 await tap('.sheet .icon-btn');
 // Il tasto +: un allenamento nuovo
 await tap('nav .add', 800); check('il + apre il costruttore, senza guida', [await ev(`document.querySelector('.builder h1').textContent`), await coach()], ['Nuovo allenamento', null]);
 await tap('[data-tile=rovescio]'); await tap('[data-tile=ricezione]'); await shot('nuovo');
-await tapText('/^Salva e mettilo oggi$/'); await sleep(900);
+await tapText('/^Avanti$/', '.builder button', 900); await shot('quando');
+check('salvato, si sceglie quando farlo', await ev(`[...document.querySelectorAll('.sheet .choice b')].map((b) => b.textContent)`), ['Oggi', 'Un altro giorno', 'Una settimana', 'Un mese']);
+await tapText('/^Oggi/', '.sheet .choice', 900);
 check('il nuovo è l’allenamento di oggi', await ev(`document.querySelector('.court h2').textContent`), 'Rovescio e ricezione');
 await shot('9-oggi-nuovo');
 // Libreria
 await ev(`location.hash = '#/libreria'`); await sleep(900); await shot('libreria');
-check('i due allenamenti, quello di oggi segnato', await ev(`[...document.querySelectorAll('.wk')].slice(0, 2).map((b) => [b.querySelector('strong').textContent, Boolean(b.querySelector('.tag'))])`), [['Rovescio e ricezione', true], ['Servizio, dritto e gambe', false]]);
-await tap('.wk:nth-child(2)', 700); await shot('allenamento');
+check('i due allenamenti, quello di oggi segnato', await ev(`[...document.querySelectorAll('.li.col')].slice(0, 2).map((b) => [b.querySelector('b').textContent, Boolean(b.querySelector('.today-tag'))])`), [['Rovescio e ricezione', true], ['Servizio, dritto e gambe', false]]);
+await tap('.box .li.col:nth-of-type(2)', 700); await shot('allenamento');
 await type('.field.name', 'Martedì forte'); await tap('.sheet .icon-btn', 700);
-check('rinominato', await ev(`document.querySelectorAll('.wk strong')[1].textContent`), 'Martedì forte');
-await tap('.wk:nth-child(2)', 700); await tapText('/^Cambia i mattoni/', '.other', 800); await tap('[data-tile=taglio]'); await tapText('/^Salva$/', '.builder button', 800);
-check('cambiati i mattoni, il nome scritto a mano resta', await ev(`[document.querySelectorAll('.wk strong')[1].textContent, document.querySelectorAll('.wk')[1].querySelectorAll('.pill').length]`), ['Martedì forte', 5]);
-await tap('.wk:nth-child(2)', 700); await tapText('/^Mettilo oggi$/'); await sleep(900);
+check('rinominato', await ev(`document.querySelectorAll('.li.col b.grow')[1].textContent`), 'Martedì forte');
+await tap('.box .li.col:nth-of-type(2)', 700); await tapText('/^Cambia i fondamentali/', '.other', 800); await tap('[data-tile=taglio]'); await tapText('/^Salva$/', '.builder button', 800);
+check('cambiati i fondamentali, il nome scritto a mano resta', await ev(`[document.querySelectorAll('.li.col b.grow')[1].textContent, document.querySelectorAll('.li.col')[1].querySelectorAll('.pill').length]`), ['Martedì forte', 5]);
+await tap('.box .li.col:nth-of-type(2)', 700); await tapText('/^Mettilo in calendario$/', 'button', 800); await tapText('/^Oggi/', '.sheet .choice', 900);
 check('messo oggi dalla Libreria', [await ev('location.hash'), await ev(`document.querySelector('.court h2').textContent`)], ['#/oggi', 'Martedì forte']);
 await ev(`location.hash = '#/libreria'`); await sleep(900);
-await tap('.wk:nth-child(1)', 700); await tapText('/^Elimina/', '.other', 700); await ev(`[...document.querySelectorAll('.sheet')].at(-1).querySelector('.btn.danger, .btn.accent, .btn.primary').click()`); await sleep(900);
-check('eliminato', await ev(`[...document.querySelectorAll('.section')][0].querySelectorAll('.wk').length`), 1);
+await tap('.box .li.col:nth-of-type(1)', 700); await tapText('/^Elimina/', '.other', 700); await ev(`[...document.querySelectorAll('.sheet')].at(-1).querySelector('.btn.danger, .btn.accent, .btn.primary').click()`); await sleep(900);
+check('eliminato', await ev(`document.querySelectorAll('.li.col').length`), 1);
 await tapText('/^Rovescio/', '.mat button', 1200); await shot('mappa-rovescio');
-check('dai mattoni alla mappa', await ev('location.hash'), '#/progressi/mappa/rovescio');
+check('dai fondamentali alla mappa', await ev('location.hash'), '#/progressi/mappa/rovescio');
 // La sessione, la chiusura, le note
 await ev(`location.hash = '#/oggi'`); await sleep(900); await tapText('/^Inizia/', '.court button', 1500); await shot('sessione');
 await ev(`document.querySelector('[role=tab][aria-label=Chiusura]').click()`); await sleep(900); await shot('chiusura');

@@ -9,8 +9,8 @@
   import X from '@lucide/svelte/icons/x';
   import Play from '@lucide/svelte/icons/play';
   import Pause from '@lucide/svelte/icons/pause';
-  import ArrowRight from '@lucide/svelte/icons/arrow-right';
-  import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import Check from '@lucide/svelte/icons/check';
   import Shuffle from '@lucide/svelte/icons/shuffle';
   import Info from '@lucide/svelte/icons/info';
@@ -23,7 +23,7 @@
   import Users from '@lucide/svelte/icons/users';
   import Save from '@lucide/svelte/icons/save';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
-  import { BRICK, brickOfExercise } from '../data/bricks.js';
+  import { BRICK, brickOfExercise, sessionBricks } from '../data/bricks.js';
   import Collapse from '../ui/Collapse.svelte';
   import { app, newId } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
@@ -363,6 +363,7 @@
   /** La metà della partitella in corso: 1 rischiosa, 2 a schema. */
   const matchPart = $derived(step?.kind === 'match' ? (elapsed >= matchHalves(step.minutes)[0] * 60 ? 2 : 1) : null);
   /** Il blocco dopo, saltando la pausa. */
+  const ART = { B: 'il bronzo', A: 'l’argento', O: 'l’oro', P: 'il platino' };
   function nextBlock(index) {
     const n = steps[index + 1];
     return n?.kind === 'pause' ? steps[index + 2] : n;
@@ -416,6 +417,7 @@
     if (draft.legacyTests?.serve) ev.serve = draft.legacyTests.serve;
     if (draft.mode === 'training') {
       ev.template = draft.template;
+      ev.bricks = sessionBricks(draft.session, app.catalog);
       ev.trained = trainedTracks(draft.session.steps);
       if (draft.legacy) ev.legacy = draft.legacy;
     }
@@ -520,11 +522,10 @@
               <div class="turn" role="status" in:fly={{ y: -12, duration: 260 }} out:fade={{ duration: 260 }}><Repeat size={20} strokeWidth={2.6} /> Cambio</div>
             {/if}
 
-            <!-- Il blocco in corso: grande, con il suo colore, il nome e il tempo. -->
+            <!-- Il passo in corso: di che fondamentale fa parte, il nome, il tempo in grande. -->
             <section class="now" class:rest={step.kind === 'pause'} class:partner data-fam={fam}>
               <div class="now-top">
-                {#if step.kind === 'pause'}<span class="now-ico"><Coffee size={20} strokeWidth={2.4} /></span>{/if}
-                <span class="now-eyebrow">{step.kind === 'exercise' ? (eyebrow(step) || FAMILY[stepEx?.family]?.name || '') : step.kind === 'pause' ? 'Bevi e riposa' : ''}</span>
+                <span class="tag-b"><i></i>{step.kind === 'exercise' ? (eyebrow(step) || FAMILY[stepEx?.family]?.name || '') : step.kind === 'pause' ? 'Bevi e riposa' : step.name}</span>
                 {#if turnable}
                   {#key partner}
                     <button class="who" onclick={swapTurns} aria-label="{turnLabel}. Tocca per invertire i turni" in:scale={{ start: 0.8, duration: 260 }}>
@@ -535,31 +536,14 @@
                 {/if}
               </div>
               <h1 class="now-name">{step.name}</h1>
-              <div class="clock">
-                <button class="time t-num" class:over={remaining < 0} class:idle={!running} onclick={toggle} aria-label={running ? 'Pausa' : 'Avvia'}>
-                  {remaining < 0 ? '+' : ''}{fmtClock(Math.abs(remaining))}
-                </button>
-                <button class="toggle raise" onclick={toggle} aria-hidden="true" tabindex="-1">
-                  {#if running}<Pause size={24} fill="currentColor" strokeWidth={0} />{:else}<Play size={24} fill="currentColor" strokeWidth={0} />{/if}
-                </button>
-              </div>
+              <button class="time" class:over={remaining < 0} class:idle={!running} onclick={toggle} aria-label={running ? 'Pausa' : 'Avvia'}>
+                {remaining < 0 ? '+' : ''}{fmtClock(Math.abs(remaining))}
+              </button>
               <div class="bar" class:over={remaining < 0}>
                 <i style:width="{Math.min(100, (elapsed / total) * 100)}%"></i>
                 {#if turnable}<b class="mid" aria-hidden="true"></b>{/if}
               </div>
             </section>
-
-            {#if stepEx && (step.kind === 'exercise' || step.kind === 'serve')}
-              <div class="tools">
-                <button class="tool" onclick={() => changeExercise(draft.step)} aria-label="Cambia esercizio"><Shuffle size={20} /><span>Cambia</span></button>
-                {#if strokeOf(stepEx)}
-                  <button class="tool" onclick={() => quickNote(stepEx)} aria-label="Nota sul colpo: {app.strokeName(strokeOf(stepEx))}"><NotebookPen size={20} /><span>Nota</span></button>
-                {/if}
-                {#if step.kind === 'exercise'}
-                  <button class="tool" class:on={info} onclick={() => (info = !info)} aria-expanded={info} aria-label="Come si fa"><Info size={20} /><span>Come si fa</span></button>
-                {/if}
-              </div>
-            {/if}
 
             {#if canGoal}
               {@const v = draft.attempts?.[step.id]}
@@ -567,15 +551,27 @@
                 <GoalPad exercise={stepEx} value={v} date={draft.date} onchange={(next) => (draft.attempts[step.id] = next)} onclose={() => closeGoal(step)} />
               {:else}
                 {@const g = nextGoal(stepEx, app.medals[stepEx.id])}
-                <button class="goal-btn raise neutral" onclick={() => (v ? (v.closed = false) : openGoal(step))}>
-                  <MedalRing exercise={stepEx} medals={app.medals[stepEx.id]} size={60} />
+                <button class="goal-btn" onclick={() => (v ? (v.closed = false) : openGoal(step))}>
+                  <MedalRing exercise={stepEx} medals={app.medals[stepEx.id]} size={44} />
                   <span class="grow">
-                    <strong>{v ? 'Torna all’obiettivo' : 'Prova l’obiettivo'}</strong>
-                    <span class="small muted block">{g ? `${TIER[g.tier].name} · ${valueText(stepEx, g.goal, g.tier)}` : 'Tutte le medaglie prese'}</span>
+                    <strong>{v ? 'Torna all’obiettivo' : g ? `Prova ${ART[g.tier]}` : 'Prova l’obiettivo'}</strong>
+                    <span class="small muted block">{g ? valueText(stepEx, g.goal, g.tier) : 'Tutte le medaglie prese'}</span>
                   </span>
-                  <ArrowRight size={20} />
+                  <span class="muted"><ChevronRight size={18} /></span>
                 </button>
               {/if}
+            {/if}
+
+            {#if stepEx && (step.kind === 'exercise' || step.kind === 'serve')}
+              <div class="tools">
+                <button class="tool" onclick={() => changeExercise(draft.step)} aria-label="Cambia esercizio"><Shuffle size={18} /><span>Cambia</span></button>
+                {#if strokeOf(stepEx)}
+                  <button class="tool" onclick={() => quickNote(stepEx)} aria-label="Nota sul colpo: {app.strokeName(strokeOf(stepEx))}"><NotebookPen size={18} /><span>Nota</span></button>
+                {/if}
+                {#if step.kind === 'exercise'}
+                  <button class="tool" class:on={info} onclick={() => (info = !info)} aria-expanded={info} aria-label="Come si fa"><Info size={18} /><span>Come si fa</span></button>
+                {/if}
+              </div>
             {/if}
 
             {#if step.kind === 'pause'}
@@ -689,22 +685,29 @@
     </div>
 
     <footer>
-      {#if draft.step > 0}
-        <button class="round back" onclick={() => goTo(steps[draft.step - 1]?.kind === 'pause' ? draft.step - 2 : draft.step - 1)} aria-label="Fase precedente"><ArrowLeft size={22} /></button>
-      {/if}
       {#if closing}
-        <button class="go raise accent grow" onclick={finish}><Check size={20} strokeWidth={2.6} /> Salva nel diario</button>
-      {:else if draft.step === steps.length - 1}
-        <button class="go raise grow" onclick={() => goTo(steps.length)}>Chiudi la sessione <ArrowRight size={20} /></button>
-      {:else if step.kind === 'pause'}
-        <button class="go raise grow" onclick={() => goTo(draft.step + 1)}>Salta la pausa <ArrowRight size={20} /></button>
+        <button class="btn accent wide" onclick={finish}>Salva nel diario</button>
+        {#if draft.step > 0}<button class="after" onclick={() => goTo(steps.length - 1)}>Torna all’allenamento</button>{/if}
       {:else}
-        {@const nb = nextBlock(draft.step)}
-        <button class="go raise grow" onclick={() => goTo(draft.step + 1)}>
-          <i class="next-dot" data-fam={stepFamily(nb, app.catalog)}></i>
-          <span class="next">{nb?.name}</span>
-          <ArrowRight size={20} />
+        <button class="btn accent wide main" onclick={step.kind === 'pause' ? () => goTo(draft.step + 1) : toggle}>
+          {#if step.kind === 'pause'}
+            Salta la pausa
+          {:else if running}
+            <Pause size={20} fill="currentColor" strokeWidth={0} /> Pausa
+          {:else}
+            <Play size={20} fill="currentColor" strokeWidth={0} /> {elapsed > 0 ? 'Riprendi' : 'Avvia'}
+          {/if}
         </button>
+        <div class="row nav-row">
+          {#if draft.step > 0}
+            <button class="after back" onclick={() => goTo(steps[draft.step - 1]?.kind === 'pause' ? draft.step - 2 : draft.step - 1)} aria-label="Fase precedente"><ChevronLeft size={18} /></button>
+          {/if}
+          {#if draft.step === steps.length - 1}
+            <button class="after grow" onclick={() => goTo(steps.length)}>Chiudi l’allenamento <ChevronRight size={18} /></button>
+          {:else if step.kind !== 'pause'}
+            <button class="after grow" onclick={() => goTo(draft.step + 1)}><span class="next">{nextBlock(draft.step)?.name}</span> <ChevronRight size={18} /></button>
+          {/if}
+        </div>
       {/if}
     </footer>
   </div>
@@ -763,27 +766,21 @@
   .steps button {
     position: relative;
     flex-basis: 0;
-    min-width: 6px;
-    height: 8px;
-    border-radius: 4px;
-    background: color-mix(in srgb, var(--f) 42%, var(--sunk));
-    transition:
-      height var(--dur) var(--spring),
-      background var(--dur) var(--ease);
+    min-width: 5px;
+    height: 6px;
+    border-radius: 99px;
+    background: var(--sunk);
+    transition: background var(--dur) var(--ease);
   }
   /* Il segmento è sottile, ma si tocca su tutta l'altezza della barra. */
   .steps button::after {
     content: '';
     position: absolute;
-    inset: -14px -1.5px;
+    inset: -15px -1.5px;
   }
-  .steps button.past {
-    background: var(--f);
-  }
+  .steps button.past,
   .steps button.on {
-    height: 18px;
     background: var(--f);
-    box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--f);
   }
   .end {
     position: relative;
@@ -844,43 +841,66 @@
     box-shadow: var(--shadow);
   }
 
-  /* ── Il blocco in corso ── */
+  /* ── Il passo in corso: niente riquadro, solo il fondamentale, il nome e il tempo ── */
   .now {
     display: flex;
     flex-direction: column;
+    gap: 14px;
+  }
+  .now-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 36px;
+  }
+  .tag-b {
+    display: inline-flex;
+    align-items: center;
     gap: 6px;
-    padding: 18px 20px 20px;
-    border-radius: var(--r-brick);
+    min-height: 30px;
+    padding: 0 10px 0 8px;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--f) 16%, var(--card));
+    font-size: 13px;
+    font-weight: 650;
+    min-width: 0;
+  }
+  .tag-b i {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
     background: var(--f);
-    color: var(--f-on);
-    box-shadow: 0 var(--edge) 0 var(--f-edge);
   }
-  /* Tocca al compagno: il riquadro si rovescia (fondo scuro, bordo e barra del colore della
-     famiglia), così si vede anche da lontano, con il telefono appoggiato. */
-  .now {
+  .now-name {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+  .time {
+    margin: 18px 0 4px;
+    font-size: clamp(84px, 27vw, 104px);
+    font-weight: 750;
+    line-height: 0.95;
+    letter-spacing: -0.055em;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    color: var(--ink);
     transition:
-      background var(--dur-slow) var(--ease),
       color var(--dur-slow) var(--ease),
-      box-shadow var(--dur-slow) var(--ease);
+      opacity var(--dur) var(--ease);
   }
-  .now.partner {
-    background: var(--ink);
-    color: var(--paper);
-    box-shadow:
-      inset 0 0 0 5px var(--f),
-      0 var(--edge) 0 var(--f-edge);
-    animation: flip var(--dur-slow) var(--ease);
+  .time.idle {
+    opacity: 0.45;
   }
-  @keyframes flip {
-    40% {
-      transform: scale(1.025);
-    }
+  .time.over {
+    color: var(--down);
   }
-  @media (prefers-reduced-motion: reduce) {
-    .now.partner {
-      animation: none;
-    }
-  }
+  /* A metà esercizio tocca al compagno: il tempo e l'etichetta diventano rossi, così si vede anche
+     da lontano, con il telefono appoggiato. */
   .who {
     display: inline-flex;
     align-items: center;
@@ -890,26 +910,48 @@
     min-height: 36px;
     padding: 0 12px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--f-on) 18%, transparent);
-    color: inherit;
+    background: var(--sunk);
+    color: var(--ink);
     font-size: 14px;
-    font-weight: 750;
+    font-weight: 700;
     white-space: nowrap;
   }
   .now.partner .who {
-    background: var(--f);
-    color: var(--f-on);
+    background: var(--fire);
+    color: #fff;
   }
-  .now.partner .toggle {
-    --edge-c: var(--f-edge);
-    background: var(--f);
-    color: var(--f-on);
+  .now.partner .time {
+    color: var(--fire);
+    animation: flip var(--dur-slow) var(--ease);
   }
-  .now.partner .bar {
-    background: color-mix(in srgb, var(--paper) 22%, transparent);
+  @keyframes flip {
+    40% {
+      transform: scale(1.04);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .now.partner .time {
+      animation: none;
+    }
+  }
+  .bar {
+    position: relative;
+    height: 6px;
+    border-radius: 99px;
+    background: var(--sunk);
+  }
+  .bar i {
+    display: block;
+    height: 100%;
+    border-radius: 99px;
+    background: var(--f);
+    transition: width 0.4s linear;
   }
   .now.partner .bar i {
-    background: var(--f);
+    background: var(--fire);
+  }
+  .bar.over i {
+    background: var(--down);
   }
   .mid {
     position: absolute;
@@ -918,107 +960,10 @@
     left: calc(50% - 1.5px);
     width: 3px;
     border-radius: 2px;
-    background: currentColor;
-    opacity: 0.7;
-  }
-  .now.rest {
-    background: var(--card);
-    color: var(--ink);
-    border: 1px solid var(--line);
-    box-shadow: none;
-  }
-  .now-top {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 36px;
-  }
-  .now-ico {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--f-on) 16%, transparent);
-  }
-  .now.rest .now-ico {
-    background: var(--sunk);
-  }
-  .now-eyebrow {
-    font-size: 14px;
-    font-weight: 700;
-    opacity: 0.88;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .now-name {
-    margin: 2px 0 0;
-    font-size: clamp(26px, 7.4vw, 34px);
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.08;
-  }
-  .clock {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 6px;
-  }
-  .time {
-    font-size: clamp(64px, 22vw, 96px);
-    font-weight: 600;
-    line-height: 1;
-    letter-spacing: -0.04em;
-    color: inherit;
-    transition: opacity var(--dur) var(--ease);
-  }
-  .time.idle {
-    opacity: 0.5;
-  }
-  .toggle {
-    --edge-c: color-mix(in srgb, var(--f-on) 40%, var(--f-edge));
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: var(--f-on);
-    color: var(--f);
-  }
-  .now.rest .toggle {
-    --edge-c: var(--line-strong);
     background: var(--ink);
-    color: var(--paper);
+    opacity: 0.55;
   }
-  .bar {
-    position: relative;
-    height: 8px;
-    margin-top: 10px;
-    border-radius: 4px;
-    background: color-mix(in srgb, var(--f-on) 22%, transparent);
-  }
-  .now.rest .bar {
-    background: var(--sunk);
-  }
-  .bar i {
-    display: block;
-    height: 100%;
-    border-radius: 4px;
-    background: var(--f-on);
-    transition: width 0.3s linear;
-  }
-  .now.rest .bar i {
-    background: var(--ink);
-  }
-  .bar.over i {
-    background: var(--accent);
-  }
-
-  /* ── Strumenti dell'esercizio ── */
+  /* Cambia, Nota, Come si fa: tre pillole piccole sotto l'obiettivo. */
   .tools {
     display: flex;
     gap: 8px;
@@ -1026,45 +971,38 @@
   .tool {
     flex: 1;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 10px 4px 8px;
-    border-radius: 16px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    font-size: 12.5px;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--sunk);
+    font-size: 14px;
     font-weight: 650;
-    transition:
-      transform var(--dur-fast) var(--ease),
-      background var(--dur) var(--ease);
+    white-space: nowrap;
   }
   .tool:active {
-    transform: scale(0.95);
+    transform: scale(0.97);
   }
   .tool.on {
     background: var(--ink);
     color: var(--paper);
-    border-color: var(--ink);
   }
 
   .goal-btn {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
     width: 100%;
-    padding: 12px 18px 12px 12px;
+    padding: 16px;
     border-radius: var(--r-card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     background: var(--card);
     text-align: left;
   }
   .goal-btn strong {
-    font-size: 18px;
-    font-weight: 750;
-  }
-  .goal-btn :global(.lucide-arrow-right) {
-    color: var(--ink-3);
+    font-weight: 700;
   }
   .body {
     padding: 2px 2px 0;
@@ -1087,7 +1025,7 @@
     padding: 14px 14px 12px;
     border-radius: var(--r-card);
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     color: var(--accent-ink);
   }
   .stat b {
@@ -1159,48 +1097,37 @@
     display: block;
   }
 
-  /* ── In basso ── */
+  /* ── In basso: il pulsante del tempo e, sotto, l'esercizio dopo ── */
   footer {
     flex: none;
     display: flex;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    gap: 8px;
     max-width: 560px;
     width: 100%;
     margin: 0 auto;
-    padding: 10px 20px calc(env(safe-area-inset-bottom) + 18px);
+    padding: 10px 18px calc(env(safe-area-inset-bottom) + 14px);
   }
-  .back {
-    width: 60px;
+  .main {
     height: 60px;
   }
-  .go {
-    --edge-c: color-mix(in srgb, var(--ink) 55%, #000);
+  .nav-row {
+    gap: 4px;
+  }
+  .after {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    height: 60px;
-    padding: 0 20px;
-    border-radius: 20px;
-    background: var(--ink);
-    color: var(--paper);
-    font-size: 17px;
-    font-weight: 700;
+    gap: 6px;
+    min-height: 44px;
     min-width: 0;
+    font-weight: 650;
+    color: var(--ink);
   }
-  .go.accent {
-    --edge-c: color-mix(in srgb, var(--accent) 62%, #000);
-    background: var(--accent);
-    color: var(--accent-on);
-  }
-  .next-dot {
+  .after.back {
     flex: none;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: var(--f);
-    box-shadow: 0 0 0 2px var(--paper);
+    width: 44px;
+    color: var(--ink-2);
   }
   .next {
     overflow: hidden;

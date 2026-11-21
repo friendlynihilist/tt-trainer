@@ -5,7 +5,8 @@
   import { ui } from '../store/ui.svelte.js';
 </script>
 
-<div class="toasts" aria-live="polite">
+<!-- Durante la sessione e nel costruttore gli avvisi stanno più su: in basso ci sono i pulsanti. -->
+<div class="toasts" class:high={ui.live || ui.builder} aria-live="polite">
   {#each ui.toasts as t (t.id)}
     <div class="toast {t.tone}" in:fly={{ y: 16, duration: 320, easing: cubicOut }} out:fly={{ y: 8, duration: 200 }} animate:flip={{ duration: 250 }}>
       <span>{t.text}</span>
@@ -33,6 +34,9 @@
     align-items: center;
     gap: 8px;
     pointer-events: none;
+  }
+  .toasts.high {
+    bottom: calc(env(safe-area-inset-bottom) + 150px);
   }
   .toast {
     pointer-events: auto;

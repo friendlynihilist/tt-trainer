@@ -39,13 +39,14 @@ try {
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
 await send('Page.navigate', { url: BASE }); await sleep(800);
-// Chi usava già l'app: un piano a tappe di prima, un allenamento suo, la versione 0.7.0 già vista.
+// Chi usava già l'app: un piano a tappe di prima, un allenamento suo. È il caso peggiore: ha già visto
+// le novità e le due guide nella 0.8.0 e ha rifatto il primo avvio della 0.8.1, dove le guide non ripartivano.
 const iso = (d) => d.toISOString().slice(0, 10);
 const now = new Date(); now.setHours(12, 0, 0, 0);
 const monday = new Date(now); monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7) - 14);
 const wd = ((now.getDay() + 6) % 7) + 1;
 const ago = (n) => { const d = new Date(now); d.setDate(d.getDate() - n); return iso(d); };
-const seed = { session: true, meta: { onboarded: true, seenVersion: '0.7.0', profile: { name: 'Carlo' }, settings: { theme: 'dark', sound: false }, player: { level: 'intermedio', since: ago(20), history: [], declined: null },
+const seed = { session: true, meta: { onboarded: true, seenVersion: '0.8.0', intro: 2, focus: ['dritto'], tour: { build: true, app: true }, profile: { name: 'Carlo' }, settings: { theme: 'dark', sound: false }, player: { level: 'intermedio', since: ago(20), history: [], declined: null },
   plan: { id: 'p1', start: iso(monday), weeks: ['1','1','1','1','2','2','2','2'], stages: [{ b: '1', n: 4, u: 'w' }, { b: '2', n: 4, u: 'w' }], slots: [{ id: 't1', day: wd, kind: 'training', template: 'completo' }, { id: 'x', day: wd, kind: 'test' }], skip: [] },
   custom: { templates: [{ id: 'cmio', custom: true, name: 'Rovescio 60′', color: 'pink', blocks: [{ name: 'Riscaldamento', minutes: 10, role: 'warmup', items: [] }, { name: 'Top', minutes: 30, role: null, items: [{ ex: 'top-r-block' }, { ex: 'top-r-due-punti' }] }, { name: 'Partitella', minutes: 15, role: 'match', items: [] }] }] } },
   events: { s1: { id: 's1', date: ago(9), createdAt: 1, kind: 'training', template: 'completo', minutes: 90, feel: 4, attempts: [{ ex: 'ap-d', fmt: 'su', tries: [9] }, { ex: 'top-d-block', fmt: 'fila', tries: [7, 12] }] }, s2: { id: 's2', date: ago(2), createdAt: 2, kind: 'test', minutes: 20, attempts: [{ ex: 'srv-pendolo', fmt: 'su', tries: [7] }, { ex: 'palleggio-d', fmt: 'fila', tries: [24] }] } },
@@ -59,15 +60,15 @@ await tapText('/^Comincia$/'); await shot('v-livello');
 check('il suo livello è già segnato', await ev(`document.querySelector('.choice.cur b')?.textContent`), 'Intermedio');
 await tapText('/^Intermedio/', '.choice'); await tapText('/^Rovescio/', '.mat button'); await tapText('/^Avanti$/'); await sleep(300); await shot('v-scelta');
 await tap('.choice.col', 1300); await shot('v-torre');
-check('nella torre parte la guida dei mattoni', await coach(), 'Aggiungi un mattone');
-check('con i mattoni già nella torre c’è «Avanti»', await ev(`Boolean(document.querySelector('.coach .next'))`), true);
+check('nella torre parte la guida dei fondamentali', await coach(), 'Aggiungi un fondamentale');
+check('con i fondamentali già nella torre c’è «Avanti»', await ev(`Boolean(document.querySelector('.coach .next'))`), true);
 await tap('.coach .skip', 500);
 const mine = await names();
 await tapText('/^Avanti$/'); await tapText('/^Solo oggi/', '.choice'); await sleep(500); await shot('v-pronto');
 check('alla fine non si richiede il nome al gruppo', await ev(`Boolean(document.querySelector('.onb .toggle'))`), false);
 await tapText('/^Andiamo$/'); await sleep(1800); await shot('v-oggi-guida');
 { const d = await store();
-  check('salvato senza toccare nome, livello e piano di prima', [d.meta.intro, d.meta.seenVersion !== '0.7.0', d.meta.profile.name, d.meta.player.level, d.meta.player.history, d.meta.focus, d.meta.custom.templates.length, d.meta.plan.id], [2, true, 'Carlo', 'intermedio', [], ['rovescio'], 2, 'p1']); }
+  check('salvato senza toccare nome, livello e piano di prima', [d.meta.intro, d.meta.seenVersion !== '0.8.0', d.meta.profile.name, d.meta.player.level, d.meta.player.history, d.meta.focus, d.meta.custom.templates.length, d.meta.plan.id], [3, true, 'Carlo', 'intermedio', [], ['rovescio'], 2, 'p1']); }
 check('le novità non si aprono: le ha spiegate il primo avvio', await ev(`Boolean(document.querySelector('#wn-title'))`), false);
 check('in Oggi parte la guida delle medaglie', await coach(), 'Le medaglie');
 await tap('.coach .skip', 600); await shot('v-oggi');
@@ -76,12 +77,12 @@ check('oggi c’è l’allenamento appena costruito, al posto di quello di prima
 check('con il test in calendario c’è la sua riga', await ev(`Boolean(document.querySelector('.test-pill'))`), true);
 check('«Settimana 3 di 8»', await ev(`document.querySelector('.week .t-name').textContent`), 'Settimana 3 di 8');
 await tap('.court .open', 800); await shot('v-foglio');
-await tapText('/^Cambia i mattoni/', '.other', 1300); await shot('v-costruttore');
+await tapText('/^Cambia i fondamentali/', '.other', 1300); await shot('v-costruttore');
 check('nel costruttore la guida non riparte', await coach(), null);
-check('ci sono i mattoni scelti nel primo avvio', await names(), mine);
+check('ci sono i fondamentali scelti nel primo avvio', await names(), mine);
 await tapText('/^Salva$/', '.builder button', 1000); await shot('v-oggi-mio');
 await ev(`location.hash = '#/libreria'`); await sleep(1000); await shot('v-libreria');
-check('in Libreria ci sono i due allenamenti tuoi', await ev(`[...document.querySelectorAll('.section')][0].querySelectorAll('.wk strong').length`), 2);
+check('in Libreria ci sono i due allenamenti tuoi', await ev(`document.querySelectorAll('.li.col').length`), 2);
 await ev(`location.hash = '#/progressi/mappa/dritto'`); await sleep(1300); await shot('v-mappa');
 check('nella mappa le medaglie già prese', await ev(`document.querySelectorAll('#map .nd:not(.empty)').length > 0`), true);
 await tap('.notes', 700); check('le note di prima sono fra quelle del dritto', await ev(`document.querySelector('.sheet').textContent.includes('Il polso parte troppo presto.')`), true); await shot('v-note'); await tap('.sheet .icon-btn');

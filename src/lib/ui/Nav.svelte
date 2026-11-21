@@ -1,10 +1,5 @@
 <script>
   // Barra in basso sul telefono, colonna a sinistra su schermi larghi.
-  import Sun from '@lucide/svelte/icons/sun';
-  import Calendar from '@lucide/svelte/icons/calendar';
-  import TrendingUp from '@lucide/svelte/icons/trending-up';
-  import Library from '@lucide/svelte/icons/library';
-  import Plus from '@lucide/svelte/icons/plus';
   import Help from '@lucide/svelte/icons/circle-question-mark';
   import Settings from '@lucide/svelte/icons/settings';
   import { app } from '../store/app.svelte.js';
@@ -13,31 +8,35 @@
   import Avatar from './Avatar.svelte';
   import Mark from './Mark.svelte';
 
+  // Le quattro icone sono disegnate per l'app: la casa, il calendario, le barre, i libri.
   const MAIN = [
-    { id: 'oggi', label: 'Oggi', icon: Sun },
-    { id: 'calendario', label: 'Diario', icon: Calendar },
-    { id: 'progressi', label: 'Progressi', icon: TrendingUp },
-    { id: 'libreria', label: 'Libreria', icon: Library }
+    { id: 'oggi', label: 'Oggi', d: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
+    { id: 'calendario', label: 'Diario', d: 'M6 5h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3zM8 3v4M16 3v4M3 10h18' },
+    { id: 'progressi', label: 'Progressi', d: 'M4 20V10M10 20V4M16 20v-7M22 20H2' },
+    { id: 'libreria', label: 'Libreria', d: 'M5 4v16M10 4v16M15 5l4 15' }
   ];
 
   const current = $derived(ui.route.name);
 </script>
 
+{#snippet icon(d, size = 22)}
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path {d} /></svg>
+{/snippet}
+{#snippet plus(size = 26)}
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+{/snippet}
+
 <nav class="bar" aria-label="Sezioni">
   {#each MAIN.slice(0, 2) as item (item.id)}
-    {@const Icon = item.icon}
-    <a href="#/{item.id}" class:on={current === item.id} aria-current={current === item.id ? 'page' : undefined}>
-      <Icon size={22} strokeWidth={current === item.id ? 2.2 : 1.7} />
+    <a href="#/{item.id}" aria-current={current === item.id ? 'page' : undefined}>
+      {@render icon(item.d)}
       <span>{item.label}</span>
     </a>
   {/each}
-  <button class="add" onclick={buildNew} aria-label="Costruisci un allenamento">
-    <Plus size={24} strokeWidth={2.2} />
-  </button>
+  <button class="add" onclick={buildNew} aria-label="Costruisci un allenamento">{@render plus()}</button>
   {#each MAIN.slice(2) as item (item.id)}
-    {@const Icon = item.icon}
-    <a href="#/{item.id}" class:on={current === item.id} aria-current={current === item.id ? 'page' : undefined}>
-      <Icon size={22} strokeWidth={current === item.id ? 2.2 : 1.7} />
+    <a href="#/{item.id}" aria-current={current === item.id ? 'page' : undefined}>
+      {@render icon(item.d)}
       <span>{item.label}</span>
     </a>
   {/each}
@@ -50,14 +49,13 @@
   </a>
 
   <button class="btn accent new" onclick={buildNew}>
-    <Plus size={18} strokeWidth={2.4} /> Nuovo allenamento
+    {@render plus(18)} Nuovo allenamento
   </button>
 
   <div class="links">
     {#each MAIN as item (item.id)}
-      {@const Icon = item.icon}
       <a href="#/{item.id}" class:on={current === item.id}>
-        <Icon size={19} strokeWidth={1.8} />
+        {@render icon(item.d, 19)}
         {item.label}
       </a>
     {/each}
@@ -84,13 +82,12 @@
     right: 0;
     bottom: 0;
     height: calc(var(--tabbar) + env(safe-area-inset-bottom));
-    padding: 0 8px env(safe-area-inset-bottom);
+    padding: 0 6px calc(10px + env(safe-area-inset-bottom));
     display: grid;
-    grid-template-columns: 1fr 1fr 72px 1fr 1fr;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
     align-items: center;
-    background: color-mix(in srgb, var(--paper) 86%, transparent);
-    backdrop-filter: blur(18px) saturate(1.4);
-    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    background: var(--card);
     border-top: 1px solid var(--line);
   }
   .bar a {
@@ -100,37 +97,29 @@
     gap: 3px;
     padding: 8px 0;
     text-decoration: none;
-    color: var(--ink-3);
-    font-size: 10.5px;
-    font-weight: 540;
-    letter-spacing: 0.01em;
-    transition:
-      color 0.25s var(--ease),
-      transform 0.2s var(--ease);
+    color: var(--ink-2);
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1.5;
   }
-  .bar a:active {
-    transform: scale(0.92);
-  }
-  .bar a.on {
-    color: var(--ink);
+  .bar a[aria-current='page'] {
+    color: var(--accent-ink);
   }
   .add {
     justify-self: center;
     display: grid;
     place-items: center;
-    width: 52px;
-    height: 52px;
-    margin-top: -18px;
-    border-radius: 50%;
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
     background: var(--accent);
     color: var(--accent-on);
-    box-shadow:
-      0 0 0 5px var(--paper),
-      0 8px 20px -6px color-mix(in srgb, var(--accent) 70%, transparent);
-    transition: transform 0.4s var(--spring);
+    box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 65%, #000);
+    translate: 0 -4px;
   }
   .add:active {
-    transform: scale(0.9) rotate(45deg);
+    translate: 0 0;
+    box-shadow: none;
   }
 
   .rail {

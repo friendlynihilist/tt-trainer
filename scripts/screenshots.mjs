@@ -165,6 +165,8 @@ const SHOTS = [
     viewport: true
   },
   { name: 'foglio-voce', hash: 'calendario', steps: [click('/^Test/', 'button.item')] },
+  { name: 'foglio-fatto', hash: 'calendario', steps: [click('/^Nel mese/'), `[...document.querySelectorAll('button.item')].find((b) => b.querySelector('.chips') && !/^Test/.test(b.querySelector('strong').textContent)).click()`], viewport: true },
+  { name: 'quando', hash: 'oggi', steps: [`document.querySelector('nav button.add').click()`, `document.querySelector('[data-tile=dritto]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 5, clientY: 5 })); window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 5, clientY: 5 }))`, `[...document.querySelectorAll('.builder footer button')].find((b) => /Avanti/.test(b.textContent)).click()`], viewport: true },
   { name: 'foglio-livello', hash: 'progressi', steps: [`document.querySelector('.lv-top button').click()`] },
   { name: 'foglio-percorso', hash: 'libreria/allenamenti', steps: [click('/^Percorsi/'), click('/^Top di dritto/', 'button.item')] },
   { name: 'foglio-mese', hash: 'libreria/allenamenti', steps: [click('/^Mesi/'), click('/^Dritto/', 'button.item')] },
@@ -184,8 +186,8 @@ const SHOTS = [
     viewport: true
   },
   { name: 'sessione-chiusura', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/'), `document.querySelector('[role=tab][aria-label=Chiusura]').click()`], viewport: true },
-  // Il foglio dell'allenamento di oggi, con i suoi mattoni.
-  { name: 'oggi-mattoni', hash: 'oggi', steps: [`document.querySelector('.court .open').click()`], viewport: true },
+  // Il foglio dell'allenamento di oggi, con i suoi fondamentali.
+  { name: 'oggi-fondamentali', hash: 'oggi', steps: [`document.querySelector('.court .open').click()`], viewport: true },
   // Il primo avvio: la prima schermata, per chi arriva ora.
   { name: 'primo-avvio', hash: 'oggi', patch: (d) => ({ ...d, meta: { settings: d.meta.settings } }), viewport: true },
   { name: 'accesso', hash: 'oggi', patch: (d) => ({ ...d, session: false }), viewport: true },

@@ -19,28 +19,27 @@
     position: relative;
     display: grid;
     grid-template-columns: repeat(var(--n), 1fr);
-    padding: 3px;
+    padding: 4px;
     border-radius: 999px;
     background: var(--sunk);
   }
   .thumb {
     position: absolute;
-    top: 3px;
-    bottom: 3px;
-    left: 3px;
-    width: calc((100% - 6px) / var(--n));
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc((100% - 8px) / var(--n));
     border-radius: 999px;
     background: var(--card);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--line);
     transform: translateX(calc(var(--i) * 100%));
     transition: transform 0.45s var(--spring);
   }
   button {
     position: relative;
-    height: 38px;
+    height: 40px;
     padding: 0 14px;
-    font-size: 14px;
-    font-weight: 540;
+    font-size: 16px;
+    font-weight: 650;
     color: var(--ink-2);
     white-space: nowrap;
     transition: color 0.2s var(--ease);

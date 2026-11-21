@@ -280,9 +280,9 @@ Nessun problema vero. La pagina principale pesa 144 kB compressi, Firebase altri
 6. Un solo foglio di stile (4.3, 4.4).
 7. Test delle regole e schermate nel flusso di pubblicazione (8.1).
 
-## Dopo la revisione: il rifacimento a mattoni (0.8.0)
+## Dopo la revisione: il rifacimento a fondamentali (0.8.0)
 
-Scelto dall'utente su un prototipo da provare. Fatto: colori nuovi, Oggi con il tavolo, costruttore a mattoni,
+Scelto dall'utente su un prototipo da provare. Fatto: colori nuovi, Oggi con il tavolo, costruttore a fondamentali,
 primo avvio in sette passi, guida a fuoco, mappa dei colpi in Progressi, Libreria con i propri allenamenti in
 alto, note per colpo alla chiusura, finestra delle novità nello stesso stile. Provato con gesti veri in Chrome
 senza finestra (primo avvio completo e passaggio da una 0.7.0 con dati), non su un telefono.

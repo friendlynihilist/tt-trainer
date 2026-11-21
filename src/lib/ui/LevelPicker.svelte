@@ -42,7 +42,7 @@
     width: 100%;
     padding: 12px 14px;
     border-radius: var(--r);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     background: var(--card);
     text-align: left;
     animation: rise 0.45s var(--ease-out) both;

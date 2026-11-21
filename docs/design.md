@@ -2,8 +2,18 @@
 
 > **Dalla 0.8.0** l'accento è il blu (`--accent: #1f5fe0`), il fondo un grigio freddo con schede bianche,
 > la fiamma è rossa, «Pro» è color oro e la partita è grigia. In Oggi l'allenamento sta su un tavolo visto
-> dall'alto (`--court`), con i mattoni in pillole piene. Niente arancione. Le regole qui sotto su famiglie,
+> dall'alto (`--court`), con i fondamentali in pillole piene. Niente arancione. Le regole qui sotto su famiglie,
 > rilievo, medaglie e caratteri restano valide.
+
+> **Dalla 0.9.0** l'app segue il prototipo approvato in ogni parte, e in caso di dubbio vince il prototipo.
+> I valori: titolo di pagina 30 px / 800, titolo di scheda 20 px / 750, testo 16 px; schede bianche senza
+> bordo, raggio 20, spazio interno 16, distanti 12; pulsante principale a pillola alto 56 nel blu
+> dell'app, pulsante secondario solo testo blu; barra in basso bianca alta 76 con quattro icone disegnate
+> (casa, calendario, barre, libri) e il + quadrato con gli angoli tondi; le spunte del «fatto» verdi
+> (`--ok`). I mattoni si chiamano **fondamentali** in tutti i testi (nel codice restano `brick`).
+> Progressi ha «Andamento» e «Mappa»; la sessione mostra l'etichetta del fondamentale, il nome, il tempo
+> grande e un solo pulsante (Pausa / Avvia), con l'esercizio dopo sotto. Dove le sezioni qui sotto dicono
+> altro, sono superate.
 
 Rifacimento grafico. Stato: proposta. Nel passo 3 le regole valgono solo per **Oggi** e la **sessione dal vivo**; le altre pagine cambiano dopo l'approvazione.
 

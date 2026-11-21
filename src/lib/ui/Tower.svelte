@@ -1,12 +1,12 @@
 <script>
-  // La torre: l'allenamento come una pila di mattoni. In basso il vassoio con i mattoni da
+  // La torre: l'allenamento come una pila di fondamentali. In basso il vassoio con i fondamentali da
   // aggiungere. Tutto si fa con le dita:
-  //   · tocca un mattone del vassoio e si aggiunge in fondo (prima della partita); trascinalo su e
+  //   · tocca un fondamentale del vassoio e si aggiunge in fondo (prima della partita); trascinalo su e
   //     lo metti nel punto che vuoi;
-  //   · trascina in giù il bordo di un mattone e dura di più, cinque minuti alla volta;
-  //   · trascina un mattone su o giù e cambi l'ordine;
+  //   · trascina in giù il bordo di un fondamentale e dura di più, cinque minuti alla volta;
+  //   · trascina un fondamentale su o giù e cambi l'ordine;
   //   · toccalo e scegli quali esercizi fare.
-  // L'altezza di un mattone è la sua durata.
+  // L'altezza di un fondamentale è la sua durata.
   import { tick } from 'svelte';
   import { flip } from 'svelte/animate';
   import Check from '@lucide/svelte/icons/check';
@@ -32,14 +32,14 @@
   let trayEl = $state();
   let editing = $state(null);
   let fresh = $state(null);
-  /** Il mattone che stai trascinando: { id, y } (lo spostamento rispetto al suo posto). */
+  /** Il fondamentale che stai trascinando: { id, y } (lo spostamento rispetto al suo posto). */
   let drag = $state(null);
-  /** Il mattone che stai portando su dal vassoio: { type, x, y }. */
+  /** Il fondamentale che stai portando su dal vassoio: { type, x, y }. */
   let ghost = $state(null);
   let g = null;
 
   const edited = $derived(bricks.find((b) => b.id === editing) ?? null);
-  // Con il foglio di un mattone aperto la guida aspetta; il tasto «indietro» chiude il foglio.
+  // Con il foglio di un fondamentale aperto la guida aspetta; il tasto «indietro» chiude il foglio.
   $effect(() => {
     if (!editing) return;
     ui.coachBusy = true;
@@ -49,7 +49,7 @@
       release();
     };
   });
-  // La guida sa quanti mattoni ci sono (al primo passo si va avanti solo aggiungendone uno).
+  // La guida sa quanti fondamentali ci sono (al primo passo si va avanti solo aggiungendone uno).
   $effect(() => {
     ui.coachCtx = { count: bricks.length };
   });
@@ -111,7 +111,7 @@
       if (!g.moved && Math.abs(dy) < 7) return;
       g.moved = true;
       ui.coachBusy = true;
-      // Dove sta ora il bordo alto del mattone, e il suo posto fra gli altri (per i loro centri).
+      // Dove sta ora il bordo alto del fondamentale, e il suo posto fra gli altri (per i loro centri).
       const top = e.clientY - g.grab;
       const mid = top + g.el.offsetHeight / 2;
       const others = [...tower.querySelectorAll('.brk')].filter((n) => n !== g.el);
@@ -203,7 +203,7 @@
       <span class="grip" data-grip aria-hidden="true"></span>
     </div>
   {:else}
-    <div class="empty">Qui compaiono i mattoni<br />che aggiungi</div>
+    <div class="empty">Qui compaiono i fondamentali<br />che aggiungi</div>
   {/each}
 </div>
 
@@ -249,7 +249,7 @@
     {#snippet footer()}
       <div class="stack g-8">
         <button class="btn accent wide" onclick={() => (editing = null)}>Fatto</button>
-        <button class="btn plain wide danger-txt" onclick={remove}>Togli questo mattone</button>
+        <button class="btn plain wide danger-txt" onclick={remove}>Togli questo fondamentale</button>
       </div>
     {/snippet}
   </Sheet>
@@ -364,14 +364,14 @@
     font-weight: 800;
     font-variant-numeric: tabular-nums;
   }
-  /* La freccia a destra dice che il mattone si apre. */
+  /* La freccia a destra dice che il fondamentale si apre. */
   .brk-go {
     flex: none;
     display: grid;
     margin: 0 -6px 0 -4px;
     opacity: 0.8;
   }
-  /* Il bordo da trascinare per allungare il mattone. */
+  /* Il bordo da trascinare per allungare il fondamentale. */
   .grip {
     position: absolute;
     left: 0;

@@ -12,7 +12,7 @@
 
   const STEPS = [
     ['Il tuo livello', 'Scegli il livello che ti somiglia di più. Serve solo a proporti esercizi adatti: puoi fare qualsiasi esercizio, a qualsiasi livello.'],
-    ['Costruire un allenamento', 'Tocca il tasto + in basso. Ogni mattone è una cosa da allenare: aggiungi quelli che vuoi, decidi quanto durano e scegli gli esercizi.'],
+    ['Costruire un allenamento', 'Tocca il tasto + in basso. Ogni fondamentale è una cosa da allenare: aggiungi quelli che vuoi, decidi quanto durano e scegli gli esercizi.'],
     ['Allenarsi', 'Apri Oggi e tocca Inizia: trovi l’allenamento del giorno con il timer. Puoi allenarti anche nei giorni che non hai messo in programma.'],
     ['Provare un obiettivo', 'Su ogni esercizio puoi toccare «Prova l’obiettivo»: l’app ti mostra la prossima medaglia, per esempio «Argento: 10 di fila».'],
     ['Alla fine', 'Di’ com’è andata e, se vuoi, scrivi una nota per ogni colpo. Le note le rileggi in Progressi, nella mappa del colpo.']
@@ -22,7 +22,7 @@
 
 <div class="page enter guide">
   <PageHead title="Guida" back />
-  <p class="intro">Gli allenamenti li costruisci tu, un mattone per colpo. Ogni esercizio ha le sue medaglie. Niente è bloccato.</p>
+  <p class="intro">Gli allenamenti li costruisci tu con i fondamentali: dritto, rovescio, servizio e gli altri. Ogni esercizio ha le sue medaglie. Niente è bloccato.</p>
 
   <ol class="steps">
     {#each STEPS as [title, text], i (title)}
@@ -72,17 +72,17 @@
     </Collapse>
 
     <Collapse title="Durante l’allenamento" open={false} key="guida-sessione">
-      <p>Un allenamento è una fila di mattoni. Ogni mattone ha la sua durata; se ha più esercizi, il tempo si divide in parti uguali. La partita si gioca metà {MATCH_TYPES.risk.name.toLowerCase()} e metà {MATCH_TYPES.scheme.name.toLowerCase()}.</p>
+      <p>Un allenamento è una fila di fondamentali. Ogni fondamentale ha la sua durata; se ha più esercizi, il tempo si divide in parti uguali. La partita si gioca metà {MATCH_TYPES.risk.name.toLowerCase()} e metà {MATCH_TYPES.scheme.name.toLowerCase()}.</p>
       <ul class="rules">
         <li><b>Il cambio.</b> A metà di ogni esercizio in due suona un doppio bip e il riquadro del tempo diventa scuro: tocca al compagno. Se comincia lui, tocca l’etichetta «Tocca a te» e i turni si invertono. Nel palleggio e negli esercizi da solo non c’è cambio.</li>
-        <li><b>Le pause.</b> Gli allenamenti a mattoni non hanno pause: la durata è la somma dei mattoni. Nei modelli di base fra una fase e l’altra c’è {PAUSE_MINUTES} minuto di pausa, che puoi saltare.</li>
+        <li><b>Le pause.</b> Gli allenamenti costruiti con i fondamentali non hanno pause: la durata è la somma dei fondamentali. Nei modelli di base fra una fase e l’altra c’è {PAUSE_MINUTES} minuto di pausa, che puoi saltare.</li>
       </ul>
     </Collapse>
 
     <Collapse title="Il programma" open={false} key="guida-programma">
       <ul class="rules">
         <li>Al primo avvio scegli per quanto tempo fare il tuo allenamento: solo oggi, una settimana o un mese, e in quali giorni.</li>
-        <li>In Oggi trovi sempre un allenamento pronto. Per cambiarlo, apri la Libreria, tocca uno dei tuoi allenamenti e poi «Mettilo oggi».</li>
+        <li>In Oggi trovi sempre un allenamento pronto. Per cambiarlo, apri la Libreria, tocca uno dei tuoi allenamenti e poi «Mettilo in calendario».</li>
         <li>Lezioni, partite e tornei si aggiungono dal Diario: tocca un giorno e poi «Aggiungi a questo giorno».</li>
       </ul>
     </Collapse>
@@ -98,8 +98,8 @@
     <Collapse title="La libreria" open={false} key="guida-libreria">
       <ul class="rules">
         <li><b>Esercizi.</b> {LIBRARY.length} esercizi in otto famiglie, con il livello suggerito, il formato, come deve venire, gli errori comuni e le medaglie.</li>
-        <li><b>I tuoi allenamenti.</b> Quelli che hai costruito. Toccane uno per cambiargli nome, metterlo a oggi, cambiare i mattoni o eliminarlo.</li>
-        <li><b>I mattoni.</b> Uno per colpo: Dritto, Rovescio, Servizio, Ricezione, Gambe, Gioco tagliato e Schemi. Ognuno apre la sua mappa.</li>
+        <li><b>I tuoi allenamenti.</b> Quelli che hai costruito. Toccane uno per cambiargli nome, metterlo in calendario, cambiare i fondamentali o eliminarlo.</li>
+        <li><b>I fondamentali.</b> Uno per colpo: Dritto, Rovescio, Servizio, Ricezione, Gambe, Gioco tagliato e Schemi. Ognuno apre la sua mappa.</li>
         <li><b>Modelli di base, pacchetti, mesi e percorsi.</b> Gli allenamenti già pronti delle versioni di prima: restano in fondo, chiusi.</li>
         <li>Si può anche importare un file preparato da un assistente.</li>
       </ul>
@@ -136,7 +136,7 @@
     padding: 14px 16px;
     border-radius: var(--r-card);
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
   }
   .n {
     display: grid;
@@ -177,7 +177,7 @@
     padding: 14px 6px;
     border-radius: var(--r-card);
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
   }
   .md {
     display: flex;

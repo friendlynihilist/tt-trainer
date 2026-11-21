@@ -194,7 +194,7 @@
     gap: 8px;
     padding: 12px;
     border-radius: var(--r);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     background: var(--card);
   }
   .lvl .spread {

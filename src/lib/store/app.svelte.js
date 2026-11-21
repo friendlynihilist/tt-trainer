@@ -83,10 +83,12 @@ class AppState {
   phase = $derived(this.plan ? planPhase(this.plan, this.today) : 'none');
   onboarded = $derived(Boolean(this.meta?.onboarded));
   /**
-   * Ha fatto il primo avvio a mattoni (dalla 0.8.0): livello, colpi, primo allenamento. Chi usava
-   * l'app da prima lo fa alla prima apertura; `focus` c'è solo in chi l'ha già fatto.
+   * Ha fatto il primo avvio con i fondamentali (dalla 0.8.0): livello, colpi, primo allenamento, con le guide.
+   * Chi usava l'app da prima lo fa alla prima apertura. Lo ha già fatto chi ha `intro` 3, e chi è
+   * arrivato con la 0.8.0 (ha `focus` e non ha `intro`). Con `intro` 2 (la 0.8.1) lo si rifà: lì a chi
+   * aveva già visto le guide non ripartivano.
    */
-  welcomed = $derived(this.onboarded && (this.meta?.intro >= 2 || Array.isArray(this.meta?.focus)));
+  welcomed = $derived(this.onboarded && (this.meta?.intro >= 3 || (Array.isArray(this.meta?.focus) && this.meta?.intro == null)));
 
   name = $derived(this.meta?.profile?.name || this.user?.name || '');
   firstName = $derived(this.name.trim().split(/\s+/)[0] ?? '');

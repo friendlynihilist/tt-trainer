@@ -110,7 +110,7 @@
     display: flex;
     flex-direction: column;
     background: var(--paper);
-    border-radius: 24px 24px 0 0;
+    border-radius: 26px 26px 0 0;
     box-shadow: var(--shadow);
     translate: 0 var(--drag);
     transition: translate 0.35s var(--ease-out);
@@ -137,29 +137,30 @@
     cursor: grab;
   }
   .grip span {
-    width: 36px;
+    width: 38px;
     height: 4px;
     border-radius: 2px;
-    background: var(--line-strong);
+    background: var(--ink-2);
+    opacity: 0.4;
   }
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 2px 12px 10px 20px;
+    padding: 2px 10px 10px 18px;
     flex: none;
   }
   .body {
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 4px 20px 24px;
+    padding: 4px 18px 22px;
     flex: 1;
     min-height: 0;
   }
   footer {
     flex: none;
-    padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
     background: var(--paper);
   }

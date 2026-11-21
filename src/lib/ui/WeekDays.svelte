@@ -3,7 +3,6 @@
   // calendario, oggi in evidenza. Toccando un giorno si apre il Diario su quel giorno: il mese intero,
   // con un pallino per ogni attività, sta lì.
   import Check from '@lucide/svelte/icons/check';
-  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { agenda } from '../engine/events.js';
@@ -28,17 +27,10 @@
   // title: «Questa settimana», oppure «Settimana 2 di 4» con i trattini (steps) quando c'è un programma
   // di più settimane.
   let { title = 'Questa settimana', steps = null } = $props();
-
-  const done = $derived(days.filter((d) => d.done).length);
-  const total = $derived(days.filter((d) => d.done || d.todo).length);
 </script>
 
 <div class="week">
-  <button class="top" onclick={() => ui.go('calendario')}>
-    <span class="t-name">{title}</span>
-    <span class="count">{#if total}<b class="t-num">{done}</b> su {total}{/if}</span>
-    <ChevronRight size={18} />
-  </button>
+  <span class="t-name">{title}</span>
 
   {#if steps}
     <div class="segs" aria-hidden="true">
@@ -57,18 +49,27 @@
         onclick={() => ui.go('calendario', d.date)}
         aria-label="{d.name} {d.n}: {d.done ? 'fatto' : d.todo ? (d.past ? 'saltato' : 'in calendario') : 'riposo'}"
       >
-        <small class:on={d.today}>{WEEKDAYS_MIN[i]}</small>
-        <span class="dot">{#if d.done}<Check size={16} strokeWidth={3} />{/if}</span>
+        <small>{WEEKDAYS_MIN[i]}</small>
+        <span class="dot">{#if d.done}<Check size={16} strokeWidth={3.2} />{/if}</span>
       </button>
     {/each}
   </div>
 </div>
 
 <style>
+  .week {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    box-shadow: var(--shadow-card);
+  }
   .segs {
     display: flex;
     gap: 4px;
-    margin: 2px 0 14px;
   }
   .segs i {
     flex: 1 1 0;
@@ -77,89 +78,48 @@
     background: var(--sunk);
   }
   .segs i.past {
-    background: var(--up);
+    background: var(--ok);
   }
   .segs i.now {
     background: var(--accent);
-  }
-
-  .week {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-    padding: 8px 16px 16px;
-    border-radius: var(--r-card);
-    background: var(--card);
-    border: 1px solid var(--line);
-  }
-  .top {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 44px;
-    text-align: left;
-    color: var(--ink);
-  }
-  .top .t-name {
-    flex: 1;
-  }
-  .top :global(svg) {
-    color: var(--ink-3);
-  }
-  .count {
-    font-size: 14px;
-    color: var(--ink-2);
-  }
-  .count b {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--ink);
   }
   .grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 4px;
+    text-align: center;
   }
   .day {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    padding: 2px 0;
     color: var(--ink);
   }
   small {
-    font-size: 12px;
-    font-weight: 650;
-    color: var(--ink-3);
-  }
-  small.on {
-    color: var(--ink);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--ink-2);
   }
   .dot {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: var(--sunk);
-    color: var(--accent-on);
-    transition: transform var(--dur-fast) var(--ease);
-  }
-  .day:active .dot {
-    transform: scale(0.92);
+    color: #fff;
   }
   .todo .dot {
-    background: transparent;
+    background: none;
     box-shadow: inset 0 0 0 2.5px var(--accent);
   }
   .missed .dot {
-    box-shadow: inset 0 0 0 2px var(--line-strong);
+    box-shadow: inset 0 0 0 2.5px var(--line-strong);
   }
   .done .dot {
-    background: var(--accent);
-    box-shadow: 0 3px 0 color-mix(in srgb, var(--accent) 62%, #000);
+    background: var(--ok);
   }
   .today .dot {
     outline: 2px solid var(--ink);

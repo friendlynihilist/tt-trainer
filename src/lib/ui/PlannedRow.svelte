@@ -1,29 +1,23 @@
 <script>
   // Un appuntamento previsto e non ancora fatto. In vista solo l'azione che serve adesso: Inizia se
   // è oggi, Registra se è passato. Toccando la riga si apre il foglio con tutte le azioni.
-  // Come nelle voci fatte: il tipo in grassetto, il modello in grigio, la data a destra; sotto la
-  // durata con la sua icona e il tema in una pillola.
+  // Come nelle voci fatte: il nome in grassetto (per un allenamento, quello che contiene), la data a
+  // destra; sotto la durata con la sua icona.
   import Play from '@lucide/svelte/icons/play';
   import Timer from '@lucide/svelte/icons/timer';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { KIND } from '../data/taxonomy.js';
-  import { templateMinutes } from '../data/templates.js';
-  import { startItem, logItem } from '../store/actions.js';
+  import { startItem, logItem, workoutOf } from '../store/actions.js';
   import { fmtShort } from '../util/dates.js';
 
   let { item, showDate = false } = $props();
 
   const color = $derived(KIND[item.kind]?.color ?? 'slate');
-  const kind = $derived(KIND[item.kind]?.short ?? 'Attività');
-  const model = $derived(item.kind === 'training' ? (app.catalog.template(item.template)?.name ?? '') : '');
-  // La durata, se il nome del modello non la dice già («Intermedio · 60′»).
-  const minutes = $derived.by(() => {
-    if (item.kind !== 'training') return null;
-    const m = templateMinutes(app.catalog.template(item.template));
-    return model.includes(String(m)) ? null : m;
-  });
-  const theme = $derived(item.week?.focusBlock && (item.kind === 'training' || item.kind === 'test') ? item.week.focusBlock.theme : '');
+  // Un allenamento si chiama per quello che contiene; la durata sta sotto.
+  const workout = $derived(item.kind === 'training' ? workoutOf(item.template, item.date) : null);
+  const kind = $derived(workout?.name ?? KIND[item.kind]?.short ?? 'Attività');
+  const minutes = $derived(workout?.minutes || null);
   const past = $derived(item.date < app.today);
   const today = $derived(item.date === app.today);
 </script>
@@ -34,13 +28,11 @@
     <span class="grow">
       <span class="top">
         <strong>{kind}</strong>
-        {#if model}<span class="model">{model}</span>{/if}
         {#if showDate}<span class="date">{fmtShort(item.date)}</span>{/if}
       </span>
-      {#if minutes || theme || past}
+      {#if minutes || past}
         <span class="meta">
           {#if minutes}<span><Timer size={14} />{minutes} min</span>{/if}
-          {#if theme}<span class="theme">{theme}</span>{/if}
           {#if past}<span class="warn">Non registrato</span>{/if}
         </span>
       {/if}

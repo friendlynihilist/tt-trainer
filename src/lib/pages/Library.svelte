@@ -40,7 +40,7 @@
   let tab = $state(TABS.includes(asked) ? asked : 'allenamenti');
 
   // ── Allenamenti ──
-  // In alto i tuoi, con i loro mattoni; poi i colpi (ognuno apre la sua mappa) e tre idee attorno ai
+  // In alto i tuoi, con i loro fondamentali; poi i colpi (ognuno apre la sua mappa) e tre idee attorno ai
   // colpi che hai scelto. Modelli di base, pacchetti, mesi e percorsi stanno sotto, chiusi.
   const mine = $derived((app.meta?.custom?.templates ?? []).filter((t) => !t.archived).map((t) => app.catalog.template(t.id)).reverse());
   const todayTemplate = $derived((agenda(app.plan, app.events, app.planned, app.today, app.today, app.catalog).get(app.today)?.todo ?? []).find((x) => x.kind === 'training')?.template ?? null);
@@ -160,55 +160,48 @@
   {#key tab}
     <div in:fly={{ y: 10, duration: dur(280), easing: cubicOut }}>
       {#if tab === 'allenamenti'}
-        <!-- I tuoi allenamenti: il nome, la durata e i mattoni. Toccandone uno si apre. -->
-        <div class="section">
-          <h2 class="t-name sec">I tuoi allenamenti</h2>
-          {#if mine.length}
-            <div class="card flush list">
-              {#each mine as t (t.id)}
-                <button class="wk" onclick={() => ui.open('workout', { id: t.id })}>
-                  <span class="wk-top">
-                    <strong class="grow">{t.name}</strong>
-                    {#if t.id === todayTemplate}<span class="tag accent">oggi</span>{/if}
-                    <span class="muted">{templateMinutes(t)} min</span>
-                    <ChevronRight size={18} />
-                  </span>
-                  <Pills bricks={pillsOf(t)} />
-                </button>
-              {/each}
-            </div>
+        <!-- I tuoi allenamenti: il nome, la durata e i fondamentali. Toccandone uno si apre. -->
+        <section class="card box">
+          <h2 class="t-name">I tuoi allenamenti</h2>
+          {#each mine as t (t.id)}
+            <button class="li col" onclick={() => ui.open('workout', { id: t.id })}>
+              <span class="row g-8">
+                <b class="grow">{t.name}</b>
+                {#if t.id === todayTemplate}<span class="today-tag">oggi</span>{/if}
+                <span class="muted num">{templateMinutes(t)} min</span>
+                <span class="muted chev"><ChevronRight size={18} /></span>
+              </span>
+              <Pills bricks={pillsOf(t)} />
+            </button>
           {:else}
-            <p class="muted">Ancora nessuno: costruiscine uno con il tasto +.</p>
-          {/if}
-        </div>
+            <span class="muted none">Ancora nessuno: costruiscine uno con il tasto +.</span>
+          {/each}
+        </section>
 
-        <!-- I colpi: ognuno apre la sua mappa, in Progressi. -->
-        <div class="section">
-          <h2 class="t-name sec">I mattoni</h2>
+        <!-- I fondamentali: ognuno apre la sua mappa, in Progressi. -->
+        <section class="card box g12">
+          <h2 class="t-name">I fondamentali</h2>
           <div class="mat">
             {#each SKILLS as b (b.id)}
               <button data-fam={b.fam} onclick={() => ui.go('progressi', 'mappa', b.id)}>{b.name}<small>{brickExercises(b.id, app.catalog).length} esercizi</small></button>
             {/each}
           </div>
-        </div>
+        </section>
 
-        <!-- Tre idee: un allenamento corto, uno completo e uno lungo. Si aprono nel costruttore. -->
-        <div class="section">
-          <h2 class="t-name sec">Idee</h2>
-          <div class="card flush list">
-            {#each ideas as w, i (i)}
-              <button class="wk" onclick={() => buildNew(w.bricks)}>
-                <span class="wk-top">
-                  <strong class="grow">{w.name}</strong>
-                  <span class="muted">{totalMinutes(w.bricks)} min</span>
-                  <ChevronRight size={18} />
-                </span>
-                <Pills bricks={ideaPills(w)} />
-              </button>
-            {/each}
-          </div>
-        </div>
+        <!-- Tre idee attorno ai colpi che hai scelto. Si aprono nel costruttore. -->
+        <section class="card box">
+          <h2 class="t-name">Idee</h2>
+          {#each ideas as w, i (i)}
+            <button class="li" onclick={() => buildNew(w.bricks)}>
+              <b class="grow">{w.name}</b>
+              <span class="muted chev"><ChevronRight size={18} /></span>
+            </button>
+          {/each}
+        </section>
 
+        <!-- Quello che c'era prima dei fondamentali: modelli, pacchetti, mesi e percorsi. Chiuso. -->
+        <Collapse title="Modelli di prima" open={false} key="lib-prima" boxed>
+        <div class="old">
         <!-- I modelli di base: la scaletta in segmenti colorati, la durata a destra. -->
         <div class="section">
           <Collapse title="Modelli di base" count={templates.length} open={false} key="lib-base">
@@ -305,6 +298,8 @@
         </div>
 
         <button class="import" onclick={() => ui.open('import')}><Download size={18} /> Importa esercizi, percorsi, mesi e modelli</button>
+        </div>
+        </Collapse>
       {:else if tab === 'esercizi'}
         <!-- Cerca e filtra -->
         <div class="find">
@@ -329,7 +324,7 @@
         {#key filtering}
           {#each exerciseGroups as g (g.id)}
             <div class="section tight">
-              <Collapse title={g.name} count={g.list.length} open={filtering}>
+              <Collapse title={g.name} count={g.list.length} open={filtering} boxed>
                 {#snippet lead()}{@render famLead(g.id)}{/snippet}
                 <div class="card flush list">
                   {#each g.list as e (e.id)}
@@ -368,7 +363,7 @@
 
         {#each families as f (f.id)}
           <div class="section tight">
-            <Collapse title={f.name} count={f.strokes.length} open={false} key="lib-colpi-{f.id}">
+            <Collapse title={f.name} count={f.strokes.length} open={false} key="lib-colpi-{f.id}" boxed>
               {#snippet lead()}{@render famLead(f.id === 'custom' ? 'libero' : f.id)}{/snippet}
               <div class="card flush list">
                 {#each f.strokes as s (s.id)}
@@ -386,7 +381,7 @@
         <div class="card flush list after-list">{@render addRow('Aggiungi un colpo', addStroke)}</div>
 
         <div class="section">
-          <Collapse title="Le altre voci" open={false} key="lib-altre">
+          <Collapse title="Le altre voci" open={false} key="lib-altre" boxed>
             <div class="card stack g-16">
               <div class="stack g-8">
                 <span class="small muted">Fase del punto</span>
@@ -425,18 +420,62 @@
   .sec {
     margin: 0 0 10px;
   }
-  .wk {
+  .box {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    width: 100%;
-    padding: 14px 16px;
-    text-align: left;
+    margin-top: 12px;
   }
-  .wk-top {
+  .box.g12 {
+    gap: 12px;
+  }
+  .box h2 {
+    margin: 0;
+    padding-bottom: 6px;
+  }
+  .li {
     display: flex;
     align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 52px;
+    padding: 8px 0;
+    border-top: 1px solid var(--line);
+    text-align: left;
+  }
+  .box h2 + .li {
+    border-top: 0;
+  }
+  .li.col {
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
+  }
+  .li b {
+    font-weight: 700;
+  }
+  .chev {
+    display: grid;
+    flex: none;
+  }
+  .none {
+    padding: 8px 0;
+  }
+  .today-tag {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 16%, var(--card));
+    color: var(--accent-ink);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .library :global(.collapse.boxed) {
+    margin-top: 12px;
+  }
+  .old {
+    padding: 0 0 4px;
+  }
+  .old .section {
+    margin-top: 4px;
   }
   .mat {
     display: grid;
@@ -466,10 +505,10 @@
     opacity: 0.9;
   }
   .tabs {
-    margin-top: 16px;
+    margin: 16px 0 2px;
   }
   .section.tight {
-    margin-top: 8px;
+    margin-top: 0;
   }
   .lead {
     display: grid;
@@ -550,7 +589,7 @@
     padding: 14px 16px;
     border-radius: var(--r-card);
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     text-align: left;
     color: var(--ink);
     transition: transform var(--dur-fast) var(--ease);
@@ -666,7 +705,7 @@
     padding: 0 8px 0 14px;
     border-radius: 14px;
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     color: var(--ink-3);
   }
   .search:focus-within {

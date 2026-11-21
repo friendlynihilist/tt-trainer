@@ -41,7 +41,7 @@ export function stepFamily(step, catalog) {
 export function sessionBlocks(session, catalog) {
   const out = [];
   let cur = null;
-  // Un blocco nuovo comincia dopo una pausa, oppure (negli allenamenti a mattoni, senza pause)
+  // Un blocco nuovo comincia dopo una pausa, oppure (negli allenamenti per fondamentali, senza pause)
   // quando cambia il blocco del modello: i passi di un blocco si chiamano «b2», «b2-0», «b2-1»…
   const blockOf = (id) => /^b\d+/.exec(String(id))?.[0] ?? null;
   for (const s of session?.steps ?? []) {

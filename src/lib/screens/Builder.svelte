@@ -1,6 +1,6 @@
 <script>
   // Il costruttore a tutto schermo: si apre dal tasto + (un allenamento nuovo) e da «Cambia i
-  // mattoni» (uno che c'è già). La torre e i gesti stanno in ui/Tower.svelte.
+  // fondamentali» (uno che c'è già). La torre e i gesti stanno in ui/Tower.svelte.
   import { onMount } from 'svelte';
   import { fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';

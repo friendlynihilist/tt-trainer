@@ -10,24 +10,37 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.9.0',
+    date: '2026-11-21',
+    title: 'I fondamentali',
+    items: [
+      { icon: 'blocks', text: 'I mattoni ora si chiamano fondamentali: dritto, rovescio, servizio e gli altri.' },
+      { icon: 'palette', text: 'L’aspetto segue fino in fondo il progetto nuovo: barra in basso, pulsanti, schede e titoli. Durante l’allenamento il tempo è in grande, con un pulsante solo.' },
+      { icon: 'trending', text: 'Progressi si apre su «Andamento»: il tuo livello con quello che manca per il prossimo, le ultime dodici settimane e le medaglie.' },
+      { icon: 'calendar', text: 'Nel Diario, toccando un allenamento già fatto vedi i suoi fondamentali, i risultati e le note. Per correggerlo c’è «Modifica».' },
+      { icon: 'library', text: 'Un allenamento nuovo lo puoi mettere oggi, in un altro giorno, oppure negli stessi giorni per una settimana o per un mese.' },
+      { icon: 'map', text: 'Chi aveva già aperto la versione di prima rivede la guida mentre costruisce il primo allenamento.' }
+    ]
+  },
+  {
     version: '0.8.1',
     date: '2026-11-21',
     title: 'Ritocchi all’aspetto',
     items: [
       { icon: 'palette', text: 'La fiamma delle settimane di fila è nuova. Anche l’icona dell’app e la schermata di caricamento ora hanno il tavolo blu.' },
       { icon: 'pencil', text: 'Numeri e scritte hanno lo stesso carattere in tutta l’app, dal calendario al cronometro.' },
-      { icon: 'blocks', text: 'Chi usava l’app da prima dei mattoni, alla prima apertura costruisce il suo primo allenamento con la guida.' }
+      { icon: 'blocks', text: 'Chi usava l’app da prima dei fondamentali, alla prima apertura costruisce il suo primo allenamento con la guida.' }
     ]
   },
   {
     version: '0.8.0',
     date: '2026-11-21',
-    title: 'Allenamenti a mattoni',
+    title: 'Allenamenti per fondamentali',
     items: [
-      { icon: 'blocks', text: 'Un allenamento ora si costruisce con i mattoni, uno per colpo. Tocca il tasto + in basso, scegli i mattoni, decidi quanto durano e quali esercizi fare.' },
+      { icon: 'blocks', text: 'Un allenamento ora si costruisce con i fondamentali, uno per colpo. Tocca il tasto + in basso, scegli i fondamentali, decidi quanto durano e quali esercizi fare.' },
       { icon: 'palette', text: 'L’app ha un aspetto nuovo: schede bianche e blu al posto dell’arancione. In Oggi trovi il tavolo visto dall’alto, con l’allenamento del giorno.' },
       { icon: 'map', text: 'In Progressi c’è la mappa di ogni colpo: una casella per esercizio, con la medaglia che hai vinto. La pallina indica l’esercizio da fare adesso.' },
-      { icon: 'library', text: 'In Libreria trovi i tuoi allenamenti. Toccane uno per cambiargli nome, metterlo a oggi, cambiare i mattoni o eliminarlo.' },
+      { icon: 'library', text: 'In Libreria trovi i tuoi allenamenti. Toccane uno per cambiargli nome, metterlo a oggi, cambiare i fondamentali o eliminarlo.' },
       { icon: 'pencil', text: 'Alla fine dell’allenamento puoi scrivere una nota per ogni colpo. Le rileggi in Progressi, nella mappa del colpo.' },
       { icon: 'calendar', text: 'Lezioni, partite e tornei si aggiungono dal Diario: tocca un giorno e poi «Aggiungi a questo giorno».' }
     ],

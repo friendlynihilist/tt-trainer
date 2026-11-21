@@ -103,7 +103,7 @@
     padding: 12px 14px;
     border-radius: var(--r);
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     text-align: left;
     transition:
       transform 0.2s var(--ease),

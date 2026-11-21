@@ -1,65 +1,44 @@
 <script>
-  // Progressi, dal generale al particolare. In alto tre numeri: le settimane di fila (con la fiamma),
-  // le ore e le attività. Poi il livello: il badge e le tre condizioni per il livello dopo, ognuna con
-  // il suo anello (argento e oro negli esercizi chiave, la costanza) e una frase su cosa manca; gli
-  // esercizi chiave si aprono a richiesta. Poi il medagliere: le medaglie per gradino, il filtro per
-  // famiglia e la griglia degli esercizi misurati. Poi il ritmo delle settimane. Da correggere e i
-  // test di prima sono chiusi di partenza. Le medaglie sono solo un indicatore: non bloccano niente.
-  import { fly } from 'svelte/transition';
-  import { flip } from 'svelte/animate';
-  import { cubicOut } from 'svelte/easing';
+  // Progressi, in due viste. «Andamento»: il livello con quello che manca per il livello dopo, le
+  // ultime dodici settimane in una linea, e il conto delle medaglie. «Mappa»: gli esercizi di ogni
+  // colpo, con le medaglie (ui/BrickMap.svelte). Toccando la scheda del livello si aprono gli
+  // esercizi chiave; toccando le medaglie si va alla mappa.
   import Check from '@lucide/svelte/icons/check';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
-  import { PLAYER_LEVEL, TIERS, TIER } from '../data/library.js';
+  import { PLAYER_LEVEL, TIERS } from '../data/library.js';
   import { FAMILIES } from '../data/taxonomy.js';
-  import { totals, weaknesses, weeklyActivity, weekStreak, legacyTests } from '../engine/stats.js';
+  import { weeklyActivity, weekStreak } from '../engine/stats.js';
   import { levelProgress } from '../engine/player.js';
-  import { medalCount, nextGoal, shortValue } from '../engine/medals.js';
-  import { fmtDay } from '../util/dates.js';
-  import { dur, reducedMotion } from '../util/motion.js';
+  import { medalCount } from '../engine/medals.js';
   import PageHead from '../ui/PageHead.svelte';
-  import TestBars from '../ui/TestBars.svelte';
   import MedalRing from '../ui/MedalRing.svelte';
   import MedalBadge from '../ui/MedalBadge.svelte';
   import Flame from '../ui/Flame.svelte';
-  import LevelBadge from '../ui/LevelBadge.svelte';
-  import ProgressRing from '../ui/ProgressRing.svelte';
-  import FamilyIcon from '../ui/FamilyIcon.svelte';
-  import Collapse from '../ui/Collapse.svelte';
   import Segmented from '../ui/Segmented.svelte';
   import BrickMap from '../ui/BrickMap.svelte';
+  import Sheet from '../ui/Sheet.svelte';
   import { BRICK } from '../data/bricks.js';
 
-  // Due viste: i numeri (livello, medaglie, settimane) e la mappa dei colpi. L'indirizzo le ricorda:
-  // #/progressi/mappa/rovescio apre la mappa del rovescio.
-  const view = $derived(ui.route.params[0] === 'mappa' ? 'mappa' : 'numeri');
+  // L'indirizzo ricorda la vista: #/progressi/mappa/rovescio apre la mappa del rovescio.
+  const view = $derived(ui.route.params[0] === 'mappa' ? 'mappa' : 'andamento');
   const brick = $derived(BRICK[ui.route.params[1]] && !BRICK[ui.route.params[1]].extra ? ui.route.params[1] : (app.meta?.focus?.[0] ?? 'dritto'));
 
-  const sum = $derived(totals(app.events, app.attempts));
-  const weak = $derived(weaknesses(app.events));
   const weeks = $derived(weeklyActivity(app.events, 12));
   const streak = $derived(weekStreak(app.events));
-  const maxWeek = $derived(Math.max(2, ...weeks.map((w) => w.count)));
-  const topCount = $derived(weak.strokes[0]?.count ?? 1);
-  const old = $derived(legacyTests(app.events, app.catalog));
+  const top = $derived(Math.max(3, ...weeks.map((w) => w.count)));
+  const X = (i) => 8 + i * (304 / 11);
+  const Y = (v) => 96 - (v / top) * 84;
+  const line = $derived(weeks.map((w, i) => `${X(i)},${Y(w.count)}`).join(' '));
+  /** La settimana scelta nel grafico: si parte dall'ultima. */
+  let tip = $state(11);
+  const ago = $derived(tip === 11 ? 'Questa settimana' : tip === 10 ? 'Una settimana fa' : `${11 - tip} settimane fa`);
 
   // ── Il livello ──
   const progress = $derived(levelProgress({ level: app.player.level, medals: app.medals, attempts: app.attempts, catalog: app.catalog }));
   const famName = (id) => FAMILIES.find((x) => x.id === id)?.name.toLowerCase() ?? id;
   const missing = $derived(progress.coverage.missing.map(famName));
-  // La costanza ha due condizioni: prima contano le sedute, poi i giorni fra la prima e l'ultima.
-  const steady = $derived.by(() => {
-    const c = progress.consistency;
-    if (c.sessions < c.need) return { have: c.sessions, need: c.need, unit: 'sedute', value: (c.sessions / c.need) * 0.5 };
-    return { have: Math.min(c.span, c.needSpan), need: c.needSpan, unit: 'giorni', value: 0.5 + Math.min(1, c.span / c.needSpan) * 0.5 };
-  });
-  // Le tre condizioni per il livello dopo, una accanto all'altra e con lo stesso disegno.
-  const rings = $derived([
-    { id: 'A', name: 'Argento', sub: 'esercizi chiave', have: progress.coverage.have, need: progress.coverage.need, value: progress.coverage.have / Math.max(1, progress.coverage.need), ok: progress.coverage.ok, color: 'var(--medal-A)' },
-    { id: 'O', name: 'Oro', sub: 'esercizi chiave', have: progress.solidity.have, need: progress.solidity.need, value: progress.solidity.have / Math.max(1, progress.solidity.need), ok: progress.solidity.ok, color: 'var(--medal-O)' },
-    { id: 'C', name: 'Costanza', sub: progress.consistency.ok ? 'sedute regolari' : steady.unit, have: steady.have, need: steady.need, value: steady.value, ok: progress.consistency.ok, color: 'var(--accent)' }
-  ]);
   const plural = (n, one, many) => (n === 1 ? one : many.replace('#', n));
   /** Che cosa manca per il livello dopo, in una frase: la prima condizione non ancora raggiunta. */
   const lacking = $derived.by(() => {
@@ -72,35 +51,18 @@
     return '';
   });
 
-  // ── Le medaglie ──
   const count = $derived(medalCount(app.medals));
-  const medalsTotal = $derived(TIERS.reduce((n, t) => n + count[t], 0));
-  const byFamily = $derived(
-    FAMILIES.map((f) => {
-      const ids = app.catalog.activeExerciseIds.filter((id) => app.catalog.exercise(id).family === f.id && Object.keys(app.catalog.exercise(id).goals ?? {}).length);
-      return { ...f, total: ids.length, won: ids.filter((id) => app.medals[id]?.B).length };
-    }).filter((f) => f.total)
-  );
-  let fam = $state(null);
-  // Gli esercizi misurati almeno una volta, dal più recente; con il filtro, solo quella famiglia.
-  const measured = $derived(
-    Object.entries(app.medals)
-      .map(([id, m]) => ({ id, m, ex: app.catalog.exercise(id) }))
-      .filter((x) => x.ex && (!fam || x.ex.family === fam))
-      .sort((a, b) => ((a.m.lastDate ?? '') < (b.m.lastDate ?? '') ? 1 : -1))
-  );
-  /** Sceglie (o toglie) il filtro e porta la famiglia scelta in vista nella fila che scorre. */
-  function pickFam(id, el) {
-    fam = fam === id ? null : id;
-    el?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', inline: 'center', block: 'nearest' });
-  }
+  const bars = $derived([
+    { name: 'Argento', have: progress.coverage.have, need: progress.coverage.need, color: 'var(--medal-A)' },
+    { name: 'Oro', have: progress.solidity.have, need: progress.solidity.need, color: 'var(--medal-O)' }
+  ]);
 
-  /** «Oro · 9/10», «Tutte prese». */
-  function nextShort(ex, m) {
-    const g = nextGoal(ex, m);
-    return g ? `${TIER[g.tier].name} · ${shortValue(ex, g.goal)}` : 'Tutte prese';
+  /** Il foglio del livello: gli esercizi chiave e il cambio di livello. */
+  let keys = $state(false);
+  function openEx(id) {
+    keys = false;
+    ui.open('exercise', { id });
   }
-
 </script>
 
 <div class="page enter progress">
@@ -109,7 +71,7 @@
   <div class="views">
     <Segmented
       options={[
-        { id: 'numeri', label: 'Numeri' },
+        { id: 'andamento', label: 'Andamento' },
         { id: 'mappa', label: 'Mappa' }
       ]}
       value={view}
@@ -120,539 +82,182 @@
   {#if view === 'mappa'}
     <BrickMap {brick} onpick={(id) => ui.go('progressi', 'mappa', id)} />
   {:else}
-
-  <!-- Tre numeri: da quante settimane ti alleni di fila, quante ore, quante attività. -->
-  <section class="nums">
-    <div class="num streak">
-      <Flame size={28} on={streak > 0} />
-      <b class="t-num">{streak}</b>
-      <span>{streak === 1 ? 'settimana' : 'settimane'} di fila</span>
-    </div>
-    <div class="num"><b class="t-num">{Math.round(sum.minutes / 60)}</b><span>{Math.round(sum.minutes / 60) === 1 ? 'ora' : 'ore'}</span></div>
-    <div class="num"><b class="t-num">{sum.sessions}</b><span>attività</span></div>
-  </section>
-
-  <!-- Il livello e le tre condizioni per il livello dopo. -->
-  <section class="lv card" data-level={app.player.level}>
-    <div class="lv-top">
-      <span class="t-label lv-label">Il tuo livello</span>
-      <LevelBadge level={app.player.level} onclick={() => ui.open('level')} />
-    </div>
-
-    {#if progress.next}
-      <p class="lv-goal">Per passare al livello <b>{PLAYER_LEVEL[progress.next].name.toLowerCase()}</b></p>
-      <div class="rings">
-        {#each rings as r, i (r.id)}
-          <div class="rg" in:fly={{ y: 10, duration: dur(320), delay: dur(i * 80), easing: cubicOut }}>
-            <ProgressRing value={r.ok ? 1 : r.value} color={r.color} size={72} label="{r.name}: {r.ok ? 'fatto' : `${r.have} su ${r.need} ${r.sub}`}">
-              {#if r.ok}
-                <span class="done" style:color={r.color}><Check size={26} strokeWidth={3} /></span>
-              {:else}
-                <span class="frac t-num"><b>{r.have}</b>/{r.need}</span>
-              {/if}
-            </ProgressRing>
-            <span class="rg-txt">
-              <strong>{r.name}</strong>
-              <span class="rg-sub">{r.sub}</span>
-            </span>
-          </div>
-        {/each}
-      </div>
-      <p class="lv-note">
-        {#if progress.ready}
-          Ci sei: l’app ti propone il livello {PLAYER_LEVEL[progress.next].name.toLowerCase()}.
-        {:else}
-          {lacking || 'Quando i tre anelli sono pieni, l’app ti propone il livello dopo.'}
+    <div class="cards">
+      <!-- Il livello, e cosa manca per quello dopo. -->
+      <button class="card lv" onclick={() => (keys = true)}>
+        <span class="row">
+          <span class="lv-name grow">{PLAYER_LEVEL[app.player.level].name}</span>
+          <span class="muted"><ChevronRight size={18} /></span>
+        </span>
+        {#if progress.next}
+          {#each bars as r (r.name)}
+            <div class="barrow" style:--v="{Math.min(100, (r.have / Math.max(1, r.need)) * 100)}%" style:--c={r.color}>
+              <span>{r.name}</span><i></i><b>{r.have}/{r.need}</b>
+            </div>
+          {/each}
         {/if}
-      </p>
-      <Collapse title="Esercizi chiave" count={progress.slots.length} open={false} key="progressi-chiave">
-        <div class="keys">
-          {#each progress.slots as slot (slot.ids.join())}
-            {@const ex = app.catalog.exercise(slot.ids.find((id) => app.medals[id]?.A) ?? slot.ids[0])}
-            <button class="key" onclick={() => ui.open('exercise', { id: ex.id })}>
-              <span class="grow clamp">{slot.ids.length > 1 ? slot.ids.map((id) => app.catalog.exercise(id).name).join(' o ') : ex.name}</span>
-              <MedalRing exercise={ex} medals={app.medals[ex.id]} size={34} />
-            </button>
-          {/each}
-        </div>
-        <button class="link more" onclick={() => ui.go('guida')}>Come si passa di livello</button>
-      </Collapse>
-    {:else}
-      <p class="lv-note">È il livello più alto. Le medaglie continuano a misurare i tuoi record.</p>
-    {/if}
-  </section>
-
-  <!-- Il medagliere -->
-  <div class="section">
-    <Collapse title="Medagliere" key="progressi-medagliere">
-      <div class="tiers">
-        {#each TIERS as t (t)}
-          <span class="tier" class:none={!count[t]}>
-            <MedalBadge tier={t} on={count[t] > 0} size={42} label={false} shine delay={TIERS.indexOf(t) * 220} />
-            <b class="t-num">{count[t]}</b>
-            <small>{TIER[t].name.toLowerCase()}</small>
+        <span class="row">
+          <Flame size={30} on={streak > 0} />
+          <b class="grow">{streak === 1 ? '1 settimana' : `${streak} settimane`} di fila</b>
+          {#if progress.consistency.ok}<span class="ok"><Check size={16} strokeWidth={3.2} /></span>{/if}
+        </span>
+        {#if progress.next}
+          <span class="muted small">
+            {#if progress.ready}Ci sei: l’app ti propone il livello {PLAYER_LEVEL[progress.next].name.toLowerCase()}.{:else}{lacking}{/if}
           </span>
-        {/each}
-      </div>
+        {/if}
+      </button>
 
-      <!-- Le famiglie: quante hanno almeno il bronzo, e toccandole si filtra la griglia. -->
-      <div class="fams" role="group" aria-label="Mostra solo una famiglia">
-        {#each byFamily as f (f.id)}
-          <button class="fam" class:on={fam === f.id} class:dim={fam && fam !== f.id} data-fam={f.id} aria-pressed={fam === f.id} onclick={(e) => pickFam(f.id, e.currentTarget)}>
-            <span class="fam-ico"><FamilyIcon fam={f.id} size={22} /></span>
-            <span class="fam-name">{f.name}</span>
-            <span class="fam-n t-num">{f.won}/{f.total}</span>
-          </button>
-        {/each}
-      </div>
-
-      {#if measured.length}
-        <div class="grid">
-          {#each measured as x (x.id)}
-            <button class="ex" animate:flip={{ duration: dur(260) }} in:fly={{ y: 8, duration: dur(220) }} onclick={() => ui.open('exercise', { id: x.id })}>
-              <MedalRing exercise={x.ex} medals={x.m} size={60} />
-              <span class="ex-name">{x.ex.name}</span>
-              {#if x.m.stale}
-                <span class="ex-next stale">Da ripassare</span>
-              {:else}
-                <span class="ex-next">{nextShort(x.ex, x.m)}</span>
-              {/if}
-            </button>
-          {/each}
+      <!-- Le ultime dodici settimane: un punto per settimana, si tocca per leggere il numero. -->
+      <section class="card">
+        <h2 class="t-name">12 settimane</h2>
+        <div class="chart">
+          <svg viewBox="0 0 320 112" role="img" aria-label="Attività per settimana nelle ultime dodici settimane">
+            <path d="M8 96H312M8 54H312M8 12H312" stroke="var(--line)" stroke-width="1" />
+            <polygon points="8,96 {line} 312,96" fill="var(--accent)" opacity="0.16" />
+            <polyline points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" />
+            {#each weeks as w, i (w.monday)}
+              <circle cx={X(i)} cy={Y(w.count)} r={tip === i ? 6 : 4} fill={tip === i ? 'var(--accent)' : 'var(--card)'} stroke="var(--accent)" stroke-width="2.5" />
+              <circle class="hit" cx={X(i)} cy={Y(w.count)} r="14" fill="transparent" role="button" tabindex="-1" aria-label="Settimana {i + 1}: {w.count} attività" onclick={() => (tip = i)} onkeydown={() => {}} />
+            {/each}
+          </svg>
         </div>
-      {:else}
-        <p class="muted small">{fam ? 'Nessun esercizio misurato in questa famiglia.' : 'In sessione tocca «Prova l’obiettivo»: arriva la prima medaglia.'}</p>
-      {/if}
-    </Collapse>
-  </div>
+        <span class="muted small">{ago}: <b class="ink">{weeks[tip].count} attività</b></span>
+      </section>
 
-  <!-- Il ritmo -->
-  <div class="section">
-    <Collapse title="Le ultime 12 settimane" key="progressi-ritmo">
-      <div class="card rhythm-card">
-        <div class="rhythm" role="img" aria-label="Attività per settimana: {weeks.map((w) => w.count).join(', ')}">
-          {#each weeks as w, i (w.monday)}
-            <span class="col" title="{fmtDay(w.monday)} · {w.count}">
-              {#if w.count}<small class="t-num">{w.count}</small>{/if}
-              <i class:zero={!w.count} style:height="{w.count ? (w.count / maxWeek) * 100 : 4}%" style:animation-delay="{i * 30}ms"></i>
-            </span>
+      <!-- Le medaglie: quante per tipo. Toccando si va alla mappa, dove si vede di quali esercizi. -->
+      <button class="card" onclick={() => ui.go('progressi', 'mappa', brick)} aria-label="Le tue medaglie: {count.B} di bronzo, {count.A} d’argento, {count.O} d’oro, {count.P} di platino. Apri la mappa">
+        <span class="quad">
+          {#each TIERS as t (t)}
+            <span><MedalBadge tier={t} on={count[t] > 0} size={44} label={false} /><b>{count[t]}</b></span>
           {/each}
-        </div>
-        <div class="axis"><span>{fmtDay(weeks[0].monday)}</span><span>questa settimana</span></div>
-      </div>
-    </Collapse>
-  </div>
-
-  <!-- Da correggere -->
-  <div class="section">
-    <Collapse title="Da correggere" count={weak.strokes.length || null} open={false} key="progressi-correggere">
-      {#if weak.strokes.length}
-        <div class="card stack g-16">
-          {#each weak.strokes.slice(0, 6) as s (s.id)}
-            <button class="weak" onclick={() => ui.open('stroke', { id: s.id })}>
-              <span class="spread"><strong>{app.strokeName(s.id)}</strong><span class="t-num small muted">{s.count} {s.count === 1 ? 'volta' : 'volte'}</span></span>
-              <span class="meter"><i style:width="{(s.count / topCount) * 100}%"></i></span>
-              {#if s.errors.length}
-                <span class="small muted">{s.errors.slice(0, 3).map((e) => `${app.errorName(e.id)}${e.count > 1 ? ` ×${e.count}` : ''}`).join(', ')}</span>
-              {/if}
-            </button>
-          {/each}
-        </div>
-      {:else}
-        <p class="muted small">Qui compaiono i colpi che segni più spesso da correggere, con l’errore che torna.</p>
-      {/if}
-    </Collapse>
-  </div>
-
-  {#if old.length}
-    <div class="section">
-      <Collapse title="I test della versione 0.2" open={false} key="progressi-v02">
-        <p class="small muted">I test di prima, così come li avevi fatti. Valgono anche per le medaglie degli esercizi corrispondenti.</p>
-        <div class="tracks">
-          {#each old as o (o.track)}
-            <button class="card track" onclick={() => ui.open('track', { id: o.track })}>
-              <strong>{app.catalog.track(o.track).short}</strong>
-              <TestBars history={o.tests} up={8} down={4} height={44} max={10} />
-            </button>
-          {/each}
-        </div>
-      </Collapse>
+        </span>
+      </button>
     </div>
-  {/if}
   {/if}
 </div>
 
+{#if keys}
+  <Sheet title={PLAYER_LEVEL[app.player.level].name} onclose={() => (keys = false)}>
+    {#if progress.next}
+      <p class="muted lead-s">Per passare al livello {PLAYER_LEVEL[progress.next].name.toLowerCase()} servono l’argento e poi l’oro in questi esercizi, e allenamenti regolari.</p>
+      <div class="keys">
+        {#each progress.slots as slot (slot.ids.join())}
+          {@const ex = app.catalog.exercise(slot.ids.find((id) => app.medals[id]?.A) ?? slot.ids[0])}
+          <button class="key" onclick={() => openEx(ex.id)}>
+            <span class="grow clamp">{slot.ids.length > 1 ? slot.ids.map((id) => app.catalog.exercise(id).name).join(' o ') : ex.name}</span>
+            <MedalRing exercise={ex} medals={app.medals[ex.id]} size={34} />
+          </button>
+        {/each}
+      </div>
+    {/if}
+    {#snippet footer()}
+      <button class="btn ghost wide" onclick={() => { keys = false; ui.open('level'); }}>Cambia livello</button>
+    {/snippet}
+  </Sheet>
+{/if}
+
 <style>
   .views {
-    margin-bottom: 14px;
+    margin: 16px 0 14px;
   }
-  /* ── I tre numeri ── */
-  .nums {
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+  }
+  h2 {
+    margin: 0;
+  }
+  .lv-name {
+    font-size: 24px;
+    font-weight: 750;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+  }
+  .barrow {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr;
-    gap: 8px;
-    margin-top: 16px;
-  }
-  .num {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    gap: 2px;
-    min-height: 92px;
-    padding: 12px 14px;
-    border-radius: var(--r-card);
-    background: var(--card);
-    border: 1px solid var(--line);
-  }
-  .num b {
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -0.04em;
-    line-height: 1;
-  }
-  .num span {
-    font-size: 13px;
-    color: var(--ink-2);
-  }
-  .num.streak {
-    position: relative;
-    background: color-mix(in srgb, var(--accent) 9%, var(--card));
-    border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
-  }
-  .num.streak :global(.flame) {
-    position: absolute;
-    top: 10px;
-    right: 12px;
-  }
-
-  /* ── Il livello ── */
-  .lv {
-    margin-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 12px 18px 10px;
-    background: color-mix(in srgb, var(--lv) 7%, var(--card));
-    border-color: color-mix(in srgb, var(--lv) 30%, var(--line));
-  }
-  .lv-top {
-    display: flex;
+    grid-template-columns: 70px 1fr 40px;
     align-items: center;
-    justify-content: space-between;
     gap: 10px;
-    min-height: 44px;
   }
-  .lv-label {
-    color: var(--ink-2);
+  .barrow i {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--sunk);
+    overflow: hidden;
   }
-  .lv-goal {
-    margin: 0;
-    padding-top: 14px;
-    border-top: 1px solid var(--line);
-    font-size: 15px;
-    color: var(--ink-2);
+  .barrow i::after {
+    content: '';
+    display: block;
+    height: 100%;
+    width: var(--v);
+    border-radius: 4px;
+    background: var(--c);
   }
-  .lv-goal b {
-    font-weight: 700;
+  .barrow b {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .row {
+    gap: 10px;
+  }
+  .ok {
+    display: grid;
+    color: var(--ok);
+  }
+  .ink {
     color: var(--ink);
   }
-  .rings {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+  .chart svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
   }
-  .rg {
+  .hit {
+    cursor: pointer;
+    outline: none;
+  }
+  .quad {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    text-align: center;
+  }
+  .quad span {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    text-align: center;
   }
-  .rg-txt {
-    display: flex;
-    flex-direction: column;
-  }
-  .rg strong {
-    font-size: 15px;
-    font-weight: 700;
-  }
-  .rg-sub {
-    font-size: 12px;
-    color: var(--ink-3);
-  }
-  .frac {
-    font-size: 14px;
-    color: var(--ink-2);
-  }
-  .frac b {
+  .quad b {
     font-size: 20px;
-    font-weight: 700;
-    color: var(--ink);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
   }
-  .done {
-    display: grid;
-  }
-  .lv-note {
-    margin: 0;
-    font-size: 14px;
-    color: var(--ink-2);
-    text-align: center;
+  .lead-s {
+    margin: 0 0 12px;
   }
   .keys {
     display: flex;
     flex-direction: column;
-    gap: 6px;
   }
   .key {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 48px;
-    padding: 4px 6px 4px 12px;
-    border-radius: 12px;
-    background: var(--sunk);
-    font-size: 14px;
+    gap: 12px;
+    min-height: 52px;
+    padding: 8px 0;
     text-align: left;
-    color: var(--ink);
-  }
-  .clamp {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .more {
-    display: block;
-    margin: 12px auto 6px;
-    font-size: 14px;
-  }
-
-  /* ── Il medagliere ── */
-  .tiers {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    padding: 14px 8px;
-    border-radius: var(--r-card);
-    background: var(--card);
-    border: 1px solid var(--line);
-  }
-  .tier {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-  }
-  .tier b {
-    margin-top: 4px;
-    font-size: 20px;
-    font-weight: 700;
-  }
-  .tier small {
-    font-size: 12px;
-    color: var(--ink-3);
-  }
-  .tier.none b {
-    color: var(--ink-3);
-  }
-  .fams {
-    display: flex;
-    gap: 8px;
-    margin: 14px -20px 0;
-    padding: 0 20px 4px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .fams::-webkit-scrollbar {
-    display: none;
-  }
-  .fam {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: none;
-    height: 44px;
-    padding: 0 12px 0 6px;
-    border-radius: 14px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    color: var(--ink);
-    transition:
-      opacity var(--dur) var(--ease),
-      background var(--dur) var(--ease),
-      border-color var(--dur) var(--ease);
-  }
-  .fam.on {
-    background: color-mix(in srgb, var(--f) 14%, var(--card));
-    border-color: var(--f);
-  }
-  .fam.dim {
-    opacity: 0.5;
-  }
-  .fam-ico {
-    display: grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
-    background: var(--f);
-    color: var(--f-on);
-  }
-  .fam-name {
-    font-size: 14px;
-    font-weight: 650;
-  }
-  .fam-n {
-    font-size: 13px;
-    color: var(--ink-3);
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-top: 14px;
-  }
-  .ex {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 12px 6px 10px;
-    border-radius: var(--r-card);
-    background: var(--card);
-    border: 1px solid var(--line);
-    text-align: center;
-    color: var(--ink);
-    transition: transform var(--dur-fast) var(--ease);
-  }
-  .ex:active {
-    transform: scale(0.96);
-  }
-  .ex-name {
-    font-size: 13px;
-    font-weight: 650;
-    line-height: 1.25;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    min-height: 2.5em;
-  }
-  .ex-next {
-    font-size: 12px;
     font-weight: 600;
-    color: var(--ink-3);
   }
-  .ex-next.stale {
-    color: var(--down);
-  }
-
-  /* ── Il ritmo ── */
-  .rhythm-card {
-    padding: 16px 16px 12px;
-  }
-  .rhythm {
-    display: flex;
-    align-items: flex-end;
-    gap: 5px;
-    height: 88px;
-  }
-  .col {
-    flex: 1;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 3px;
-  }
-  .col small {
-    font-size: 11px;
-    color: var(--ink-3);
-  }
-  .col i {
-    width: 100%;
-    border-radius: 5px;
-    background: color-mix(in srgb, var(--accent) 45%, var(--sunk));
-    transform-origin: bottom;
-    animation: up 0.6s var(--ease-out) both;
-  }
-  .col i.zero {
-    background: var(--line);
-  }
-  .col:last-child i:not(.zero) {
-    background: var(--accent);
-  }
-  @keyframes up {
-    from {
-      transform: scaleY(0);
-    }
-  }
-  .axis {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 8px;
-    font-size: 12px;
-    color: var(--ink-3);
-  }
-
-  /* ── Da correggere ── */
-  .weak {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    text-align: left;
-    color: var(--ink);
-  }
-  .weak strong {
-    font-weight: 650;
-  }
-  .meter {
-    height: 6px;
-    border-radius: 3px;
-    background: var(--sunk);
-    overflow: hidden;
-  }
-  .meter i {
-    display: block;
-    height: 100%;
-    border-radius: 3px;
-    background: var(--down);
-    transform-origin: left;
-    animation: grow 0.7s var(--ease-out) both;
-  }
-  @keyframes grow {
-    from {
-      transform: scaleX(0);
-    }
-  }
-
-  /* ── I test di prima ── */
-  .tracks {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 10px;
-  }
-  @media (max-width: 420px) {
-    .tracks {
-      grid-template-columns: 1fr;
-    }
-  }
-  .track {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    text-align: left;
-    padding: 16px;
-  }
-  .track :global(.bars) {
-    margin-top: 10px;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .col i,
-    .meter i {
-      animation: none;
-    }
+  .key + .key {
+    border-top: 1px solid var(--line);
   }
 </style>

@@ -148,7 +148,7 @@
   .big .half {
     padding: 12px 14px;
     border-radius: var(--r-s);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     transition:
       border-color 0.3s var(--ease),
       opacity 0.3s var(--ease);

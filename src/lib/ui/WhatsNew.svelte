@@ -103,7 +103,7 @@
     display: flex;
     flex-direction: column;
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     border-radius: 24px;
     box-shadow: var(--shadow);
     overflow: hidden;

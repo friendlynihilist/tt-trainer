@@ -177,7 +177,7 @@
   <!-- Il giorno scelto: oggi solo se c'è qualcosa. -->
   {#if showDay}
     <div class="section" transition:fade={{ duration: dur(180) }}>
-      <Collapse title={dayTitle} count={dayCount || null}>
+      <Collapse title={dayTitle} count={dayCount || null} boxed>
         {#key selected}
           <div in:fly={{ y: 8, duration: dur(220), easing: cubicOut }}>
             <div class="card flush list">
@@ -207,7 +207,7 @@
   <!-- Tutte le voci del mese: chiuso di partenza. -->
   {#if monthEvents.length}
     <div class="section">
-      <Collapse title={only ? `${KIND[only].name} nel mese` : 'Nel mese'} count={monthEvents.length} open={false} key="diario-mese">
+      <Collapse title={only ? `${KIND[only].name} nel mese` : 'Nel mese'} count={monthEvents.length} open={false} key="diario-mese" boxed>
         <div class="card flush list">
           {#each monthEvents as e (e.id)}<EventRow event={e} />{/each}
         </div>
@@ -249,7 +249,7 @@
     padding: 8px 10px 16px;
     border-radius: var(--r-card);
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     touch-action: pan-y;
     overflow: hidden;
   }

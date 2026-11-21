@@ -1,7 +1,7 @@
 <script>
   // La guida a fuoco: tutto scuro tranne la zona di cui si parla, e un fumetto che la spiega.
   // Fuori dalla zona illuminata non si tocca niente. Le zone si rimisurano a ogni fotogramma, così
-  // seguono le pagine che entrano, lo scorrimento e i mattoni che si allungano.
+  // seguono le pagine che entrano, lo scorrimento e i fondamentali che si allungano.
   import { onMount } from 'svelte';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';

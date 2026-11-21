@@ -112,7 +112,7 @@
     });
   }
 
-  /** Fa ripartire le due guide: quella di medaglie e mappa subito, quella dei mattoni nel costruttore. */
+  /** Fa ripartire le due guide: quella di medaglie e mappa subito, quella dei fondamentali nel costruttore. */
   function replay() {
     app.patchMeta({ tour: { build: false, app: false } });
     ui.go('oggi');
@@ -172,7 +172,7 @@
       </div>
       <Toggle icon={Volume2} label="Suoni" checked={s.sound} onchange={(sound) => app.patchSettings({ sound })} />
       <Toggle icon={Vibrate} label="Vibrazione" checked={s.haptics} onchange={(haptics) => app.patchSettings({ haptics })} />
-      <Toggle icon={Repeat} label="Cambio a metà esercizio" hint="Un bip, e il riquadro del tempo cambia colore quando tocca al compagno" checked={s.turns} onchange={(turns) => app.patchSettings({ turns })} />
+      <Toggle icon={Repeat} label="Cambio a metà esercizio" hint="Un bip, e il tempo diventa rosso quando tocca al compagno" checked={s.turns} onchange={(turns) => app.patchSettings({ turns })} />
       <Toggle icon={CalendarDays} label="Il piano nel Diario" hint="Fra le settimane del calendario, su cosa lavori quando cambia" checked={Boolean(s.calThemes)} onchange={(calThemes) => app.patchSettings({ calThemes })} />
       <Toggle icon={Hand} label="Sono mancino" hint="Scambia i lati nel disegno del tavolo" checked={Boolean(s.lefty)} onchange={(lefty) => app.patchSettings({ lefty })} />
     </div>
@@ -255,7 +255,7 @@
     <div class="card flush list">
       {#snippet ver()}<span class="ver t-num">v{VERSION}</span>{/snippet}
       {@render row(Sparkles, 'Novità', '', () => (ui.news = { history: true }), ver)}
-      {@render row(Compass, 'Rivedi la guida', 'Medaglie e mappa subito, i mattoni al prossimo allenamento che costruisci', replay)}
+      {@render row(Compass, 'Rivedi la guida', 'Medaglie e mappa subito, i fondamentali al prossimo allenamento che costruisci', replay)}
       {@render row(BookOpen, 'Guida', '', () => ui.go('guida'))}
       {#if app.cloud}{@render row(LogOut, 'Esci', '', () => app.signOut(), null, true)}{/if}
     </div>

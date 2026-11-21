@@ -22,7 +22,7 @@
 
   <div class="copy enter">
     <h1 class="display">Terza palla</h1>
-    <p class="lead muted">Costruisci i tuoi allenamenti, un mattone alla volta.</p>
+    <p class="lead muted">Costruisci i tuoi allenamenti, un fondamentale alla volta.</p>
   </div>
 
   <div class="actions enter">

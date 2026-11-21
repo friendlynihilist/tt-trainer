@@ -1,5 +1,5 @@
 <script>
-  // I mattoni di un allenamento in una riga di pillole: il colore, il nome e i minuti di ognuno.
+  // I fondamentali di un allenamento in una riga di pillole: il colore, il nome e i minuti di ognuno.
   // solid: pillole piene e chiare, per stare sopra il tavolo blu di Oggi.
   let { bricks = [], solid = false } = $props();
 </script>

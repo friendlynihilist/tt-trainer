@@ -39,7 +39,7 @@
     flex: 1;
     min-width: 0;
     margin: 0;
-    font-size: 34px;
+    font-size: 30px;
   }
   .back {
     width: 44px;

@@ -1,6 +1,6 @@
 # Terza palla
 
-Allenamento e diario di tennistavolo. Gli allenamenti si costruiscono con i mattoni, uno per colpo; l'app
+Allenamento e diario di tennistavolo. Gli allenamenti si costruiscono con i fondamentali, uno per colpo; l'app
 misura i progressi con le medaglie, li mostra nella mappa di ogni colpo e tiene il diario di ognuno separato.
 Nasce dal foglio «Piano allenamento tennistavolo – ciclo di 3 mesi», che resta fra i modelli di base.
 
@@ -22,7 +22,7 @@ impediscono di leggere o scrivere quelli degli altri.
 | `src/lib/engine/` | tentativi, medaglie, livello, piano, composizione della sessione, statistiche (funzioni pure, testate) |
 | `src/lib/store/` | stato dell'app, backend locale e cloud |
 | `src/lib/pages/`, `sheets/`, `screens/`, `ui/` | interfaccia |
-| `tests/` | test del motore: medaglie, livello, migrazione dei dati, piano, composizione, mattoni |
+| `tests/` | test del motore: medaglie, livello, migrazione dei dati, piano, composizione, fondamentali |
 | `docs/` | la ricerca sui livelli e gli esercizi, il progetto della fase 2 |
 
 ### Libreria, medaglie e livello
@@ -38,22 +38,22 @@ impediscono di leggere o scrivere quelli degli altri.
 - **Regola generale**: medaglie e livello non nascondono né disabilitano mai un esercizio, un test o un
   obiettivo.
 
-### Mattoni, costruttore e guida (dalla 0.8)
+### Fondamentali, costruttore e guida (dalla 0.8)
 
-- **Mattoni** (`src/lib/data/bricks.js`): uno per colpo (Dritto, Rovescio, Servizio, Ricezione, Gambe, Gioco
+- **Fondamentali** (`src/lib/data/bricks.js`): uno per colpo (Dritto, Rovescio, Servizio, Ricezione, Gambe, Gioco
   tagliato, Schemi), più Riscaldamento e Partita. Dritto e Rovescio prendono da palleggio, attacco e block
-  secondo il lato dei colpi allenati. Un allenamento a mattoni è un modello a blocchi come gli altri, con
-  `brick` su ogni blocco e `gaps: false` (niente pause: la durata è la somma dei mattoni, almeno 10 minuti l'uno).
+  secondo il lato dei colpi allenati. Un allenamento a fondamentali è un modello a blocchi come gli altri, con
+  `brick` su ogni blocco e `gaps: false` (niente pause: la durata è la somma dei fondamentali, almeno 10 minuti l'uno).
 - **Costruttore** (`src/lib/ui/Tower.svelte`, `src/lib/screens/Builder.svelte`): la torre e il vassoio. Si
   aggiunge toccando o trascinando, si allunga trascinando il bordo, si riordina trascinando, si scelgono gli
-  esercizi toccando il mattone. Si apre dal tasto + e da «Cambia i mattoni».
+  esercizi toccando il fondamentale. Si apre dal tasto + e da «Cambia i fondamentali».
 - **Primo avvio** (`src/lib/screens/Wizard.svelte`): il livello, in cosa vuoi sentirti più sicuro, un allenamento
   proposto o costruito, per quanto tempo (solo oggi, una settimana, un mese) e in quali giorni. «Solo oggi» mette
   l'allenamento in calendario oggi; settimana e mese creano un piano di una o quattro settimane.
 - **Mappa** (`src/lib/ui/BrickMap.svelte`, in Progressi): una casella per esercizio con la medaglia più alta, le
   righe per livello, la pallina sull'esercizio da fare adesso (il primo senza argento in ogni fila).
 - **Guida** (`src/lib/ui/tours.js`, `Coach.svelte`): illumina una zona alla volta e avanza quando fai la cosa
-  richiesta. Due giri: i mattoni la prima volta nel costruttore; medaglie e mappa appena arrivi in Oggi.
+  richiesta. Due giri: i fondamentali la prima volta nel costruttore; medaglie e mappa appena arrivi in Oggi.
   Chi li ha visti è in `meta.tour`; da Impostazioni si rivedono.
 
 ### Note per colpo
@@ -128,7 +128,7 @@ senza finestra), Oggi, mappa, sessione dal vivo con obiettivi e medaglie, test,
 diario, progressi, libreria, livello, pacchetti, editor degli allenamenti, e il passaggio dei dati della
 prima versione, della 0.2 e dei modelli personali. Il motore ha 114 test.
 
-Non ancora rifatto con i mattoni: il foglio «Il piano» in Impostazioni (lavora ancora a tappe e a mesi).
+Non ancora rifatto con i fondamentali: il foglio «Il piano» in Impostazioni (lavora ancora a tappe e a mesi).
 
 Non ancora provato: il backend cloud (`src/lib/store/cloud.js`) e le regole Firestore, che richiedono un
 progetto Firebase o gli emulatori (`VITE_EMULATOR=1 npm run dev` insieme a `npm run emulators`).

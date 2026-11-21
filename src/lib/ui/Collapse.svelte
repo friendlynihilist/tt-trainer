@@ -6,7 +6,8 @@
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import { reducedMotion } from '../util/motion.js';
 
-  let { title, count = null, open = true, key = null, aside = null, lead = null, children } = $props();
+  // boxed: la sezione è una scheda, con il titolo dentro e le righe sotto (come le schede della Libreria).
+  let { title, count = null, open = true, key = null, aside = null, lead = null, boxed = false, children } = $props();
 
   // La chiave non cambia durante la vita della sezione.
   // svelte-ignore state_referenced_locally
@@ -32,7 +33,7 @@
   const id = `c${Math.random().toString(36).slice(2, 8)}`;
 </script>
 
-<section class="collapse" class:open={isOpen}>
+<section class="collapse" class:open={isOpen} class:boxed>
   <div class="head">
     <button class="toggle" onclick={toggle} aria-expanded={isOpen} aria-controls={id}>
       {#if lead}{@render lead()}{/if}
@@ -89,5 +90,27 @@
   }
   .body {
     padding-top: 8px;
+  }
+  .boxed {
+    padding: 4px 16px;
+    border-radius: var(--r-card);
+    background: var(--card);
+    box-shadow: var(--shadow-card);
+  }
+  .boxed .toggle {
+    min-height: 56px;
+  }
+  .boxed .body {
+    padding: 0 0 12px;
+  }
+  /* Dentro una scheda le liste non sono schede a loro volta: solo righe, da bordo a bordo. */
+  .boxed .body :global(.card) {
+    background: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  .boxed .body :global(.card.flush) {
+    margin: 0 -16px;
+    border-top: 1px solid var(--line);
   }
 </style>

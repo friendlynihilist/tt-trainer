@@ -1,5 +1,5 @@
 <script>
-  // Un appuntamento previsto, nel dettaglio: quando, il modello, su cosa lavori; e tutte le azioni.
+  // Un appuntamento previsto, nel dettaglio: quando, quanto dura, i suoi fondamentali; e tutte le azioni.
   import Play from '@lucide/svelte/icons/play';
   import PencilLine from '@lucide/svelte/icons/pencil-line';
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
@@ -7,24 +7,16 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { KIND } from '../data/taxonomy.js';
-  import { templateMinutes } from '../data/templates.js';
-  import { startItem, logItem, moveItem, removeItem } from '../store/actions.js';
+  import { startItem, logItem, moveItem, removeItem, workoutOf } from '../store/actions.js';
   import { fmtLong } from '../util/dates.js';
-  import { stageInfo, stagePeriod } from '../engine/plan.js';
   import Sheet from '../ui/Sheet.svelte';
+  import BrickStack from '../ui/BrickStack.svelte';
 
   let { item } = $props();
 
-  const kind = $derived(KIND[item.kind]?.name ?? 'Attività');
-  const template = $derived(item.kind === 'training' ? app.catalog.template(item.template) : null);
-  const theme = $derived(item.week?.focusBlock && (item.kind === 'training' || item.kind === 'test') ? item.week.focusBlock.theme : '');
+  const workout = $derived(item.kind === 'training' ? workoutOf(item.template, item.date) : null);
+  const kind = $derived(workout?.name ?? KIND[item.kind]?.name ?? 'Attività');
   const today = $derived(item.date === app.today);
-  // Il nome della tappa di quel giorno secondo la sua durata: «Mese», «Settimana», «Allenamento».
-  const noun = $derived.by(() => {
-    if (!app.plan) return 'Mese';
-    const info = stageInfo(app.plan, item.date, app.catalog);
-    return stagePeriod(info.stages[info.current]).noun || 'Mese';
-  });
   const past = $derived(item.date < app.today);
 
   function run(fn) {
@@ -36,10 +28,11 @@
 <Sheet title={kind} onclose={() => ui.close()} sans>
   <dl class="facts">
     <div><dt>Quando</dt><dd class="cap">{fmtLong(item.date)}</dd></div>
-    {#if template}<div><dt>Modello</dt><dd>{template.name} · {templateMinutes(template)} min</dd></div>{/if}
-    {#if theme}<div><dt>{noun}</dt><dd>{theme}</dd></div>{/if}
+    {#if workout?.minutes}<div><dt>Durata</dt><dd>{workout.minutes} min</dd></div>{/if}
     {#if past}<div><dt>Stato</dt><dd class="warn">Non registrato</dd></div>{/if}
   </dl>
+
+  {#if workout?.bricks.length}<div class="bricks"><BrickStack bricks={workout.bricks} /></div>{/if}
 
   <div class="acts">
     {#if past || today}
@@ -59,6 +52,9 @@
 </Sheet>
 
 <style>
+  .bricks {
+    margin-bottom: 20px;
+  }
   .facts {
     display: flex;
     flex-direction: column;
@@ -90,7 +86,7 @@
     flex-direction: column;
     border-radius: var(--r-card);
     background: var(--card);
-    border: 1px solid var(--line);
+    box-shadow: var(--shadow-card);
     overflow: hidden;
   }
   .act {

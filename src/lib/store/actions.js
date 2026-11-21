@@ -5,9 +5,10 @@ import { app } from './app.svelte.js';
 import { ui } from './ui.svelte.js';
 import { agenda } from '../engine/events.js';
 import { testProposal } from '../engine/player.js';
-import { weekFor, stageInfo, stagePeriod } from '../engine/plan.js';
-import { fmtLong } from '../util/dates.js';
-import { toTemplate } from '../data/bricks.js';
+import { weekFor, stageInfo, stagePeriod, createPlan, occurrenceKey } from '../engine/plan.js';
+import { composeSession } from '../engine/compose.js';
+import { fmtLong, addDays, mondayOf, weekday } from '../util/dates.js';
+import { toTemplate, bricksOf, workoutName } from '../data/bricks.js';
 
 export function weekOf(date) {
   return weekFor(app.plan, date, app.catalog);
@@ -79,17 +80,44 @@ export function putToday(templateId) {
   app.planEvent({ kind: 'training', template: templateId, date: app.today });
 }
 
-/** Il tasto +: apre il costruttore su un allenamento nuovo, che si salva fra i tuoi e va a oggi. */
+/**
+ * Un allenamento come lo si mostra: il nome (quello che gli hai dato, oppure quello che contiene), i
+ * suoi fondamentali con gli esercizi di quel giorno, e i minuti.
+ */
+export function workoutOf(templateId, date = app.today) {
+  const template = app.catalog.template(templateId);
+  if (!template) return { template: null, name: 'Allenamento', bricks: [], minutes: 0 };
+  const session = composeSession({ week: weekOf(date), template, catalog: app.catalog, medals: app.medals });
+  const bricks = bricksOf(template, app.catalog, session);
+  const named = bricks.filter((b) => b.type);
+  return { template, bricks, minutes: session.minutes, name: template.custom ? template.name : named.length ? workoutName(named) : template.name };
+}
+
+/**
+ * Un programma con lo stesso allenamento nei giorni scelti, per una o quattro settimane. Parte da
+ * questa settimana; se i giorni scelti sono già passati, dalla prossima.
+ */
+export function weeksPlan(templateId, days, weeks) {
+  const sorted = [...days].sort((a, b) => a - b);
+  const wd = weekday(app.today);
+  const late = !sorted.some((d) => d >= wd);
+  const start = late ? addDays(mondayOf(app.today), 7) : mondayOf(app.today);
+  const slots = sorted.map((day) => ({ id: `t${day}`, day, kind: 'training', template: templateId }));
+  const plan = createPlan({ start, slots, stages: [{ b: '1', n: weeks, u: 'w' }] });
+  // I giorni di questa settimana già passati non contano come saltati.
+  if (!late) plan.skip = slots.filter((s) => s.day < wd).map((s) => occurrenceKey(plan, addDays(start, s.day - 1), s));
+  return plan;
+}
+
+/** Il tasto +: apre il costruttore su un allenamento nuovo. Salvato, si sceglie quando farlo. */
 export function buildNew(bricks = []) {
   ui.builder = {
     title: 'Nuovo allenamento',
-    cta: 'Salva e mettilo oggi',
+    cta: 'Avanti',
     bricks: Array.isArray(bricks) ? bricks : [],
     onsave: (list) => {
       const t = app.saveCustom('templates', toTemplate(list));
-      putToday(t.id);
-      ui.go('oggi');
-      ui.toast(`«${t.name}» è l’allenamento di oggi`);
+      ui.open('when', { id: t.id, fresh: true });
     }
   };
 }
