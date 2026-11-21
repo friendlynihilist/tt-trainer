@@ -67,7 +67,7 @@
 
       <!-- Il piano: tutte le tappe, una riga ciascuna. -->
       <section class="part">
-        <h2 class="t-caps muted">Il piano</h2>
+        <h2 class="t-label muted">Il piano</h2>
         <ol class="card plan">
           {#each info.stages as st (st.i)}
             <li class={st.state}>
@@ -86,13 +86,13 @@
 
       {#if tracks.length}
       <section class="part">
-        <h2 class="t-caps muted">I percorsi {period.of}</h2>
+        <h2 class="t-label muted">I percorsi {period.of}</h2>
         <div class="tracks">
           {#each tracks as t (t.id + t.maint)}
             <button class="trk raise neutral" onclick={() => ui.open('track', { id: t.id })}>
               {#if t.ex}<MedalRing exercise={t.ex} medals={app.medals[t.ex.id]} size={52} />{/if}
               <span class="grow">
-                {#if t.maint}<span class="t-caps maint">Da mantenere</span>{/if}
+                {#if t.maint}<span class="t-label maint">Da mantenere</span>{/if}
                 <strong class="t-name">{t.track.short}</strong>
                 {#if t.ex}<span class="small block">Adesso: {t.ex.name}</span>{/if}
                 <span class="small muted block">{t.done} {t.done === 1 ? 'esercizio' : 'esercizi'} su {t.total} con l’argento</span>
@@ -106,7 +106,7 @@
 
       {#if block?.serve}
         <section class="part">
-          <h2 class="t-caps muted">Servizi e ricezione</h2>
+          <h2 class="t-label muted">Servizi e ricezione</h2>
           <div class="card text">
             <p><span class="who">Chi serve</span>{block.serve.server}</p>
             <p><span class="who">Chi riceve</span>{block.serve.receiver}</p>
@@ -116,7 +116,7 @@
 
       {#if schemes.length}
         <section class="part">
-          <h2 class="t-caps muted">Schemi della partitella</h2>
+          <h2 class="t-label muted">Schemi della partitella</h2>
           <div class="card text">
             {#each schemes as s (s.id)}
               <p><span class="who">{s.name}</span>{s.text}</p>

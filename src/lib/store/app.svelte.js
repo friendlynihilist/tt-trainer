@@ -82,6 +82,11 @@ class AppState {
   week = $derived(this.plan ? themedWeek(this.plan, weekAt(this.plan, this.weekIdx, this.catalog), this.today, this.catalog) : null);
   phase = $derived(this.plan ? planPhase(this.plan, this.today) : 'none');
   onboarded = $derived(Boolean(this.meta?.onboarded));
+  /**
+   * Ha fatto il primo avvio a mattoni (dalla 0.8.0): livello, colpi, primo allenamento. Chi usava
+   * l'app da prima lo fa alla prima apertura; `focus` c'è solo in chi l'ha già fatto.
+   */
+  welcomed = $derived(this.onboarded && (this.meta?.intro >= 2 || Array.isArray(this.meta?.focus)));
 
   name = $derived(this.meta?.profile?.name || this.user?.name || '');
   firstName = $derived(this.name.trim().split(/\s+/)[0] ?? '');

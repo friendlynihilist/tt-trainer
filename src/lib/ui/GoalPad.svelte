@@ -226,7 +226,7 @@
     padding: 6px 12px;
     border-radius: 999px;
     background: var(--sunk);
-    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
     font-size: 15px;
   }
   .try small {
@@ -241,7 +241,7 @@
   .running {
     border-color: var(--accent);
     color: var(--accent-ink);
-    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
   }
   .outcome {
     display: flex;
@@ -274,7 +274,7 @@
     height: 34px;
     border-radius: 10px;
     background: var(--sunk);
-    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
     font-size: 14px;
     color: var(--ink-2);
     transition:

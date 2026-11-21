@@ -1,5 +1,5 @@
-// Prova il passaggio di chi aveva già l'app (una 0.7.0 con piano, allenamenti e note): le novità, la
-// guida, l'allenamento di prima letto a mattoni, il tema scuro e lo schermo largo.
+// Prova il passaggio di chi aveva già l'app (una 0.7.0 con piano, allenamenti e note): il primo avvio
+// rifatto senza perdere niente, la guida, il tema scuro e lo schermo largo.
 // Chrome senza finestra, con gesti veri (tocchi e trascinamenti), in modalità locale.
 //
 //   VITE_LOCAL=1 npx vite --port 5175 --strictPort   (in un altro terminale)
@@ -52,24 +52,34 @@ const seed = { session: true, meta: { onboarded: true, seenVersion: '0.7.0', pro
   notes: { n1: { id: 'n1', stroke: 'ap-d', family: 'attacco', date: ago(9), text: 'Il polso parte troppo presto.', feel: 2, createdAt: 1, updatedAt: 1 } } };
 await ev(`localStorage.clear(); localStorage.setItem('tt-trainer:v1', ${JSON.stringify(JSON.stringify(seed))}); localStorage.setItem('tt-trainer:theme', 'dark'); true`);
 await send('Page.navigate', { url: `${BASE}?t=${Date.now()}#/oggi` }); await sleep(2200);
-await shot('v-novita');
-check('chi aveva già l’app vede le novità della 0.8.0', await ev(`document.querySelector('#wn-title')?.textContent`), 'Allenamenti a mattoni');
-check('intanto la guida aspetta', await coach(), null);
-await tapText('/^Andiamo$/', 'button', 1800); await shot('v-oggi-guida');
-check('chiuse le novità, parte la guida delle medaglie', await coach(), 'Le medaglie');
+await shot('v-benvenuto');
+check('chi aveva già l’app rifà il primo avvio', await ev(`document.querySelector('.onb .hero')?.textContent`), 'Terza palla è cambiata.');
+check('senza richiedere il nome', await ev(`Boolean(document.querySelector('.onb input.field'))`), false);
+await tapText('/^Comincia$/'); await shot('v-livello');
+check('il suo livello è già segnato', await ev(`document.querySelector('.choice.cur b')?.textContent`), 'Intermedio');
+await tapText('/^Intermedio/', '.choice'); await tapText('/^Rovescio/', '.mat button'); await tapText('/^Avanti$/'); await sleep(300); await shot('v-scelta');
+await tap('.choice.col', 1300); await shot('v-torre');
+check('nella torre parte la guida dei mattoni', await coach(), 'Aggiungi un mattone');
+check('con i mattoni già nella torre c’è «Avanti»', await ev(`Boolean(document.querySelector('.coach .next'))`), true);
+await tap('.coach .skip', 500);
+const mine = await names();
+await tapText('/^Avanti$/'); await tapText('/^Solo oggi/', '.choice'); await sleep(500); await shot('v-pronto');
+check('alla fine non si richiede il nome al gruppo', await ev(`Boolean(document.querySelector('.onb .toggle'))`), false);
+await tapText('/^Andiamo$/'); await sleep(1800); await shot('v-oggi-guida');
+{ const d = await store();
+  check('salvato senza toccare nome, livello e piano di prima', [d.meta.intro, d.meta.seenVersion !== '0.7.0', d.meta.profile.name, d.meta.player.level, d.meta.player.history, d.meta.focus, d.meta.custom.templates.length, d.meta.plan.id], [2, true, 'Carlo', 'intermedio', [], ['rovescio'], 2, 'p1']); }
+check('le novità non si aprono: le ha spiegate il primo avvio', await ev(`Boolean(document.querySelector('#wn-title'))`), false);
+check('in Oggi parte la guida delle medaglie', await coach(), 'Le medaglie');
 await tap('.coach .skip', 600); await shot('v-oggi');
-check('guida saltata e ricordata', [(await store()).meta.tour, await coach()], [{ app: true }, null]);
-check('l’allenamento di prima si chiama per quello che contiene', await ev(`document.querySelector('.court h2').textContent`), 'Servizio e dritto');
+check('guida saltata e ricordata', [(await store()).meta.tour, await coach()], [{ build: true, app: true }, null]);
+check('oggi c’è l’allenamento appena costruito, al posto di quello di prima', await ev(`document.querySelectorAll('.court').length + ' ' + document.querySelector('.court h2').textContent.startsWith('Rovescio')`), '1 true');
 check('con il test in calendario c’è la sua riga', await ev(`Boolean(document.querySelector('.test-pill'))`), true);
 check('«Settimana 3 di 8»', await ev(`document.querySelector('.week .t-name').textContent`), 'Settimana 3 di 8');
 await tap('.court .open', 800); await shot('v-foglio');
 await tapText('/^Cambia i mattoni/', '.other', 1300); await shot('v-costruttore');
-check('la prima volta nel costruttore parte la guida dei mattoni', await coach(), 'Aggiungi un mattone');
-check('con i mattoni già nella torre c’è «Avanti»', await ev(`Boolean(document.querySelector('.coach .next'))`), true);
-await tap('.coach .skip', 500);
-check('l’allenamento di prima diventa mattoni', await names(), ['Riscaldamento', 'Servizio', 'Dritto', 'Dritto', 'Partita']);
+check('nel costruttore la guida non riparte', await coach(), null);
+check('ci sono i mattoni scelti nel primo avvio', await names(), mine);
 await tapText('/^Salva$/', '.builder button', 1000); await shot('v-oggi-mio');
-check('diventa un allenamento tuo, messo a oggi', [(await store()).meta.custom.templates.length, await ev(`document.querySelector('.court h2').textContent`)], [2, 'Servizio e dritto']);
 await ev(`location.hash = '#/libreria'`); await sleep(1000); await shot('v-libreria');
 check('in Libreria ci sono i due allenamenti tuoi', await ev(`[...document.querySelectorAll('.section')][0].querySelectorAll('.wk strong').length`), 2);
 await ev(`location.hash = '#/progressi/mappa/dritto'`); await sleep(1300); await shot('v-mappa');

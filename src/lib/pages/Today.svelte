@@ -27,6 +27,7 @@
   import PageHead from '../ui/PageHead.svelte';
   import PlannedRow from '../ui/PlannedRow.svelte';
   import MedalBadge from '../ui/MedalBadge.svelte';
+  import Flame from '../ui/Flame.svelte';
   import LevelBadge from '../ui/LevelBadge.svelte';
   import WeekDays from '../ui/WeekDays.svelte';
   import Pills from '../ui/Pills.svelte';
@@ -161,7 +162,7 @@
     {#snippet aside()}
       {#if streak > 0}
         <span class="streak" role="img" aria-label="{streak} {streak === 1 ? 'settimana' : 'settimane'} di fila">
-          <MedalBadge tier="F" size={26} label={false} /><b>{streak}</b>
+          <Flame size={30} /><b>{streak}</b>
         </span>
       {/if}
     {/snippet}
@@ -305,7 +306,7 @@
     margin-right: 4px;
   }
   .streak b {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 800;
   }
 

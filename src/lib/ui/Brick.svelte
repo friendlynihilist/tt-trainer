@@ -16,7 +16,7 @@
       </span>
     {/if}
   </span>
-  <span class="min"><b class="t-num">{minutes}</b><small class="t-caps">min</small></span>
+  <span class="min"><b class="t-num">{minutes}</b><small class="t-label">min</small></span>
   {#if children}{@render children()}{/if}
 </svelte:element>
 

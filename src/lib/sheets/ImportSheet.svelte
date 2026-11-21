@@ -85,7 +85,7 @@
     align-self: flex-start;
   }
   .code {
-    font-family: var(--mono);
+    font-family: ui-monospace, Menlo, monospace;
     font-size: 13px;
     min-height: 160px;
     max-height: 260px;

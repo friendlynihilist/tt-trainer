@@ -2,6 +2,8 @@
   // Il primo avvio: tre domande (il livello, in cosa vuoi sentirti più sicuro, per quanto tempo) e
   // in mezzo il primo allenamento, scelto fra tre proposte o costruito con i mattoni. Alla fine
   // l'allenamento è salvato fra i tuoi e sta in calendario: solo oggi, per una settimana o per un mese.
+  // Lo fa anche chi usava l'app prima dei mattoni, alla prima apertura: il livello è già segnato,
+  // medaglie, diario e note restano, e il programma nuovo prende il posto di quello vecchio.
   import { fly } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
@@ -15,6 +17,8 @@
   import { SKILLS, BRICK, proposals, toTemplate, totalMinutes, workoutName } from '../data/bricks.js';
   import { addDays, mondayOf, weekday, WEEKDAYS, WEEKDAYS_MIN } from '../util/dates.js';
   import { startTour, coachSkip } from '../ui/tours.js';
+  import { putToday } from '../store/actions.js';
+  import Court from '../ui/Court.svelte';
   import Tower from '../ui/Tower.svelte';
   import Pills from '../ui/Pills.svelte';
 
@@ -26,17 +30,20 @@
     pro: 'Gioco ad alto livello'
   };
 
+  const returning = app.onboarded;
+  const was = app.meta?.player?.level ?? null;
+
   let stage = $state('intro');
   let dir = $state(1);
   let name = $state(app.name);
-  let level = $state(null);
+  let level = $state(was);
   let focus = $state([]);
   let ideas = $state([]);
   let bricks = $state([]);
   let own = $state(false);
   let span = $state(null);
   let days = $state([2, 5]);
-  let share = $state(true);
+  let share = $state(app.settings.share);
 
   const steps = $derived(['level', 'focus', 'pick', 'build', 'when', ...(span === 'once' ? [] : ['days']), 'done']);
   const sortedDays = $derived([...days].sort((a, b) => a - b));
@@ -64,7 +71,7 @@
     buzz(10);
   }
   function toPick() {
-    ideas = proposals(focus, level, app.catalog, {});
+    ideas = proposals(focus, level, app.catalog, app.medals);
     go('pick');
   }
   // Un allenamento proposto è un punto di partenza: si apre nella torre, dove lo puoi cambiare.
@@ -94,14 +101,20 @@
     const id = newId('c');
     const template = { ...toTemplate($state.snapshot(bricks)), id, custom: true };
     const patch = {
-      player: { level, since: app.today, history: [{ date: app.today, level, how: 'scelto' }], declined: null },
       onboarded: true,
+      intro: 2,
       seenVersion: VERSION,
-      profile: { name: name.trim() },
-      settings: { share },
       focus: $state.snapshot(focus),
       custom: { templates: [...(app.meta?.custom?.templates ?? []), template] }
     };
+    if (!returning) {
+      patch.profile = { name: name.trim() };
+      patch.settings = { share };
+    }
+    if (level !== was) {
+      const history = [...(app.meta?.player?.history ?? []), { date: app.today, level, how: 'scelto' }];
+      patch.player = { level, since: app.today, history, declined: null };
+    }
     if (span !== 'once') {
       // Si parte da questa settimana; se i giorni scelti sono già passati, dalla prossima.
       const wd = weekday(app.today);
@@ -114,7 +127,7 @@
       patch.plan = plan;
     }
     app.patchMeta(patch);
-    if (span === 'once') app.planEvent({ kind: 'training', template: id, date: app.today });
+    if (span === 'once') putToday(id);
   }
 </script>
 
@@ -131,17 +144,24 @@
   {#key stage}
     <section in:fly={{ x: 28 * dir, duration: 380, easing: cubicOut }}>
       {#if stage === 'intro'}
-        <div class="scene" aria-hidden="true"><div class="fly"><i></i></div></div>
-        <h1 class="hero">Costruisci il tuo allenamento.</h1>
-        <p class="lead muted">Rispondi a tre domande e prepariamo insieme il tuo primo allenamento.</p>
-        {#if !app.user?.name}
+        <Court />
+        {#if returning}
+          <h1 class="hero">Terza palla è cambiata.</h1>
+          <p class="lead muted">Adesso l’allenamento lo costruisci tu, un mattone alla volta. Rispondi a tre domande e prepariamo insieme il primo.</p>
+          <p class="lead muted">Le tue medaglie, il diario e le note sono rimasti al loro posto.</p>
+        {:else}
+          <h1 class="hero">Costruisci il tuo allenamento.</h1>
+          <p class="lead muted">Rispondi a tre domande e prepariamo insieme il tuo primo allenamento.</p>
+        {/if}
+        {#if !returning && !app.user?.name}
           <input class="field" placeholder="Come ti chiami?" bind:value={name} autocomplete="given-name" />
         {/if}
-        <button class="btn accent wide last" onclick={() => go('level')} disabled={!name.trim()}>Comincia</button>
+        <button class="btn accent wide last" onclick={() => go('level')} disabled={!returning && !name.trim()}>Comincia</button>
       {:else if stage === 'level'}
         <h1 class="hero">A che livello giochi?</h1>
+        {#if was}<p class="lead muted">Quello con il bordo blu è il tuo livello di adesso.</p>{/if}
         {#each PLAYER_LEVELS as l, i (l.id)}
-          <button class="choice lvl" data-level={l.id} style:animation-delay="{40 + i * 60}ms" onclick={() => pickLevel(l.id)}>
+          <button class="choice lvl" class:cur={l.id === was} data-level={l.id} style:animation-delay="{40 + i * 60}ms" onclick={() => pickLevel(l.id)}>
             <span class="bars" aria-hidden="true">
               {#each [0, 1, 2, 3, 4] as k (k)}<i class:on={k <= i} style:height="{10 + k * 6}px"></i>{/each}
             </span>
@@ -215,7 +235,7 @@
             {/each}
           </div>
         </div>
-        {#if app.cloud}
+        {#if app.cloud && !returning}
           <label class="toggle">
             <span>Mostra il mio nome al gruppo<br /><span class="small muted">Medaglie, livello, diario e note restano tuoi.</span></span>
             <input type="checkbox" bind:checked={share} />
@@ -286,61 +306,6 @@
     margin-top: auto;
   }
 
-  /* Il tavolo dall'alto, con la palla che lo attraversa e rimbalza. */
-  .scene {
-    position: relative;
-    height: 230px;
-    border-radius: 26px;
-    background: var(--court);
-    overflow: hidden;
-  }
-  .scene::before {
-    content: '';
-    position: absolute;
-    inset: 10px;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    border-radius: 16px;
-  }
-  .scene::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 50%;
-    height: 4px;
-    translate: 0 -50%;
-    background: repeating-linear-gradient(90deg, #fff 0 3px, transparent 3px 6px);
-    opacity: 0.6;
-  }
-  .fly {
-    position: absolute;
-    left: 14%;
-    top: 16%;
-    width: 72%;
-    height: 68%;
-    animation: fly-y 2.4s linear infinite alternate;
-  }
-  .fly i {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.2);
-    animation: fly-x 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite alternate;
-  }
-  @keyframes fly-y {
-    to {
-      transform: translateY(100%);
-    }
-  }
-  @keyframes fly-x {
-    to {
-      left: calc(100% - 22px);
-    }
-  }
   @keyframes up {
     from {
       opacity: 0;
@@ -362,6 +327,11 @@
       transform 0.12s,
       box-shadow 0.12s;
     animation: up 0.4s both;
+  }
+  .choice.cur {
+    box-shadow:
+      inset 0 0 0 2.5px var(--accent),
+      0 5px 0 var(--line-strong);
   }
   .choice:active {
     transform: translateY(4px);
@@ -587,8 +557,6 @@
     outline-offset: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
-    .fly,
-    .fly i,
     .choice,
     .mat button,
     .month i.on,

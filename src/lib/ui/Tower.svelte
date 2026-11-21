@@ -233,7 +233,7 @@
         <p class="muted">La prima metà si gioca rischiando, la seconda con uno schema.</p>
       {/if}
       {#each groups as gr (gr.name)}
-        {#if gr.name}<span class="t-caps muted">{gr.name}</span>{/if}
+        {#if gr.name}<span class="t-label muted">{gr.name}</span>{/if}
         <div class="opts">
           {#each gr.list as ex (ex.id)}
             {@const on = edited.exs.includes(ex.id)}

@@ -132,7 +132,7 @@
     {#key month}
       <div class="grid" in:fly={{ x: 36 * dir, duration: dur(260), easing: cubicOut }}>
         {#each rows as r (r.week[0])}
-          {#if r.theme}<span class="theme t-caps">{r.theme}</span>{/if}
+          {#if r.theme}<span class="theme t-label">{r.theme}</span>{/if}
           {#each r.week as d (d)}
             {@const p = pips(d)}
             <button

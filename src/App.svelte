@@ -96,23 +96,13 @@
   });
 
   const Page = $derived(PAGES[ui.route.name] ?? Today);
-  const inApp = $derived(app.stage === 'ready' && app.onboarded);
+  const inApp = $derived(app.stage === 'ready' && app.welcomed);
 
-  // Le novità compaiono una volta sola per account dopo un aggiornamento (chi arriva ora non le vede:
-  // il primo avvio segna già la versione). Chi era sulla 0.1.0 non aveva nulla di salvato.
+  // Le novità compaiono una volta sola per account dopo un aggiornamento. Chi passa dal primo avvio
+  // (chi arriva ora, e chi usava l'app prima dei mattoni) non le vede: il primo avvio segna già la versione.
   let dismissed = $state(false);
   const fresh = $derived(inApp && app.meta ? unseen(app.meta.seenVersion ?? '0.1.0') : []);
   const autoNews = $derived(!dismissed && fresh.length > 0 && !ui.live && !ui.sheets.length);
-
-  // Chi usava già l'app sceglie il suo livello una volta, dopo le novità. Chi arriva ora lo sceglie
-  // nel primo avvio. Se chiude senza scegliere è principiante (vedi LevelSheet).
-  let levelAsked = $state(false);
-  $effect(() => {
-    if (!inApp || !app.meta || app.meta.player?.level || levelAsked) return;
-    if (autoNews || ui.news || ui.live || ui.sheets.length) return;
-    levelAsked = true;
-    ui.open('level', { auto: true });
-  });
 
   function closeNews() {
     if (ui.news) ui.news = null;
@@ -129,7 +119,7 @@
   <Login />
 {:else if app.stage === 'noaccess'}
   <NoAccess />
-{:else if !app.onboarded}
+{:else if !app.welcomed}
   <Wizard />
 {:else}
   <Nav />

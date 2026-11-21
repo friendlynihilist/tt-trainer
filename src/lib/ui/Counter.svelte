@@ -62,7 +62,7 @@
     border: 0;
     background: transparent;
     text-align: center;
-    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
     font-size: 22px;
     font-weight: 560;
     color: var(--ink);

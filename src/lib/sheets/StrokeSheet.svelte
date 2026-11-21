@@ -60,7 +60,7 @@
       <!-- Come lo senti: l'ultima nota in cinque tacche, la media accanto. -->
       {#if feel}
         <section class="feel">
-          <span class="t-caps muted">Come lo senti</span>
+          <span class="t-label muted">Come lo senti</span>
           <div class="feel-row">
             <span class="ticks" role="img" aria-label="Ultima nota: {FEEL[feel.last - 1]}">
               {#each [1, 2, 3, 4, 5] as n (n)}<i class:on={n <= feel.last} style:--h="{30 + n * 14}%"></i>{/each}

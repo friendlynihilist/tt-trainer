@@ -620,7 +620,7 @@
     padding: 0 10px;
     border-radius: 12px;
     background: var(--sunk);
-    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
     font-size: 14px;
     font-weight: 650;
     color: var(--ink);

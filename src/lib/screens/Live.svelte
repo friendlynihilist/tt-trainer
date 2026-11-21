@@ -581,7 +581,7 @@
             {#if step.kind === 'pause'}
               {@const after = steps[draft.step + 1]}
               {#if after}
-                <span class="t-caps muted">Dopo la pausa</span>
+                <span class="t-label muted">Dopo la pausa</span>
                 <Brick fam={stepFamily(after, app.catalog)} name={after.name} minutes={after.minutes} sub={after.block?.of > 1 ? `${after.block.n} di ${after.block.of}` : ''} />
               {/if}
             {:else if step.kind !== 'exercise' || info}
@@ -619,7 +619,7 @@
 
             {#if summary?.attempts.length}
               <section class="group">
-                <h2 class="t-caps muted">Risultati di oggi</h2>
+                <h2 class="t-label muted">Risultati di oggi</h2>
                 <div class="card flush list">
                   {#each summary.attempts as a, i (i)}
                     {@const ex = app.catalog.exercise(a.ex)}
@@ -647,7 +647,7 @@
             {/if}
 
             <section class="group">
-              <h2 class="t-caps muted">Sensazione</h2>
+              <h2 class="t-label muted">Sensazione</h2>
               <FeelPicker value={draft.feel} onchange={(v) => (draft.feel = v)} />
             </section>
 
@@ -669,17 +669,17 @@
 
             <Collapse title="Altri dettagli" open={false} key="live-altro">
               <section class="group">
-                <h2 class="t-caps muted">Con chi</h2>
+                <h2 class="t-label muted">Con chi</h2>
                 <PartnerField value={draft.partner ?? null} onchange={(p) => (draft.partner = p)} />
               </section>
 
               <section class="group">
-                <h2 class="t-caps muted">Da correggere la prossima volta</h2>
+                <h2 class="t-label muted">Da correggere la prossima volta</h2>
                 <FocusEditor value={draft.focus} onchange={(v) => (draft.focus = v)} />
               </section>
 
               <section class="group">
-                <h2 class="t-caps muted">Appunti sull’allenamento</h2>
+                <h2 class="t-label muted">Appunti sull’allenamento</h2>
                 <textarea class="field" placeholder="Cosa ha funzionato, cosa no" bind:value={draft.note}></textarea>
               </section>
             </Collapse>
@@ -971,7 +971,7 @@
     font-size: clamp(64px, 22vw, 96px);
     font-weight: 600;
     line-height: 1;
-    letter-spacing: -0.06em;
+    letter-spacing: -0.04em;
     color: inherit;
     transition: opacity var(--dur) var(--ease);
   }

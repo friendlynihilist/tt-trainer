@@ -1,12 +1,12 @@
 <script>
-  // Il marchio: una pallina che ha appena superato la rete.
+  // Il marchio: il tavolo blu visto dall'alto, con la rete e la palla.
   let { size = 32 } = $props();
 </script>
 
 <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-  <rect width="32" height="32" rx="9" fill="var(--ink)" />
-  <path d="M6 22.5h20" stroke="var(--paper)" stroke-width="1.6" stroke-linecap="round" opacity="0.9" />
-  <path d="M16 22.5v-5" stroke="var(--paper)" stroke-width="1.6" stroke-linecap="round" opacity="0.9" />
-  <path d="M8 18c2-6.5 6-9 10.5-8.6" stroke="var(--paper)" stroke-width="1.3" stroke-linecap="round" stroke-dasharray="0.1 2.8" opacity="0.6" />
-  <circle cx="22" cy="11.5" r="3.6" fill="var(--accent)" />
+  <rect width="32" height="32" rx="9" fill="var(--court)" />
+  <rect x="5" y="5" width="22" height="22" rx="5" stroke="#fff" stroke-opacity="0.5" stroke-width="1.3" />
+  <path d="M0 16h32" stroke="#fff" stroke-opacity="0.7" stroke-width="1.6" stroke-dasharray="1.6 1.6" />
+  <circle cx="20.5" cy="11" r="5" fill="#fff" fill-opacity="0.2" />
+  <circle cx="20.5" cy="11" r="3.2" fill="#fff" />
 </svg>

@@ -10,6 +10,16 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.8.1',
+    date: '2026-11-21',
+    title: 'Ritocchi all’aspetto',
+    items: [
+      { icon: 'palette', text: 'La fiamma delle settimane di fila è nuova. Anche l’icona dell’app e la schermata di caricamento ora hanno il tavolo blu.' },
+      { icon: 'pencil', text: 'Numeri e scritte hanno lo stesso carattere in tutta l’app, dal calendario al cronometro.' },
+      { icon: 'blocks', text: 'Chi usava l’app da prima dei mattoni, alla prima apertura costruisce il suo primo allenamento con la guida.' }
+    ]
+  },
+  {
     version: '0.8.0',
     date: '2026-11-21',
     title: 'Allenamenti a mattoni',

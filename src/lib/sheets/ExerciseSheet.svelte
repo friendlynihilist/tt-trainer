@@ -94,7 +94,7 @@
       {#if ex.text}<p class="lead">{ex.text}</p>{/if}
       {#if ex.quality}
         <div class="quality">
-          <span class="t-caps">Come deve venire</span>
+          <span class="t-label">Come deve venire</span>
           <p>{ex.quality}</p>
         </div>
       {/if}
@@ -103,7 +103,7 @@
       <!-- Le medaglie: gli scudi in fila, con la soglia e quando sono arrivate. -->
       {#if tiers.length}
         <section class="part">
-          <h3 class="t-caps muted">Medaglie</h3>
+          <h3 class="t-label muted">Medaglie</h3>
           <div class="medals">
             {#each tiers as t, i (t)}
               {@const got = m?.[t]}
@@ -124,7 +124,7 @@
       {#if days.length}
         <section class="part">
           <div class="spread">
-            <h3 class="t-caps muted">Le tue misure</h3>
+            <h3 class="t-label muted">Le tue misure</h3>
             {#if m?.best != null}<span class="small muted">Record <b class="rec">{valueText(ex, m.best)}</b></span>{/if}
           </div>
           <MeasureChart exercise={ex} rows={days} {goal} />
@@ -242,7 +242,7 @@
     background: color-mix(in srgb, var(--f) 9%, var(--card));
     border-left: 4px solid var(--f);
   }
-  .quality .t-caps {
+  .quality .t-label {
     color: var(--f-ink);
   }
   .quality p {

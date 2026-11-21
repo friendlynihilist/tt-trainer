@@ -26,7 +26,7 @@
     height: 26px;
     border-radius: 8px;
     background: var(--sunk);
-    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
     font-size: 12px;
     font-style: normal;
     font-weight: 600;

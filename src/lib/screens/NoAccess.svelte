@@ -26,9 +26,9 @@
   </div>
   <div class="stack g-8">
     {#if app.requested}
-      <button class="btn primary wide" onclick={() => app.retryAccess()}>Riprova</button>
+      <button class="btn accent wide" onclick={() => app.retryAccess()}>Riprova</button>
     {:else}
-      <button class="btn primary wide" onclick={ask} disabled={busy}>Chiedi di entrare</button>
+      <button class="btn accent wide" onclick={ask} disabled={busy}>Chiedi di entrare</button>
     {/if}
     <button class="btn plain wide" onclick={() => app.signOut()}>Esci</button>
   </div>

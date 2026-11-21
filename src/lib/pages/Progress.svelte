@@ -22,6 +22,7 @@
   import TestBars from '../ui/TestBars.svelte';
   import MedalRing from '../ui/MedalRing.svelte';
   import MedalBadge from '../ui/MedalBadge.svelte';
+  import Flame from '../ui/Flame.svelte';
   import LevelBadge from '../ui/LevelBadge.svelte';
   import ProgressRing from '../ui/ProgressRing.svelte';
   import FamilyIcon from '../ui/FamilyIcon.svelte';
@@ -123,7 +124,7 @@
   <!-- Tre numeri: da quante settimane ti alleni di fila, quante ore, quante attività. -->
   <section class="nums">
     <div class="num streak">
-      <MedalBadge tier="F" on={streak > 0} size={30} label={false} shine />
+      <Flame size={28} on={streak > 0} />
       <b class="t-num">{streak}</b>
       <span>{streak === 1 ? 'settimana' : 'settimane'} di fila</span>
     </div>
@@ -134,7 +135,7 @@
   <!-- Il livello e le tre condizioni per il livello dopo. -->
   <section class="lv card" data-level={app.player.level}>
     <div class="lv-top">
-      <span class="t-caps lv-label">Il tuo livello</span>
+      <span class="t-label lv-label">Il tuo livello</span>
       <LevelBadge level={app.player.level} onclick={() => ui.open('level')} />
     </div>
 
@@ -318,7 +319,7 @@
     background: color-mix(in srgb, var(--accent) 9%, var(--card));
     border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
   }
-  .num.streak :global(.badge) {
+  .num.streak :global(.flame) {
     position: absolute;
     top: 10px;
     right: 12px;

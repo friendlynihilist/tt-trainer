@@ -66,7 +66,7 @@ Titolo, numero di voci, freccia che ruota; il contenuto scivola (280 ms, niente 
 
 ### Progressi (rifatto, riordinato dopo la revisione)
 Dal generale al particolare:
-1. **Tre numeri** in tre tessere: le **settimane di fila** (con la fiamma, `fiamma.svg`), le ore e le attività.
+1. **Tre numeri** in tre tessere: le **settimane di fila** (con la fiamma, `ui/Flame.svelte`), le ore e le attività.
 2. **Il livello**, in una card con il colore del livello: «Il tuo livello» e il badge (si tocca per cambiarlo). Sotto, «Per passare al livello avanzato» e **tre anelli uguali**, uno per condizione: argento e oro negli esercizi chiave («6/8», «1/4»), e la **costanza** (prima le sedute, poi i giorni). Pieni: la spunta. Sotto, una frase sola su cosa manca. Prima le settimane di fila e la costanza del livello stavano nello stesso anello, ma sono due cose diverse: una dice da quanto ti alleni, l'altra è una condizione del livello.
    - **Esercizi chiave** in una sezione chiusa, ognuno con il suo anello della medaglia; in fondo «Come si passa di livello» porta alla Guida.
 3. **Medagliere** (aperto): le quattro medaglie con quante ne hai; quando entrano in vista, un riflesso le attraversa una volta (vedi sotto). Poi le **famiglie** in una fila che scorre (icona, nome, «Attacco 4/20»), che sono anche il filtro; sotto la **griglia** degli esercizi misurati, con l'anello e il gradino dopo, o «Da ripassare».
@@ -99,12 +99,12 @@ Ogni gruppo è una sezione richiudibile con la sua icona e quante voci ha; «Nuo
 
 ### Guida e Impostazioni (rifatte)
 - **Guida**: il titolo con la freccia per tornare indietro, una frase, i **cinque passi** come tessere numerate (numero arancione in rilievo, titolo e due righe). Il resto in sezioni chiuse, una per argomento: le medaglie (gli scudi e le regole dei tentativi), il livello (i badge e le condizioni), durante l'allenamento (le fasi, il cambio, le pause), il piano, la libreria, i tuoi dati. Qui stanno le spiegazioni lunghe tolte dalle altre pagine.
-- **Impostazioni**: titolo «Impostazioni» con la freccia per tornare indietro, il profilo in una card; poi gruppi con l'intestazione in maiuscoletto: **Allenamento** (il piano, il tuo livello con il badge), **Preferenze** (aspetto, suoni, vibrazione, cambio a metà esercizio, il piano nel Diario, mancino), **Gruppo** (se farti vedere, i compagni, e per l'amministratore le richieste e gli inviti), **Dati** (esporta, copia, cancella in rosso), **Informazioni** (novità con la versione, guida, esci). Ogni riga ha un'icona chiara a sinistra in un quadrato grigio; sottotitoli solo dove servono.
+- **Impostazioni**: titolo «Impostazioni» con la freccia per tornare indietro, il profilo in una card; poi gruppi con una piccola intestazione: **Allenamento** (il piano, il tuo livello con il badge), **Preferenze** (aspetto, suoni, vibrazione, cambio a metà esercizio, il piano nel Diario, mancino), **Gruppo** (se farti vedere, i compagni, e per l'amministratore le richieste e gli inviti), **Dati** (esporta, copia, cancella in rosso), **Informazioni** (novità con la versione, guida, esci). Ogni riga ha un'icona chiara a sinistra in un quadrato grigio; sottotitoli solo dove servono.
 
 ### Le classi di base (`app.css`)
 Per tenere coerenti anche i fogli non rifatti uno per uno (voce del diario, nota, livello, percorso, mese, aggiungi, piano):
 - `.display` e `.title` in Geist 800 con spaziatura stretta; i fogli e le intestazioni di pagina usano lo stile nuovo di partenza.
-- `.heading`: maiuscoletto piccolo (12 px, 700, grigio).
+- `.heading`: intestazione piccola in minuscolo (13 px, 650, grigio).
 - `.chip` e `.tag.line`: pieni, senza bordo.
 - `.btn.primary` e `.btn.accent` (non piccoli): rilievo, arrotondamento 18, scendono quando li premi; testo bianco sull'arancione.
 - `.card`: arrotondamento 20.
@@ -170,9 +170,9 @@ Il badge del livello ha sempre anche le tacche (da 1 a 5): il colore non è mai 
 ### 3.2 Caratteri
 
 - **Geist** per tutto il testo, anche i titoli (pesi 700 e 800, spaziatura stretta). Fraunces non c'è più: tutte le pagine sono rifatte.
-- **Geist Mono** per tempo e numeri che cambiano (cifre della stessa larghezza).
+- Tempo e numeri che cambiano sono nello stesso carattere del testo, con le cifre della stessa larghezza (`tabular-nums`). Dalla 0.8.1 non c'è più un carattere a larghezza fissa.
 - Scala: 12 (etichette), 14 (secondario), 16 (testo), 18 (titolo di card), 22 (sezione), 28 (titolo di pagina), 40 (numero grande), 96 (tempo nella sessione).
-- Etichette corte in maiuscolo solo per livello e unità («INTERMEDIO», «MIN»), 12 px, peso 700, spaziatura 0,06em.
+- Niente scritte tutte in maiuscolo: le etichette corte (`.t-label`) sono 13 px, peso 650.
 - Frasi brevi; numeri sempre con l'unità o con un'icona.
 
 ### 3.3 Icone
@@ -224,7 +224,7 @@ Fondo tenue della famiglia, icona della famiglia, nome (18, peso 700), badge del
 Un cerchio con l'anello di avanzamento verso il gradino dopo (record ÷ soglia). Dentro, lo scudo della medaglia più alta presa, a colori; se non c'è ancora, lo scudo del gradino dopo in grigio; con la metà oro, uno scudo metà oro e metà grigio. Gli scudi sono disegni in `src/assets/medals/` (bronzo, argento, oro, platino), usati dal componente `MedalBadge`. Sotto, il gradino dopo in breve («oro · 20»). Animazione: l'anello si riempie con una molla, la medaglia nuova entra con un rimbalzo.
 
 ### Badge del livello (`LevelBadge`)
-Pillola con il colore del livello, cinque tacche (piene fino al livello) e il nome in maiuscolo. Si tocca per cambiare livello.
+Pillola con il colore del livello, cinque tacche (piene fino al livello) e il nome. Si tocca per cambiare livello.
 
 ### Pulsante grande (`BigButton`)
 Tutta la larghezza, alto almeno 88, arancione con rilievo. A sinistra il cerchio con l'icona (play), poi il verbo grande («Inizia», «Riprendi») e sotto cosa parte («Intermedio · 60 min»). Sotto il testo, la fila dei blocchi come tacche colorate proporzionali alla durata.

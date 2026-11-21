@@ -20,9 +20,21 @@
         if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
       } catch (e) {}
     </script>
+    <style>
+      /* Prima che l'app sia scaricata: lo stesso sfondo e lo stesso tavolo della schermata di caricamento. */
+      html { background: #f2f2f6; }
+      html[data-theme='dark'] { background: #0d0e12; }
+      html[data-theme='dark'] #boot i { background: #12548f; }
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme='light']) { background: #0d0e12; }
+        html:not([data-theme='light']) #boot i { background: #12548f; }
+      }
+      #boot { position: fixed; inset: 0; display: grid; place-items: center; }
+      #boot i { width: 132px; height: 132px; margin-bottom: 49px; border-radius: 34px; background: #1463a8; }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app"><div id="boot" aria-hidden="true"><i></i></div></div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

@@ -39,6 +39,7 @@
   --c-orange: #5d6470;
   /* La fiamma delle settimane di fila. */
   --fire: #e5383b;
+  --fire2: #ff9a6b;
   /* Il tavolo visto dall'alto, in Oggi. */
   --court: #1463a8;
 
@@ -50,7 +51,6 @@
   --m-empty: 95%;
 
   --sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
 
   --r: 18px;
   --r-s: 12px;
@@ -84,7 +84,8 @@
     --accent-ink: #8eb0ff;
     --accent-soft: #17233f;
     --accent-on: #06122e;
-    --fire: #ff5c5f;
+    --fire: #ff5a5f;
+    --fire2: #ffb089;
     --court: #12548f;
     --up: #46c9a8;
     --up-soft: #12302a;
@@ -125,7 +126,8 @@
   --accent-ink: #8eb0ff;
   --accent-soft: #17233f;
   --accent-on: #06122e;
-  --fire: #ff5c5f;
+  --fire: #ff5a5f;
+  --fire2: #ffb089;
   --court: #12548f;
   --up: #46c9a8;
   --up-soft: #12302a;
@@ -180,7 +182,6 @@ body {
   font-family: var(--sans);
   font-size: 15px;
   line-height: 1.45;
-  font-feature-settings: 'ss01', 'cv11';
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
@@ -226,7 +227,7 @@ a {
 /* ── Tipografia ─────────────────────────────────────────────────────────── */
 
 /* Dal rifacimento grafico (docs/design.md): tutto in Geist, titoli in grassetto stretto,
-   intestazioni di sezione in maiuscoletto piccolo. */
+   intestazioni di sezione piccole e in minuscolo, numeri nello stesso carattere del testo. */
 .display {
   font-family: var(--sans);
   font-weight: 800;
@@ -244,11 +245,9 @@ a {
 }
 
 .heading {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ink-3);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink-2);
 }
 
 .lead {
@@ -269,7 +268,6 @@ a {
 }
 
 .mono {
-  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }

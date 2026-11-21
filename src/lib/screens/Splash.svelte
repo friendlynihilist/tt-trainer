@@ -1,48 +1,27 @@
-<div class="splash" aria-label="Caricamento">
-  <span class="ball"></span>
-  <span class="shadow"></span>
+<script>
+  // Il caricamento: il tavolo dell'app con la palla che rimbalza, e il nome sotto.
+  import Court from '../ui/Court.svelte';
+</script>
+
+<div class="splash" role="status" aria-label="Caricamento">
+  <Court small />
+  <strong>Terza palla</strong>
 </div>
 
 <style>
   .splash {
     position: fixed;
     inset: 0;
-    display: grid;
-    place-items: center;
-    align-content: center;
-    gap: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    background: var(--paper);
   }
-  .ball {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--accent);
-    animation: bounce 0.62s cubic-bezier(0.3, 0, 0.7, 1) infinite alternate;
-  }
-  .shadow {
-    width: 22px;
-    height: 3px;
-    margin-top: 6px;
-    border-radius: 50%;
-    background: var(--line-strong);
-    animation: squash 0.62s cubic-bezier(0.3, 0, 0.7, 1) infinite alternate;
-  }
-  @keyframes bounce {
-    from {
-      transform: translateY(-38px);
-    }
-    to {
-      transform: translateY(0) scale(1.08, 0.92);
-    }
-  }
-  @keyframes squash {
-    from {
-      transform: scaleX(0.5);
-      opacity: 0.4;
-    }
-    to {
-      transform: scaleX(1);
-      opacity: 1;
-    }
+  strong {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
   }
 </style>

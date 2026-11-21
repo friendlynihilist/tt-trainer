@@ -42,9 +42,8 @@
   button {
     height: 36px;
     border-radius: 9px;
-    font-family: var(--mono);
-    font-size: 13px;
     font-variant-numeric: tabular-nums;
+    font-size: 13px;
     color: var(--ink-3);
     transition:
       background 0.2s var(--ease),

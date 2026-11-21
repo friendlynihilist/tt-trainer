@@ -19,7 +19,7 @@
   <span class="ticks" aria-hidden="true">
     {#each [1, 2, 3, 4, 5] as n (n)}<i class:on={n <= info.n}></i>{/each}
   </span>
-  <span class="t-caps" aria-hidden="true">{info.name}</span>
+  <span class="t-label" aria-hidden="true">{info.name}</span>
 </svelte:element>
 
 <style>
@@ -39,8 +39,8 @@
     padding: 0 9px 0 8px;
     gap: 6px;
   }
-  .small .t-caps {
-    font-size: 10.5px;
+  .small .t-label {
+    font-size: 12px;
   }
   .ticks {
     display: flex;

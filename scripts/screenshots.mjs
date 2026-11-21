@@ -188,6 +188,7 @@ const SHOTS = [
   { name: 'oggi-mattoni', hash: 'oggi', steps: [`document.querySelector('.court .open').click()`], viewport: true },
   // Il primo avvio: la prima schermata, per chi arriva ora.
   { name: 'primo-avvio', hash: 'oggi', patch: (d) => ({ ...d, meta: { settings: d.meta.settings } }), viewport: true },
+  { name: 'accesso', hash: 'oggi', patch: (d) => ({ ...d, session: false }), viewport: true },
   // Oggi un tema per un allenamento solo, in mezzo ad altri: Dritto 2 settimane, poi Rovescio,
   // Primi colpi (oggi) e Dritto per un allenamento ciascuno, poi Rovescio 2 settimane.
   {

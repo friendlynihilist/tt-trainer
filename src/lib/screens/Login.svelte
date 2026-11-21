@@ -1,5 +1,6 @@
 <script>
   import { app } from '../store/app.svelte.js';
+  import Court from '../ui/Court.svelte';
 
   let busy = $state(false);
 
@@ -17,20 +18,16 @@
 </script>
 
 <div class="login">
-  <div class="scene" aria-hidden="true">
-    <span class="ball"></span>
-    <span class="net"></span>
-    <span class="table"></span>
-  </div>
+  <div class="scene"><Court /></div>
 
   <div class="copy enter">
     <h1 class="display">Terza palla</h1>
-    <p class="lead muted">Il quaderno di allenamento che sa a che livello sei.</p>
+    <p class="lead muted">Costruisci i tuoi allenamenti, un mattone alla volta.</p>
   </div>
 
   <div class="actions enter">
     {#if app.cloud}
-      <button class="btn primary wide" onclick={enter} disabled={busy}>
+      <button class="btn accent wide" onclick={enter} disabled={busy}>
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
           <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" />
           <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z" />
@@ -48,7 +45,7 @@
         </div>
       {/if}
     {:else}
-      <button class="btn primary wide" onclick={enter}>Comincia</button>
+      <button class="btn accent wide" onclick={enter}>Comincia</button>
       <p class="small faint note">Modalità locale: i dati restano su questo dispositivo.</p>
     {/if}
   </div>
@@ -90,53 +87,8 @@
     width: 100%;
   }
 
-  /* La pallina attraversa il tavolo: un rimbalzo di qua, la rete, un rimbalzo di là. */
   .scene {
-    position: relative;
-    height: 150px;
     margin: auto 0 0;
-  }
-  .table {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 20px;
-    height: 2px;
-    border-radius: 1px;
-    background: var(--ink);
-  }
-  .net {
-    position: absolute;
-    left: 50%;
-    bottom: 22px;
-    width: 2px;
-    height: 20px;
-    margin-left: -1px;
-    background: var(--ink);
-    opacity: 0.5;
-  }
-  .ball {
-    position: absolute;
-    left: 0;
-    bottom: 22px;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--accent);
-    animation:
-      travel 3.2s linear infinite,
-      hop 3.2s infinite;
-  }
-  @keyframes travel {
-    0% { left: -4%; }
-    100% { left: 100%; }
-  }
-  @keyframes hop {
-    0% { transform: translateY(-70px); animation-timing-function: cubic-bezier(0.4, 0, 0.9, 0.6); }
-    22% { transform: translateY(0); animation-timing-function: cubic-bezier(0.1, 0.5, 0.5, 1); }
-    50% { transform: translateY(-84px); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.5); }
-    78% { transform: translateY(0); animation-timing-function: cubic-bezier(0.1, 0.5, 0.5, 1); }
-    100% { transform: translateY(-60px); }
   }
   @media (min-width: 700px) {
     .login {

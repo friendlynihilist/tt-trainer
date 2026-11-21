@@ -1,20 +1,19 @@
 <script>
-  // La medaglia disegnata: uno scudo per gradino (bronzo, argento, oro, platino), più la fiamma
-  // della costanza (F). Presa: a colori. Da prendere: grigia. Metà oro: metà grigia e metà a colori.
+  // La medaglia disegnata: uno scudo per gradino (bronzo, argento, oro, platino). Presa: a colori.
+  // Da prendere: grigia. Metà oro: metà grigia e metà a colori.
   //
   // shine: quando la medaglia entra in vista, un riflesso la attraversa una volta, dall'alto a
   // destra al basso a sinistra, ritagliato sulla forma dello scudo. Argento: un bagliore e un
   // riflesso tenue. Oro: bagliore e riflesso pieno. Platino: bagliore e riflesso arcobaleno.
-  // Fiamma: un bagliore caldo. Bronzo: niente. Con «riduci movimento», niente.
+  // Bronzo: niente. Con «riduci movimento», niente.
   import bronzo from '../../assets/medals/bronzo.svg';
   import argento from '../../assets/medals/argento.svg';
   import oro from '../../assets/medals/oro.svg';
   import platino from '../../assets/medals/platino.svg';
-  import fiamma from '../../assets/medals/fiamma.svg';
   import { reducedMotion } from '../util/motion.js';
   import { TIER } from '../data/library.js';
 
-  const SRC = { B: bronzo, A: argento, O: oro, P: platino, F: fiamma };
+  const SRC = { B: bronzo, A: argento, O: oro, P: platino };
 
   // size: la larghezza in px (lo scudo è un po' più alto che largo).
   let { tier, on = true, half = false, size = 40, pop = false, label = true, shine = false, delay = 0 } = $props();
@@ -124,13 +123,6 @@
   }
   [data-t='P'] .glare {
     --peak: 0.85;
-  }
-  [data-t='F'] .sweep {
-    display: none;
-  }
-  [data-t='F'] .glare {
-    --peak: 0.7;
-    background: radial-gradient(circle at 50% 40%, rgb(255 236 200 / 0.95), transparent 55%);
   }
   @keyframes sweep {
     0% {
