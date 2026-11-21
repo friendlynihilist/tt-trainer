@@ -10,6 +10,12 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.9.1',
+    date: '2026-11-21',
+    title: 'La settimana in Oggi',
+    items: [{ icon: 'calendar', text: 'Un giorno diventa verde con la spunta solo quando non resta niente da fare. Se hai fatto il test ma non l’allenamento, resta l’anello blu.' }]
+  },
+  {
     version: '0.9.0',
     date: '2026-11-21',
     title: 'I fondamentali',

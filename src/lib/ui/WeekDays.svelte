@@ -1,6 +1,8 @@
 <script>
-  // La settimana in sette cerchi: pieno se quel giorno hai fatto qualcosa, anello se c'è qualcosa in
-  // calendario, oggi in evidenza. Toccando un giorno si apre il Diario su quel giorno: il mese intero,
+  // La settimana in sette cerchi. Verde con la spunta solo se quel giorno hai fatto qualcosa e non
+  // resta niente da fare; anello blu se c'è ancora qualcosa in calendario (anche se una parte l'hai
+  // già fatta: un test fatto non dice che hai fatto l'allenamento); anello grigio se è passato senza
+  // che lo registrassi; oggi in evidenza. Toccando un giorno si apre il Diario su quel giorno: il mese intero,
   // con un pallino per ogni attività, sta lì.
   import Check from '@lucide/svelte/icons/check';
   import { app } from '../store/app.svelte.js';
@@ -13,14 +15,15 @@
   const days = $derived(
     week.map((date, i) => {
       const d = map.get(date);
+      const done = d?.done.length ?? 0;
+      const todo = d?.todo.length ?? 0;
       return {
         date,
         n: Number(date.slice(8)),
         name: WEEKDAYS[i],
-        done: d?.done.length ?? 0,
-        todo: d?.todo.length ?? 0,
         today: date === app.today,
-        past: date < app.today
+        past: date < app.today,
+        state: todo ? (date < app.today ? 'missed' : 'todo') : done ? 'done' : ''
       };
     })
   );
@@ -43,14 +46,14 @@
       <button
         class="day"
         class:today={d.today}
-        class:done={d.done}
-        class:todo={!d.done && d.todo}
-        class:missed={!d.done && d.todo && d.past}
+        class:done={d.state === 'done'}
+        class:todo={d.state === 'todo'}
+        class:missed={d.state === 'missed'}
         onclick={() => ui.go('calendario', d.date)}
-        aria-label="{d.name} {d.n}: {d.done ? 'fatto' : d.todo ? (d.past ? 'saltato' : 'in calendario') : 'riposo'}"
+        aria-label="{d.name} {d.n}: {d.state === 'done' ? 'fatto' : d.state === 'todo' ? 'in calendario' : d.state === 'missed' ? 'non registrato' : 'riposo'}"
       >
         <small>{WEEKDAYS_MIN[i]}</small>
-        <span class="dot">{#if d.done}<Check size={16} strokeWidth={3.2} />{/if}</span>
+        <span class="dot">{#if d.state === 'done'}<Check size={16} strokeWidth={3.2} />{/if}</span>
       </button>
     {/each}
   </div>
@@ -116,6 +119,7 @@
     box-shadow: inset 0 0 0 2.5px var(--accent);
   }
   .missed .dot {
+    background: none;
     box-shadow: inset 0 0 0 2.5px var(--line-strong);
   }
   .done .dot {
