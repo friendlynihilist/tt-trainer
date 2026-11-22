@@ -10,6 +10,14 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.10.1',
+    date: '2026-11-22',
+    title: 'Il grafico: settimana, mese, tre mesi',
+    items: [
+      { icon: 'trending', text: 'In Progressi il grafico mostra l’ultima settimana, l’ultimo mese o gli ultimi tre mesi, e i tre pulsanti si chiamano così. Si cambia in alto oppure con due dita sul grafico.' }
+    ]
+  },
+  {
     version: '0.10.0',
     date: '2026-11-22',
     title: 'Con chi ti alleni, e le note in un posto solo',

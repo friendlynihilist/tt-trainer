@@ -1,6 +1,6 @@
 <script>
   // Progressi, in due viste. «Andamento»: il livello con quello che manca per il livello dopo,
-  // l'attività in una linea (per giorno, per settimana o per mese: si sceglie in alto o allargando
+  // l'attività in una linea (l'ultima settimana, l'ultimo mese o gli ultimi tre mesi: si sceglie in alto o allargando
   // e stringendo due dita sul grafico), e il conto delle medaglie. «Mappa»: gli esercizi di ogni
   // colpo, con le medaglie (ui/BrickMap.svelte). Toccando la scheda del livello si aprono gli
   // esercizi chiave; toccando le medaglie si va alla mappa.
@@ -11,8 +11,8 @@
   import { ui, buzz } from '../store/ui.svelte.js';
   import { PLAYER_LEVEL, TIERS } from '../data/library.js';
   import { FAMILIES } from '../data/taxonomy.js';
-  import { activity, weekStreak, SCALES } from '../engine/stats.js';
-  import { MONTHS, fmtShort, parse } from '../util/dates.js';
+  import { activity, weekStreak, PERIODS } from '../engine/stats.js';
+  import { fmtShort } from '../util/dates.js';
   import { levelProgress } from '../engine/player.js';
   import { medalCount } from '../engine/medals.js';
   import PageHead from '../ui/PageHead.svelte';
@@ -31,20 +31,23 @@
   const streak = $derived(weekStreak(app.events));
 
   // ── Il grafico ──
-  // Tre ingrandimenti: 30 giorni, 12 settimane, 12 mesi. Si cambia con i tre nomi sopra il grafico
-  // oppure con due dita: allargando si va verso i giorni, stringendo verso i mesi.
-  const ORDER = ['month', 'week', 'day'];
-  const ZOOMS = [
-    { id: 'day', label: `${SCALES.day} giorni` },
-    { id: 'week', label: `${SCALES.week} settimane` },
-    { id: 'month', label: `${SCALES.month} mesi` }
-  ];
+  // Tre periodi, chiamati per quanto tempo mostrano: una settimana, un mese, tre mesi. Si cambia con
+  // i tre nomi sopra il grafico oppure con due dita: allargando si stringe il periodo (verso la
+  // settimana), stringendo lo si allarga (verso i tre mesi).
+  const NAMES = {
+    settimana: { label: 'Settimana', span: 'ultimi 7 giorni' },
+    mese: { label: 'Mese', span: 'ultimi 30 giorni' },
+    'tre-mesi': { label: 'Tre mesi', span: 'ultimi tre mesi, settimana per settimana' }
+  };
+  const ZOOMS = PERIODS.map((p) => ({ ...p, ...NAMES[p.id] }));
+  // Dal più largo al più stretto: è l'ordine in cui si ingrandisce.
+  const ORDER = ZOOMS.map((z) => z.id).reverse();
   function stored() {
     try {
       const v = localStorage.getItem('tt-andamento');
-      return ORDER.includes(v) ? v : 'week';
+      return ORDER.includes(v) ? v : 'mese';
     } catch {
-      return 'week';
+      return 'mese';
     }
   }
   let scale = $state(stored());
@@ -57,10 +60,10 @@
     try {
       localStorage.setItem('tt-andamento', v);
     } catch {
-      // Senza memoria del browser si riparte dalle settimane.
+      // Senza memoria del browser si riparte dal mese.
     }
   }
-  /** +1 ingrandisce (verso i giorni), -1 rimpicciolisce (verso i mesi). */
+  /** +1 ingrandisce (verso la settimana), -1 rimpicciolisce (verso i tre mesi). */
   function zoom(step) {
     const next = ORDER[ORDER.indexOf(scale) + step];
     if (next) {
@@ -69,7 +72,8 @@
     }
   }
 
-  const points = $derived(activity(app.events, scale));
+  const period = $derived(ZOOMS.find((z) => z.id === scale));
+  const points = $derived(activity(app.events, period.unit, period.n));
   const last = $derived(points.length - 1);
   const tip = $derived(picked == null ? last : Math.min(picked, last));
   const top = $derived(Math.max(3, ...points.map((p) => p.count)));
@@ -83,11 +87,8 @@
   const when = $derived.by(() => {
     const p = points[tip];
     const back = last - tip;
-    if (scale === 'day') return back === 0 ? 'Oggi' : back === 1 ? 'Ieri' : cap(fmtShort(p.from));
-    if (scale === 'week') return back === 0 ? 'Questa settimana' : back === 1 ? 'Una settimana fa' : `${back} settimane fa`;
-    if (back === 0) return 'Questo mese';
-    const d = parse(p.from);
-    return cap(MONTHS[d.getMonth()]) + (d.getFullYear() === parse(app.today).getFullYear() ? '' : ` ${d.getFullYear()}`);
+    if (period.unit === 'day') return back === 0 ? 'Oggi' : back === 1 ? 'Ieri' : cap(fmtShort(p.from));
+    return back === 0 ? 'Questa settimana' : back === 1 ? 'Una settimana fa' : `${back} settimane fa`;
   });
   const what = $derived.by(() => {
     const p = points[tip];
@@ -237,7 +238,7 @@
         {/if}
       </button>
 
-      <!-- L'attività nel tempo: un punto per giorno, settimana o mese. Un dito scorre fra i punti,
+      <!-- L'attività nel tempo: un punto per giorno (settimana e mese) o per settimana (tre mesi). Un dito scorre fra i punti,
            due dita (o i tre nomi) cambiano l'ingrandimento. -->
       <section class="card">
         <Segmented small options={ZOOMS} value={scale} onchange={setScale} />
@@ -247,7 +248,7 @@
           bind:this={chart}
           role="group"
           tabindex="0"
-          aria-label="Attività, {ZOOMS.find((z) => z.id === scale).label}. Frecce per scorrere, più e meno per ingrandire"
+          aria-label="Attività, {period.span}. Frecce per scorrere, più e meno per ingrandire"
           onpointerdown={down}
           onpointermove={move}
           onpointerup={up}

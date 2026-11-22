@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createPlan, weekAt, weekIndex, weekFor, insertWeek, removeWeek, weekOccurrences, planPhase, defaultSlots, withStages, stageInfo, stagesOf, normalizePlan } from '../src/lib/engine/plan.js';
 import { composeSession, composeTest, matchHalves } from '../src/lib/engine/compose.js';
-import { drillsFor, weaknesses, activity } from '../src/lib/engine/stats.js';
+import { drillsFor, weaknesses, activity, PERIODS } from '../src/lib/engine/stats.js';
 import { BASE, buildCatalog, exerciseLabel, parseExercise, resolveExercise } from '../src/lib/data/catalog.js';
 import { TEMPLATES, templateMinutes } from '../src/lib/data/templates.js';
 import { BLOCKS, SCHEMES, CYCLE_BLOCKS } from '../src/lib/data/program.js';
@@ -434,7 +434,7 @@ describe('andamento', () => {
     { kind: 'livello', date: '2026-11-21' }
   ];
 
-  it('per giorno: gli ultimi 30, oggi in fondo', () => {
+  it('un mese, giorno per giorno: gli ultimi 30, oggi in fondo', () => {
     const d = activity(events, 'day', 30, ref);
     expect(d.length).toBe(30);
     expect(d.at(-1)).toEqual({ from: ref, to: ref, count: 1, minutes: 50 });
@@ -443,19 +443,22 @@ describe('andamento', () => {
     expect(d[0].from).toBe('2026-10-24');
   });
 
-  it('per settimana: da lunedì a domenica', () => {
-    const w = activity(events, 'week', 12, ref);
-    expect(w.length).toBe(12);
+  it('una settimana: gli ultimi 7 giorni, senza le voci in programma e i cambi di livello', () => {
+    const d = activity(events, 'day', 7, ref);
+    expect(d.map((p) => p.count)).toEqual([0, 0, 0, 0, 1, 0, 1]);
+    expect(d[0].from).toBe('2026-11-16');
+  });
+
+  it('tre mesi, settimana per settimana: da lunedì a domenica', () => {
+    const w = activity(events, 'week', 13, ref);
+    expect(w.length).toBe(13);
     expect(w.at(-1)).toEqual({ from: '2026-11-16', to: '2026-11-22', count: 2, minutes: 110 });
     expect(w.at(-2)).toEqual({ from: '2026-11-09', to: '2026-11-15', count: 1, minutes: 120 });
     expect(w.at(-4).count).toBe(1);
+    expect(w[0].from).toBe('2026-08-24');
   });
 
-  it('per mese: mesi interi, senza le voci in programma e i cambi di livello', () => {
-    const m = activity(events, 'month', 12, ref);
-    expect(m.length).toBe(12);
-    expect(m.at(-1)).toEqual({ from: '2026-11-01', to: '2026-11-30', count: 3, minutes: 230 });
-    expect(m.at(-2)).toEqual({ from: '2026-10-01', to: '2026-10-31', count: 1, minutes: 40 });
-    expect(m[0].from).toBe('2025-12-01');
+  it('i tre periodi si chiamano per quanto tempo mostrano', () => {
+    expect(PERIODS.map((p) => [p.id, p.unit, p.n])).toEqual([['settimana', 'day', 7], ['mese', 'day', 30], ['tre-mesi', 'week', 13]]);
   });
 });

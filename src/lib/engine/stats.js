@@ -2,7 +2,7 @@
 
 import { BASE } from '../data/catalog.js';
 import { LIBRARY, LEVEL_IDS } from '../data/library.js';
-import { addDays, addMonths, mondayOf, monthKey, today } from '../util/dates.js';
+import { addDays, mondayOf, today } from '../util/dates.js';
 import { byTime } from './events.js';
 
 /** L'ultima cosa «da correggere» segnata, guardando indietro al massimo `days` giorni. */
@@ -73,24 +73,27 @@ export function totals(events, attempts = []) {
   };
 }
 
-/** Quanti periodi mostra il grafico dell'andamento a ogni ingrandimento. */
-export const SCALES = { day: 30, week: 12, month: 12 };
+/**
+ * I tre periodi del grafico dell'andamento, dal più stretto al più largo: una settimana e un mese
+ * si guardano giorno per giorno, tre mesi settimana per settimana.
+ */
+export const PERIODS = [
+  { id: 'settimana', unit: 'day', n: 7 },
+  { id: 'mese', unit: 'day', n: 30 },
+  { id: 'tre-mesi', unit: 'week', n: 13 }
+];
 
 /**
- * Attività e minuti per periodo, il più recente in fondo: `scale` è 'day', 'week' o 'month'.
- * Ogni periodo ha `from` e `to` (date comprese), `count` e `minutes`.
+ * Attività e minuti degli ultimi `n` giorni (`unit` 'day') o delle ultime `n` settimane, da lunedì
+ * a domenica (`unit` 'week'), il più recente in fondo. Ogni punto ha `from` e `to` (date comprese),
+ * `count` e `minutes`.
  */
-export function activity(events, scale = 'week', n = SCALES[scale], ref = today()) {
+export function activity(events, unit, n, ref = today()) {
   const out = [];
   for (let i = n - 1; i >= 0; i--) {
     let from, to;
-    if (scale === 'day') from = to = addDays(ref, -i);
-    else if (scale === 'month') {
-      const key = addMonths(monthKey(ref), -i);
-      const [y, m] = key.split('-').map(Number);
-      from = `${key}-01`;
-      to = `${key}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
-    } else {
+    if (unit === 'day') from = to = addDays(ref, -i);
+    else {
       from = addDays(mondayOf(ref), -7 * i);
       to = addDays(from, 6);
     }
