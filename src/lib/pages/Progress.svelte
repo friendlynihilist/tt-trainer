@@ -1,15 +1,18 @@
 <script>
-  // Progressi, in due viste. «Andamento»: il livello con quello che manca per il livello dopo, le
-  // ultime dodici settimane in una linea, e il conto delle medaglie. «Mappa»: gli esercizi di ogni
+  // Progressi, in due viste. «Andamento»: il livello con quello che manca per il livello dopo,
+  // l'attività in una linea (per giorno, per settimana o per mese: si sceglie in alto o allargando
+  // e stringendo due dita sul grafico), e il conto delle medaglie. «Mappa»: gli esercizi di ogni
   // colpo, con le medaglie (ui/BrickMap.svelte). Toccando la scheda del livello si aprono gli
   // esercizi chiave; toccando le medaglie si va alla mappa.
+  import { fade } from 'svelte/transition';
   import Check from '@lucide/svelte/icons/check';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import { app } from '../store/app.svelte.js';
-  import { ui } from '../store/ui.svelte.js';
+  import { ui, buzz } from '../store/ui.svelte.js';
   import { PLAYER_LEVEL, TIERS } from '../data/library.js';
   import { FAMILIES } from '../data/taxonomy.js';
-  import { weeklyActivity, weekStreak } from '../engine/stats.js';
+  import { activity, weekStreak, SCALES } from '../engine/stats.js';
+  import { MONTHS, fmtShort, parse } from '../util/dates.js';
   import { levelProgress } from '../engine/player.js';
   import { medalCount } from '../engine/medals.js';
   import PageHead from '../ui/PageHead.svelte';
@@ -25,15 +28,141 @@
   const view = $derived(ui.route.params[0] === 'mappa' ? 'mappa' : 'andamento');
   const brick = $derived(BRICK[ui.route.params[1]] && !BRICK[ui.route.params[1]].extra ? ui.route.params[1] : (app.meta?.focus?.[0] ?? 'dritto'));
 
-  const weeks = $derived(weeklyActivity(app.events, 12));
   const streak = $derived(weekStreak(app.events));
-  const top = $derived(Math.max(3, ...weeks.map((w) => w.count)));
-  const X = (i) => 8 + i * (304 / 11);
+
+  // ── Il grafico ──
+  // Tre ingrandimenti: 30 giorni, 12 settimane, 12 mesi. Si cambia con i tre nomi sopra il grafico
+  // oppure con due dita: allargando si va verso i giorni, stringendo verso i mesi.
+  const ORDER = ['month', 'week', 'day'];
+  const ZOOMS = [
+    { id: 'day', label: `${SCALES.day} giorni` },
+    { id: 'week', label: `${SCALES.week} settimane` },
+    { id: 'month', label: `${SCALES.month} mesi` }
+  ];
+  function stored() {
+    try {
+      const v = localStorage.getItem('tt-andamento');
+      return ORDER.includes(v) ? v : 'week';
+    } catch {
+      return 'week';
+    }
+  }
+  let scale = $state(stored());
+  /** Il punto scelto nel grafico: null = l'ultimo. */
+  let picked = $state(null);
+  function setScale(v) {
+    if (!ORDER.includes(v) || v === scale) return;
+    scale = v;
+    picked = null;
+    try {
+      localStorage.setItem('tt-andamento', v);
+    } catch {
+      // Senza memoria del browser si riparte dalle settimane.
+    }
+  }
+  /** +1 ingrandisce (verso i giorni), -1 rimpicciolisce (verso i mesi). */
+  function zoom(step) {
+    const next = ORDER[ORDER.indexOf(scale) + step];
+    if (next) {
+      setScale(next);
+      buzz();
+    }
+  }
+
+  const points = $derived(activity(app.events, scale));
+  const last = $derived(points.length - 1);
+  const tip = $derived(picked == null ? last : Math.min(picked, last));
+  const top = $derived(Math.max(3, ...points.map((p) => p.count)));
+  const X = (i) => 8 + i * (304 / Math.max(1, last));
   const Y = (v) => 96 - (v / top) * 84;
-  const line = $derived(weeks.map((w, i) => `${X(i)},${Y(w.count)}`).join(' '));
-  /** La settimana scelta nel grafico: si parte dall'ultima. */
-  let tip = $state(11);
-  const ago = $derived(tip === 11 ? 'Questa settimana' : tip === 10 ? 'Una settimana fa' : `${11 - tip} settimane fa`);
+  const line = $derived(points.map((p, i) => `${X(i)},${Y(p.count)}`).join(' '));
+  const dense = $derived(points.length > 16);
+
+  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  /** Il periodo del punto scelto, a parole. */
+  const when = $derived.by(() => {
+    const p = points[tip];
+    const back = last - tip;
+    if (scale === 'day') return back === 0 ? 'Oggi' : back === 1 ? 'Ieri' : cap(fmtShort(p.from));
+    if (scale === 'week') return back === 0 ? 'Questa settimana' : back === 1 ? 'Una settimana fa' : `${back} settimane fa`;
+    if (back === 0) return 'Questo mese';
+    const d = parse(p.from);
+    return cap(MONTHS[d.getMonth()]) + (d.getFullYear() === parse(app.today).getFullYear() ? '' : ` ${d.getFullYear()}`);
+  });
+  const what = $derived.by(() => {
+    const p = points[tip];
+    if (!p.count) return 'nessuna attività';
+    return `${p.count} attività${p.minutes ? `, ${p.minutes} minuti` : ''}`;
+  });
+
+  // Un dito scorre fra i punti; due dita cambiano l'ingrandimento.
+  let chart = $state();
+  const fingers = new Map();
+  let spread = 0;
+  const gap = () => {
+    const [a, b] = [...fingers.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  function pickAt(clientX) {
+    const r = chart.getBoundingClientRect();
+    const x = ((clientX - r.left) / r.width) * 320;
+    picked = Math.max(0, Math.min(last, Math.round(((x - 8) / 304) * last)));
+  }
+  /** Il punto scelto prima che arrivasse il primo dito: con due dita non si sceglie, si ingrandisce. */
+  let before = null;
+  function down(e) {
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.size === 2) {
+      spread = gap();
+      picked = before;
+    } else if (fingers.size === 1) {
+      before = picked;
+      pickAt(e.clientX);
+    }
+  }
+  function move(e) {
+    if (!fingers.has(e.pointerId)) return;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.size === 1) pickAt(e.clientX);
+    else if (fingers.size === 2 && spread > 0) {
+      const now = gap();
+      if (now > spread * 1.45) {
+        zoom(1);
+        spread = now;
+      } else if (now < spread / 1.45) {
+        zoom(-1);
+        spread = now;
+      }
+    }
+  }
+  function up(e) {
+    fingers.delete(e.pointerId);
+    spread = 0;
+  }
+  /** Sul computer: il gesto delle due dita sul trackpad arriva come rotella con Ctrl. */
+  let wheelAt = 0;
+  function wheel(e) {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    if (Date.now() - wheelAt < 350 || Math.abs(e.deltaY) < 2) return;
+    wheelAt = Date.now();
+    zoom(e.deltaY < 0 ? 1 : -1);
+  }
+  function keys2(e) {
+    if (e.key === 'ArrowLeft') picked = Math.max(0, tip - 1);
+    else if (e.key === 'ArrowRight') picked = Math.min(last, tip + 1);
+    else if (e.key === '+' || e.key === '=') zoom(1);
+    else if (e.key === '-') zoom(-1);
+    else return;
+    e.preventDefault();
+  }
+  $effect(() => {
+    // La rotella va ascoltata «non passiva» per poter fermare lo zoom della pagina.
+    const el = chart;
+    if (!el) return;
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => el.removeEventListener('wheel', wheel);
+  });
 
   // ── Il livello ──
   const progress = $derived(levelProgress({ level: app.player.level, medals: app.medals, attempts: app.attempts, catalog: app.catalog }));
@@ -108,21 +237,40 @@
         {/if}
       </button>
 
-      <!-- Le ultime dodici settimane: un punto per settimana, si tocca per leggere il numero. -->
+      <!-- L'attività nel tempo: un punto per giorno, settimana o mese. Un dito scorre fra i punti,
+           due dita (o i tre nomi) cambiano l'ingrandimento. -->
       <section class="card">
-        <h2 class="t-name">12 settimane</h2>
-        <div class="chart">
-          <svg viewBox="0 0 320 112" role="img" aria-label="Attività per settimana nelle ultime dodici settimane">
-            <path d="M8 96H312M8 54H312M8 12H312" stroke="var(--line)" stroke-width="1" />
-            <polygon points="8,96 {line} 312,96" fill="var(--accent)" opacity="0.16" />
-            <polyline points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" />
-            {#each weeks as w, i (w.monday)}
-              <circle cx={X(i)} cy={Y(w.count)} r={tip === i ? 6 : 4} fill={tip === i ? 'var(--accent)' : 'var(--card)'} stroke="var(--accent)" stroke-width="2.5" />
-              <circle class="hit" cx={X(i)} cy={Y(w.count)} r="14" fill="transparent" role="button" tabindex="-1" aria-label="Settimana {i + 1}: {w.count} attività" onclick={() => (tip = i)} onkeydown={() => {}} />
-            {/each}
-          </svg>
+        <Segmented small options={ZOOMS} value={scale} onchange={setScale} />
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div
+          class="chart"
+          bind:this={chart}
+          role="group"
+          tabindex="0"
+          aria-label="Attività, {ZOOMS.find((z) => z.id === scale).label}. Frecce per scorrere, più e meno per ingrandire"
+          onpointerdown={down}
+          onpointermove={move}
+          onpointerup={up}
+          onpointercancel={up}
+          onpointerleave={up}
+          onkeydown={keys2}
+        >
+          {#key scale}
+            <svg viewBox="0 0 320 112" aria-hidden="true" in:fade={{ duration: 220 }}>
+              <path d="M8 96H312M8 54H312M8 12H312" stroke="var(--line)" stroke-width="1" />
+              <polygon points="8,96 {line} 312,96" fill="var(--accent)" opacity="0.16" />
+              <polyline points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" />
+              {#each points as p, i (p.from)}
+                {#if tip === i}
+                  <circle cx={X(i)} cy={Y(p.count)} r="6" fill="var(--accent)" stroke="var(--accent)" stroke-width="2.5" />
+                {:else if !dense || p.count}
+                  <circle cx={X(i)} cy={Y(p.count)} r={dense ? 2.5 : 4} fill="var(--card)" stroke="var(--accent)" stroke-width={dense ? 2 : 2.5} />
+                {/if}
+              {/each}
+            </svg>
+          {/key}
         </div>
-        <span class="muted small">{ago}: <b class="ink">{weeks[tip].count} attività</b></span>
+        <span class="muted small" aria-live="polite">{when}: <b class="ink">{what}</b></span>
       </section>
 
       <!-- Le medaglie: quante per tipo. Toccando si va alla mappa, dove si vede di quali esercizi. -->
@@ -216,15 +364,23 @@
   .ink {
     color: var(--ink);
   }
+  /* Il grafico tiene per sé i gesti orizzontali e quelli a due dita; in verticale la pagina scorre. */
+  .chart {
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+  .chart:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
   .chart svg {
     display: block;
     width: 100%;
     height: auto;
     overflow: visible;
-  }
-  .hit {
-    cursor: pointer;
-    outline: none;
   }
   .quad {
     display: grid;

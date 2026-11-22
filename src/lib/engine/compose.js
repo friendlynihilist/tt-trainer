@@ -106,8 +106,9 @@ export function composeSession({ week, template, catalog = BASE, medals = {}, pa
     if (changed.length) groups.push(changed);
   });
 
-  // Gli allenamenti costruiti con i fondamentali non hanno pause: la durata è la somma dei fondamentali.
-  const all = pauses && t?.gaps !== false ? withPauses(groups) : groups.flat();
+  // Fra un blocco e l'altro c'è sempre un minuto di pausa, anche negli allenamenti per fondamentali
+  // (quelli salvati fino alla 0.9.1 hanno ancora `gaps: false`: non conta più).
+  const all = pauses ? withPauses(groups) : groups.flat();
   return {
     block: month,
     template: t ? { id: t.id, name: t.name, color: t.color } : null,

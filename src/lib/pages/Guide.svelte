@@ -75,7 +75,7 @@
       <p>Un allenamento è una fila di fondamentali. Ogni fondamentale ha la sua durata; se ha più esercizi, il tempo si divide in parti uguali. La partita si gioca metà {MATCH_TYPES.risk.name.toLowerCase()} e metà {MATCH_TYPES.scheme.name.toLowerCase()}.</p>
       <ul class="rules">
         <li><b>Il cambio.</b> A metà di ogni esercizio in due suona un doppio bip e il riquadro del tempo diventa scuro: tocca al compagno. Se comincia lui, tocca l’etichetta «Tocca a te» e i turni si invertono. Nel palleggio e negli esercizi da solo non c’è cambio.</li>
-        <li><b>Le pause.</b> Gli allenamenti costruiti con i fondamentali non hanno pause: la durata è la somma dei fondamentali. Nei modelli di base fra una fase e l’altra c’è {PAUSE_MINUTES} minuto di pausa, che puoi saltare.</li>
+        <li><b>Le pause.</b> Fra un fondamentale e l’altro c’è sempre {PAUSE_MINUTES} minuto di pausa: quando finisce, un bip ti avvisa e il fondamentale dopo comincia da solo. Se non ti serve la salti. La durata di un allenamento conta anche le pause.</li>
       </ul>
     </Collapse>
 

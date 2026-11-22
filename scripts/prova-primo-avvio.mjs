@@ -69,9 +69,9 @@ check('chiuso il fondamentale, la guida passa all’ordine', await coach(), 'Cam
 await shot('3-guida-ordine'); await tap('.coach .next');
 check('guida finita e ricordata', [await coach(), (await store()).meta.tour], [null, { build: true }]);
 await tap('[data-tile=servizio]'); await tap('[data-tile=partita]');
-check('tre fondamentali', [await names(), await total()], [['Dritto', 'Servizio', 'Partita'], '50']);
+check('tre fondamentali', [await names(), await total()], [['Dritto', 'Servizio', 'Partita'], '52']);
 { const g = await at('#tower .brk:nth-child(2) [data-grip]', 0.5, 0.4); await drag(g, { x: g.x, y: g.y - 40 }); }
-check('mai sotto i 10 minuti', await total(), '50');
+check('mai sotto i 10 minuti', await total(), '52');
 { const s1 = await at('#tower .brk:nth-child(2)'); const d1 = await at('#tower .brk:nth-child(1)', 0.5, 0.1); await drag(s1, { x: s1.x, y: d1.y - 10 }, 20); await sleep(300); }
 check('spostato in cima', await names(), ['Servizio', 'Dritto', 'Partita']);
 { const t1 = await at('[data-tile=gambe]'); const p1 = await at('#tower .brk:nth-child(3)', 0.5, 0.2); await drag(t1, { x: p1.x, y: p1.y }, 20); }
@@ -80,7 +80,7 @@ await shot('4-torre');
 await tapText('/^Avanti$/'); await shot('5-per-quanto'); await tapText('/^Un mese/', '.choice'); await shot('6-giorni');
 await tapText('/^Avanti$/'); await sleep(700); await shot('7-pronto'); await tapText('/^Andiamo$/'); await sleep(1800);
 const d = await store();
-check('salvato: livello, colpi, allenamento, programma di 4 settimane', [d.meta.onboarded, d.meta.player.level, d.meta.focus, d.meta.custom.templates.length, d.meta.custom.templates[0].name, d.meta.custom.templates[0].gaps, d.meta.plan.stages, d.meta.plan.slots.map((s) => s.day)], [true, 'intermedio', ['dritto', 'servizio'], 1, 'Servizio, dritto e gambe', false, [{ b: '1', n: 4, u: 'w' }], [2, 5]]);
+check('salvato: livello, colpi, allenamento, programma di 4 settimane', [d.meta.onboarded, d.meta.player.level, d.meta.focus, d.meta.custom.templates.length, d.meta.custom.templates[0].name, d.meta.custom.templates[0].gaps ?? null, d.meta.plan.stages, d.meta.plan.slots.map((s) => s.day)], [true, 'intermedio', ['dritto', 'servizio'], 1, 'Servizio, dritto e gambe', null, [{ b: '1', n: 4, u: 'w' }], [2, 5]]);
 await shot('8-oggi-guida');
 check('in Oggi parte la guida delle medaglie', await coach(), 'Le medaglie');
 check('il fuoco è sulla scheda delle medaglie', await sameBox('.coach .ring', '#nearcard'), true);

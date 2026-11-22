@@ -2,7 +2,7 @@
 
 import { BASE } from '../data/catalog.js';
 import { LIBRARY, LEVEL_IDS } from '../data/library.js';
-import { addDays, mondayOf, today } from '../util/dates.js';
+import { addDays, addMonths, mondayOf, monthKey, today } from '../util/dates.js';
 import { byTime } from './events.js';
 
 /** L'ultima cosa «da correggere» segnata, guardando indietro al massimo `days` giorni. */
@@ -73,23 +73,38 @@ export function totals(events, attempts = []) {
   };
 }
 
-/** Attività per settimana nelle ultime `n` settimane (la più recente in fondo). */
-export function weeklyActivity(events, n = 12) {
-  const thisMonday = mondayOf(today());
-  const weeks = [];
+/** Quanti periodi mostra il grafico dell'andamento a ogni ingrandimento. */
+export const SCALES = { day: 30, week: 12, month: 12 };
+
+/**
+ * Attività e minuti per periodo, il più recente in fondo: `scale` è 'day', 'week' o 'month'.
+ * Ogni periodo ha `from` e `to` (date comprese), `count` e `minutes`.
+ */
+export function activity(events, scale = 'week', n = SCALES[scale], ref = today()) {
+  const out = [];
   for (let i = n - 1; i >= 0; i--) {
-    const monday = addDays(thisMonday, -7 * i);
-    weeks.push({ monday, sunday: addDays(monday, 6), count: 0, minutes: 0 });
+    let from, to;
+    if (scale === 'day') from = to = addDays(ref, -i);
+    else if (scale === 'month') {
+      const key = addMonths(monthKey(ref), -i);
+      const [y, m] = key.split('-').map(Number);
+      from = `${key}-01`;
+      to = `${key}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+    } else {
+      from = addDays(mondayOf(ref), -7 * i);
+      to = addDays(from, 6);
+    }
+    out.push({ from, to, count: 0, minutes: 0 });
   }
   for (const e of events) {
     if (e.kind === 'livello' || e.planned) continue;
-    const w = weeks.find((x) => e.date >= x.monday && e.date <= x.sunday);
-    if (w) {
-      w.count++;
-      w.minutes += e.minutes ?? 0;
+    const p = out.find((x) => e.date >= x.from && e.date <= x.to);
+    if (p) {
+      p.count++;
+      p.minutes += e.minutes ?? 0;
     }
   }
-  return weeks;
+  return out;
 }
 
 /** Settimane di fila (fino a questa) con almeno un'attività. */

@@ -10,6 +10,15 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.9.2',
+    date: '2026-11-22',
+    title: 'La pausa e l’andamento',
+    items: [
+      { icon: 'coffee', text: 'Fra un fondamentale e l’altro c’è sempre un minuto di pausa. Quando finisce suona un bip e il fondamentale dopo parte da solo; se non ti serve la salti. La durata degli allenamenti ora conta anche le pause.' },
+      { icon: 'trending', text: 'In Progressi il grafico si guarda per giorni, per settimane o per mesi: scegli in alto, oppure allarga e stringi due dita sul grafico. Con un dito scorri fra i punti.' }
+    ]
+  },
+  {
     version: '0.9.1',
     date: '2026-11-21',
     title: 'La settimana in Oggi',

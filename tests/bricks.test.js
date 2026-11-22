@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BRICKS, SKILLS, brickExercises, brickMap, brickOfExercise, suggest, proposals, workoutName, toTemplate, bricksOf, editableBricks, makeBrick, totalMinutes, lanesOf, MIN_MINUTES } from '../src/lib/data/bricks.js';
+import { BRICKS, SKILLS, brickExercises, brickMap, brickOfExercise, suggest, proposals, workoutName, toTemplate, bricksOf, editableBricks, makeBrick, totalMinutes, pauseMinutes, lanesOf, MIN_MINUTES } from '../src/lib/data/bricks.js';
 import { BASE } from '../src/lib/data/catalog.js';
 import { LIBRARY, LEVEL_IDS } from '../src/lib/data/library.js';
 import { templateMinutes, TEMPLATES } from '../src/lib/data/templates.js';
@@ -59,7 +59,8 @@ describe('mattoni', () => {
   it('tre allenamenti proposti attorno ai colpi scelti, mai mattoni sotto i dieci minuti', () => {
     const list = proposals(['dritto', 'servizio'], 'intermedio');
     expect(list.map((w) => w.name)).toEqual(['Dritto e servizio', 'Dritto, servizio e ricezione', 'Dritto, servizio, ricezione e gambe']);
-    expect(list.map((w) => totalMinutes(w.bricks))).toEqual([50, 60, 90]);
+    // Fondamentali più un minuto di pausa fra l'uno e l'altro: 50 + 3, 60 + 4, 90 + 5.
+    expect(list.map((w) => totalMinutes(w.bricks))).toEqual([53, 64, 95]);
     for (const w of list) for (const b of w.bricks) expect(b.minutes).toBeGreaterThanOrEqual(MIN_MINUTES);
     expect(proposals([], 'principiante')[0].name).toBe('Dritto');
   });
@@ -72,14 +73,18 @@ describe('mattoni', () => {
     expect(workoutName([])).toBe('Allenamento');
   });
 
-  it('un allenamento a mattoni dura la somma dei mattoni, senza pause', () => {
+  it('un allenamento a mattoni dura la somma dei mattoni più un minuto di pausa fra l’uno e l’altro', () => {
     const bricks = proposals(['rovescio'], 'intermedio')[1].bricks;
     const t = { id: 'x', ...toTemplate(bricks) };
-    expect(t.gaps).toBe(false);
+    expect(pauseMinutes(bricks)).toBe(3);
+    expect(totalMinutes(bricks)).toBe(bricks.reduce((n, b) => n + b.minutes, 0) + 3);
     expect(templateMinutes(t)).toBe(totalMinutes(bricks));
     const session = composeSession({ template: t });
     expect(session.minutes).toBe(totalMinutes(bricks));
-    expect(session.steps.some((s) => s.kind === 'pause')).toBe(false);
+    expect(session.steps.filter((s) => s.kind === 'pause').length).toBe(3);
+    // Anche quelli salvati prima, quando non avevano pause.
+    expect(composeSession({ template: { ...t, gaps: false } }).minutes).toBe(totalMinutes(bricks));
+    expect(templateMinutes({ ...t, gaps: false })).toBe(totalMinutes(bricks));
     // I blocchi della sessione sono i mattoni, con il loro colore.
     const blocks = sessionBlocks(session, BASE);
     expect(blocks.map((b) => b.minutes)).toEqual(bricks.map((b) => b.minutes));

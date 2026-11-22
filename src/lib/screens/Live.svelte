@@ -181,8 +181,12 @@
       bell([988], 200);
       ui.toast('Cambio: ora partitella a schema');
     }
-    // Finita la pausa si passa da soli al blocco dopo.
-    if (step.kind === 'pause' && sec >= step.minutes * 60) goTo(draft.step + 1);
+    // Finita la pausa un bip avvisa e si passa da soli al blocco dopo.
+    if (step.kind === 'pause' && sec >= step.minutes * 60) {
+      bell([1318, 1760], [160, 80, 160]);
+      goTo(draft.step + 1);
+      return;
+    }
     if (step.maint && !t.maint && sec >= (step.minutes - step.maint.minutes) * 60) {
       t.maint = true;
       bell([988], 200);

@@ -8,12 +8,13 @@
 // · Riscaldamento (il palleggio) e Partita non sono colpi: si possono mettere in un allenamento, ma
 //   non hanno una mappa.
 //
-// Gli allenamenti per fondamentali non hanno la pausa di un minuto fra un blocco e l'altro (`gaps: false`):
-// la durata è la somma dei fondamentali, come si vede mentre li costruisci.
+// Fra un fondamentale e l'altro c'è un minuto di pausa, come in tutti gli allenamenti: la durata è la
+// somma dei fondamentali più le pause, e il costruttore la mostra già così.
 
 import { STROKE } from './taxonomy.js';
 import { LEVEL_IDS } from './library.js';
 import { BASE } from './catalog.js';
+import { PAUSE_MINUTES } from './program.js';
 
 const HAND = ['palleggio', 'attacco', 'controllo'];
 
@@ -154,7 +155,11 @@ export function workoutName(bricks) {
   return low.length === 1 ? low[0] : low.length === 2 ? low.join(' e ') : `${low.slice(0, -1).join(', ')} e ${low[low.length - 1]}`;
 }
 
-export const totalMinutes = (bricks) => bricks.reduce((n, b) => n + (Number(b.minutes) || 0), 0);
+/** I minuti di pausa di un allenamento: uno fra un fondamentale e l'altro. */
+export const pauseMinutes = (bricks) => Math.max(0, bricks.length - 1) * PAUSE_MINUTES;
+
+/** La durata di un allenamento: i fondamentali più le pause. */
+export const totalMinutes = (bricks) => bricks.reduce((n, b) => n + (Number(b.minutes) || 0), 0) + pauseMinutes(bricks);
 
 /** Tre allenamenti proposti attorno ai colpi scelti: corto, completo, lungo. */
 export function proposals(focus, level, catalog = BASE, medals = {}) {
@@ -180,7 +185,6 @@ export function toTemplate(bricks, name = null) {
   return {
     name: name?.trim() || workoutName(bricks),
     color: BRICK[first?.type]?.color ?? 'slate',
-    gaps: false,
     blocks: bricks.map((b) => {
       const def = BRICK[b.type];
       const minutes = Math.max(MIN_MINUTES, Number(b.minutes) || def.minutes);

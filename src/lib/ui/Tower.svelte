@@ -171,7 +171,7 @@
 
 <div class="head">
   <span class="total">{total}</span>
-  <span class="muted unit">minuti</span>
+  <span class="muted unit">minuti{bricks.length > 1 ? ', pause comprese' : ''}</span>
 </div>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->

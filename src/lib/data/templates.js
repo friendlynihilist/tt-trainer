@@ -11,8 +11,8 @@
 //   · level (solo partitella): la variante per livello (packages.js, MATCH_VARIANTS).
 //
 // Un allenamento: { id, name, color, blocks }. Fra un blocco e l'altro c'è un minuto di pausa, che
-// si aggiunge alla durata dei blocchi (90 minuti = 85 di blocchi + 5 pause). Gli allenamenti a
-// fondamentali (bricks.js) hanno `gaps: false`: niente pause, la durata è la somma dei fondamentali.
+// si aggiunge alla durata dei blocchi (90 minuti = 85 di blocchi + 5 pause). Vale anche per gli
+// allenamenti a fondamentali (bricks.js); il vecchio `gaps: false` di quelli salvati non conta più.
 //
 // Prima della 0.4 la pausa si toglieva al blocco dopo. I modelli salvati così (`steps`, oppure
 // blocchi con `pauses: 'inside'`) si leggono convertiti (normalizeTemplate): ogni blocco dopo il
@@ -127,5 +127,5 @@ export function normalizeTemplate(t) {
 export function templateMinutes(t) {
   const n = normalizeTemplate(t);
   if (!n) return 0;
-  return n.blocks.reduce((m, b) => m + (Number(b.minutes) || 0), 0) + (n.gaps === false ? 0 : Math.max(0, n.blocks.length - 1));
+  return n.blocks.reduce((m, b) => m + (Number(b.minutes) || 0), 0) + Math.max(0, n.blocks.length - 1);
 }
