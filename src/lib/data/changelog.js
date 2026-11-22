@@ -10,6 +10,17 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.10.0',
+    date: '2026-11-22',
+    title: 'Con chi ti alleni, e le note in un posto solo',
+    items: [
+      { icon: 'users', text: 'In Oggi, sopra «Inizia», scegli con chi ti alleni: da solo, con il robot, con uno del gruppo o con qualcuno fuori dall’app. L’app si ricorda l’ultima scelta.' },
+      { icon: 'swap', text: 'Durante l’allenamento il cambio dice il nome del compagno. Da solo e con il robot non c’è cambio: il tempo è tutto tuo.' },
+      { icon: 'pencil', text: 'Le note stanno tutte nel Diario, nella vista «Note», divise in «Colpi» e «Tornei e altro». Quelle che avevi già scritto sono lì: appunti, cose da correggere e note tecniche.' },
+      { icon: 'calendar', text: 'Una nota si scrive sempre con lo stesso modulo: su un colpo, oppure su un allenamento o un torneo. Dalla mappa e dalle schede il conto delle note ti porta nel Diario, già sul colpo giusto.' }
+    ]
+  },
+  {
     version: '0.9.2',
     date: '2026-11-22',
     title: 'La pausa e l’andamento',

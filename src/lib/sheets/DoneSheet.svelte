@@ -1,7 +1,7 @@
 <script>
   // Una voce del diario già fatta, da leggere: che cos'era (per un allenamento, i suoi fondamentali),
-  // quanto è durata, i risultati, com'è andata e le note sui colpi scritte quel giorno. Per
-  // correggerla c'è «Modifica», che apre il modulo.
+  // quanto è durata, con chi, i risultati, com'è andata e le sue note: quelle legate alla voce e i
+  // testi rimasti dentro la voce dalle versioni di prima. Per correggerla c'è «Modifica».
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { KIND } from '../data/taxonomy.js';
@@ -13,6 +13,9 @@
   import { FEEL } from '../ui/FeelPicker.svelte';
   import Sheet from '../ui/Sheet.svelte';
   import BrickStack from '../ui/BrickStack.svelte';
+  import { allNotes } from '../engine/notes.js';
+  import { partnerWith } from '../engine/partner.js';
+  import { describeOld } from '../ui/oldNotes.js';
 
   let { id } = $props();
 
@@ -21,7 +24,7 @@
   const title = $derived(!ev ? '' : training ? eventName(ev, app.catalog) : ev.kind === 'livello' ? 'Livello' : (KIND[ev.kind]?.name ?? 'Attività'));
   const bricks = $derived(training ? eventBricks(ev, app.catalog) : []);
   const facts = $derived(
-    !ev ? '' : [fmtLong(ev.date).replace(/^./, (c) => c.toUpperCase()), ev.minutes ? fmtDuration(ev.minutes) : null, ev.partner?.name ? `con ${ev.partner.name}` : null].filter(Boolean).join(' · ')
+    !ev ? '' : [fmtLong(ev.date).replace(/^./, (c) => c.toUpperCase()), ev.minutes ? fmtDuration(ev.minutes) : null, partnerWith(ev.partner).replace(/^./, (c) => c.toLowerCase()) || null].filter(Boolean).join(' · ')
   );
   // I risultati: per ogni esercizio misurato, il migliore di quel giorno.
   const scores = $derived(
@@ -35,13 +38,19 @@
           })
           .filter(Boolean)
   );
-  // Le note sui colpi scritte quel giorno, con il colore del fondamentale.
+  // Le note della voce: quelle legate a lei (o, per le note di prima, scritte quel giorno) e i testi
+  // rimasti dentro la voce. Quelle sui colpi hanno il colore del fondamentale.
   const notes = $derived(
     !ev
       ? []
-      : app.notes
-          .filter((n) => n.date === ev.date && n.text)
-          .map((n) => ({ id: n.id, text: n.text, brick: BRICK[brickOfStroke(app.stroke(n.stroke))] ?? null, name: app.strokeName(n.stroke, true) }))
+      : allNotes(
+          app.notes.filter((n) => (n.eventId ? n.eventId === ev.id : n.stroke && n.date === ev.date)),
+          [ev],
+          describeOld
+        )
+          .filter((n) => n.text || n.stroke)
+          .reverse()
+          .map((n) => ({ ...n, brick: BRICK[brickOfStroke(app.stroke(n.stroke))] ?? null, name: n.stroke ? app.strokeName(n.stroke, true) : '' }))
   );
 
   function edit() {
@@ -66,16 +75,24 @@
       </div>
     {/if}
 
-    {#if ev.feel || ev.focus?.stroke || ev.note}
+    {#if ev.feel}
       <div class="group">
-        {#if ev.feel}<div class="line"><span class="grow muted">Com’è andata</span><b>{FEEL[ev.feel - 1]}</b></div>{/if}
-        {#if ev.focus?.stroke}<div class="line"><span class="grow muted">Da correggere</span><b>{app.strokeName(ev.focus.stroke, true)}</b></div>{/if}
-        {#if ev.note}<p class="text">{ev.note}</p>{/if}
+        <div class="line"><span class="grow muted">Com’è andata</span><b>{FEEL[ev.feel - 1]}</b></div>
       </div>
     {/if}
 
-    {#each notes as n (n.id)}
-      <span class="note" data-fam={n.brick?.fam ?? 'libero'}><b>{n.brick?.name ?? n.name}</b> {n.text}</span>
+    {#each notes as n (n.key)}
+      {#if n.source === 'note'}
+        <button class="note" data-fam={n.brick?.fam ?? 'libero'} onclick={() => ui.open('note', { id: n.id })}>
+          {#if n.stroke}<b>{n.brick?.name ?? n.name}</b>{/if}
+          {n.text}
+        </button>
+      {:else}
+        <span class="note" data-fam={n.brick?.fam ?? 'libero'}>
+          {#if n.stroke}<b>{n.brick?.name ?? n.name}</b>{/if}
+          {n.text}
+        </span>
+      {/if}
     {/each}
 
     {#snippet footer()}
@@ -106,17 +123,14 @@
     padding: 8px 0;
     text-align: left;
   }
-  .line + .line,
-  .line + .text {
+  .line + .line {
     border-top: 1px solid var(--line);
-  }
-  .text {
-    margin: 0;
-    padding: 12px 0;
-    white-space: pre-wrap;
   }
   .note {
     display: block;
+    width: 100%;
+    text-align: left;
+    white-space: pre-line;
     margin-top: 12px;
     padding-left: 10px;
     border-left: 3px solid var(--f);

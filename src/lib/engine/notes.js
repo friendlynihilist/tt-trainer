@@ -1,12 +1,17 @@
-// Le note per colpo: un diario libero per ogni colpo, senza la struttura dei test. Ogni nota sta in
-// Firestore sotto users/{uid}/notes/{id} (in modalità locale nel browser) ed è solo tua.
+// Le note: un testo, una data, e la cosa a cui è legata. Ogni nota sta in Firestore sotto
+// users/{uid}/notes/{id} (in modalità locale nel browser) ed è solo tua.
 //
 // Una nota:
 //   { id, stroke, family, date, text, feel, ex, eventId, createdAt, updatedAt }
-//   · stroke: id del colpo (taxonomy.js o colpo tuo); family: la famiglia del colpo, salvata con la
-//     nota così i grafici per famiglia (fase 5) non devono ricostruirla;
-//   · feel: sensazione da 1 a 5, oppure null;
-//   · ex, eventId: l'esercizio e l'allenamento in cui è nata, facoltativi.
+//   · stroke: id del colpo (taxonomy.js o colpo tuo), oppure null se la nota non è su un colpo;
+//     family: la famiglia del colpo, salvata con la nota;
+//   · feel: sensazione da 1 a 5, oppure null (solo per le note sui colpi);
+//   · ex, eventId: l'esercizio e la voce del diario (allenamento, torneo…) in cui è nata, facoltativi.
+//
+// Si leggono tutte in un posto solo (Diario → Note), in due gruppi: «Colpi» (hanno un colpo) e
+// «Tornei e altro» (non ce l'hanno). Nello stesso elenco entrano anche i testi rimasti dentro le
+// voci del diario scritte prima della 0.10: gli appunti, il «da correggere» e le note tecniche
+// (allNotes). Quelli non si spostano: restano nella voce, e da lì si aprono.
 // Queste funzioni non leggono lo stato dell'app: ricevono dati e restituiscono dati.
 
 import { STROKE } from '../data/taxonomy.js';
@@ -25,15 +30,15 @@ const clampFeel = (v) => {
  * `strokes` sono i colpi disponibili (di base e tuoi), per trovare la famiglia.
  */
 export function makeNote(input, { strokes = STROKE, now = Date.now() } = {}) {
-  const stroke = input.stroke;
-  const family = strokes[stroke]?.family ?? input.family ?? null;
+  const stroke = input.stroke || null;
+  const family = stroke ? (strokes[stroke]?.family ?? input.family ?? null) : null;
   const note = {
     id: input.id,
     stroke,
     family,
     date: input.date,
     text: String(input.text ?? '').trim(),
-    feel: clampFeel(input.feel),
+    feel: stroke ? clampFeel(input.feel) : null,
     createdAt: input.createdAt ?? now,
     updatedAt: now
   };
@@ -42,9 +47,44 @@ export function makeNote(input, { strokes = STROKE, now = Date.now() } = {}) {
   return note;
 }
 
-/** Una nota ha senso se ha un colpo, una data e almeno il testo o la sensazione. */
+/** Una nota ha senso se ha una data e il testo; su un colpo basta anche solo la sensazione. */
 export function isValidNote(n) {
-  return Boolean(n?.stroke && n.date && (n.text?.trim() || clampFeel(n.feel)));
+  return Boolean(n?.date && (n.text?.trim() || (n.stroke && clampFeel(n.feel))));
+}
+
+/** I due gruppi delle note. */
+export const NOTE_GROUPS = [
+  { id: 'colpi', name: 'Colpi' },
+  { id: 'altro', name: 'Tornei e altro' }
+];
+
+/**
+ * Tutte le note in un elenco solo, dalla più recente: quelle scritte come note e i testi rimasti
+ * nelle voci del diario (appunti, «da correggere», note tecniche). Ogni riga:
+ *   { key, source, id, eventId, date, createdAt, stroke, group, text, feel }
+ *   · source: 'note' (si apre e si modifica come nota) oppure 'event', 'focus', 'obs' (si apre la voce);
+ *   · group: 'colpi' se ha un colpo, altrimenti 'altro'.
+ * `describe` scrive il testo di «da correggere» e delle note tecniche: (parti) → stringa.
+ */
+export function allNotes(notes = [], events = [], describe = () => '') {
+  const out = [];
+  for (const n of notes) {
+    out.push({ key: `n:${n.id}`, source: 'note', id: n.id, eventId: n.eventId ?? null, date: n.date, createdAt: n.createdAt ?? 0, stroke: n.stroke || null, group: n.stroke ? 'colpi' : 'altro', text: n.text ?? '', feel: n.feel ?? null, ex: n.ex ?? null });
+  }
+  for (const e of events) {
+    if (e.planned || e.kind === 'livello') continue;
+    const at = { eventId: e.id, date: e.date, createdAt: e.createdAt ?? 0, id: null, feel: null, ex: null };
+    if (e.note?.trim()) out.push({ ...at, key: `e:${e.id}`, source: 'event', stroke: null, group: 'altro', text: e.note.trim() });
+    if (e.focus?.stroke || e.focus?.error) {
+      const text = describe({ kind: 'focus', ...e.focus });
+      if (text || e.focus.stroke) out.push({ ...at, key: `f:${e.id}`, source: 'focus', stroke: e.focus.stroke ?? null, group: e.focus.stroke ? 'colpi' : 'altro', text, ex: e.focus.exercise ?? null });
+    }
+    (e.obs ?? []).forEach((o, i) => {
+      const text = describe({ kind: 'obs', ...o });
+      if (text || o.stroke) out.push({ ...at, key: `o:${e.id}:${i}`, source: 'obs', stroke: o.stroke ?? null, group: o.stroke ? 'colpi' : 'altro', text, ex: o.exercise ?? null });
+    });
+  }
+  return newestFirst(out);
 }
 
 /** Dalla più recente alla più vecchia. */

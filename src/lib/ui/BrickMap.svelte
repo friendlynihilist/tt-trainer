@@ -5,7 +5,6 @@
   // che hai scritto su quel colpo.
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
-  import Plus from '@lucide/svelte/icons/plus';
   import Target from '@lucide/svelte/icons/target';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
@@ -13,10 +12,9 @@
   import { SKILLS, BRICK, brickMap, brickOfStroke, medalRank } from '../data/bricks.js';
   import { PLAYER_LEVELS, TIER } from '../data/library.js';
   import { topTier, valueText } from '../engine/medals.js';
-  import { newestFirst } from '../engine/notes.js';
+  import { allNotes } from '../engine/notes.js';
   import { coachDid } from './tours.js';
   import MedalBadge from './MedalBadge.svelte';
-  import NoteRow from './NoteRow.svelte';
   import Sheet from './Sheet.svelte';
 
   let { brick = 'dritto', onpick } = $props();
@@ -49,12 +47,9 @@
     return out;
   });
 
-  const notes = $derived(newestFirst(app.notes.filter((n) => brickOfStroke(app.stroke(n.stroke)) === brick)));
-  let showNotes = $state(false);
+  // Quante note ha il colpo: si leggono tutte nel Diario, in «Note», già filtrate.
+  const notes = $derived(allNotes(app.notes, app.events).filter((n) => n.stroke && brickOfStroke(app.stroke(n.stroke)) === brick).length);
   let picked = $state(null);
-  $effect(() => {
-    if (showNotes) return ui.hold(() => (showNotes = false));
-  });
   $effect(() => {
     if (picked) return ui.hold(() => (picked = null));
   });
@@ -72,10 +67,6 @@
     picked = null;
     ui.open('exercise', { id });
   }
-  function write() {
-    showNotes = false;
-    ui.open('note', { draft: { stroke: app.strokes.find((s) => brickOfStroke(s) === brick)?.id ?? null } });
-  }
 </script>
 
 <div class="bricks" role="group" aria-label="Colpi">
@@ -84,9 +75,9 @@
   {/each}
 </div>
 
-<button class="notes" onclick={() => (showNotes = true)}>
+<button class="notes" onclick={() => ui.go('calendario', 'note', brick)}>
   <span class="n-ico"><NotebookPen size={22} /></span>
-  <span class="grow"><b>Le tue note</b>{#if notes.length}<span class="muted count">{notes.length}</span>{/if}</span>
+  <span class="grow"><b>Le tue note</b>{#if notes}<span class="muted count">{notes}</span>{/if}</span>
   <span class="muted"><ChevronRight size={18} /></span>
 </button>
 
@@ -141,23 +132,6 @@
       {#if picked.goals?.B != null}
         <button class="btn accent wide" onclick={measure}><Target size={18} /> Misurati</button>
       {/if}
-    {/snippet}
-  </Sheet>
-{/if}
-
-{#if showNotes}
-  <Sheet title="Note: {BRICK[brick].name.toLowerCase()}" onclose={() => (showNotes = false)} tall>
-    {#if notes.length}
-      <div class="card flush list">
-        {#each notes as n (n.id)}
-          <NoteRow note={n} showStroke onclick={() => ((showNotes = false), ui.open('note', { id: n.id }))} />
-        {/each}
-      </div>
-    {:else}
-      <p class="muted">Ancora nessuna nota su questo colpo. Le note che scrivi alla fine di un allenamento arrivano qui.</p>
-    {/if}
-    {#snippet footer()}
-      <button class="btn accent wide" onclick={write}><Plus size={18} /> Scrivi una nota</button>
     {/snippet}
   </Sheet>
 {/if}

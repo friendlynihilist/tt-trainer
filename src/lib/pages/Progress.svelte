@@ -321,9 +321,6 @@
     width: 100%;
     text-align: left;
   }
-  h2 {
-    margin: 0;
-  }
   .lv-name {
     font-size: 24px;
     font-weight: 750;

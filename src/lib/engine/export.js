@@ -7,6 +7,7 @@ import { TRIES_PER_DAY } from '../data/library.js';
 import { attemptsOf } from './attempts.js';
 import { valueText, size } from './medals.js';
 import { byTime, eventTitle } from './events.js';
+import { partnerName } from './partner.js';
 
 export const CSV_HEADER = ['Data', 'Tipo', 'Minuti', 'Compagno', 'Misure', 'Colpo', 'Errore', 'Esercizio', 'Sensazione', 'Note'];
 
@@ -32,14 +33,14 @@ export function diaryRows({ events = [], notes = [], catalog = BASE, names }) {
     rows.push({
       date: e.date,
       createdAt: e.createdAt ?? 0,
-      cells: [e.date, eventTitle(e, catalog), e.minutes ?? '', e.partner?.name ?? '', measures, names.strokeName(e.focus?.stroke), names.errorName(e.focus?.error), e.focus?.exercise ? exerciseLabel(e.focus.exercise, catalog) : '', e.feel ?? '', e.note ?? '']
+      cells: [e.date, eventTitle(e, catalog), e.minutes ?? '', partnerName(e.partner), measures, names.strokeName(e.focus?.stroke), names.errorName(e.focus?.error), e.focus?.exercise ? exerciseLabel(e.focus.exercise, catalog) : '', e.feel ?? '', e.note ?? '']
     });
   }
   for (const n of notes) {
     rows.push({
       date: n.date,
       createdAt: n.createdAt ?? 0,
-      cells: [n.date, 'Nota sul colpo', '', '', '', names.strokeName(n.stroke), '', n.ex ? exerciseLabel(n.ex, catalog) : '', n.feel ?? '', n.text ?? '']
+      cells: [n.date, n.stroke ? 'Nota sul colpo' : 'Nota', '', '', '', names.strokeName(n.stroke), '', n.ex ? exerciseLabel(n.ex, catalog) : '', n.feel ?? '', n.text ?? '']
     });
   }
   return [CSV_HEADER, ...rows.sort(byTime).map((r) => r.cells)];
@@ -80,7 +81,7 @@ export function parseBackup(text) {
     return [...byId.values()];
   };
   const events = keep(data.events, (e) => typeof e.kind === 'string' && e.kind);
-  const notes = keep(Array.isArray(data.notes) ? data.notes : [], (n) => typeof n.stroke === 'string' && n.stroke);
+  const notes = keep(Array.isArray(data.notes) ? data.notes : [], (n) => (typeof n.stroke === 'string' && n.stroke) || (typeof n.text === 'string' && n.text.trim()));
   const total = data.events.length + (Array.isArray(data.notes) ? data.notes.length : 0);
   return {
     meta: isObject(data.meta) ? data.meta : null,

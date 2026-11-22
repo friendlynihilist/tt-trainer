@@ -45,12 +45,14 @@
   import WorkoutSheet from './lib/sheets/WorkoutSheet.svelte';
   import DoneSheet from './lib/sheets/DoneSheet.svelte';
   import WhenSheet from './lib/sheets/WhenSheet.svelte';
+  import PartnerSheet from './lib/sheets/PartnerSheet.svelte';
 
   const PAGES = { oggi: Today, calendario: Calendar, progressi: Progress, libreria: Library, guida: Guide, impostazioni: Settings };
   const SHEETS = {
     add: AddSheet,
     event: EventSheet,
     pick: PickSheet,
+    partner: PartnerSheet,
     confirm: ConfirmSheet,
     track: TrackSheet,
     stroke: StrokeSheet,

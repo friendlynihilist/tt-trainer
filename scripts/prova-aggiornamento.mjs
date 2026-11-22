@@ -85,7 +85,7 @@ await ev(`location.hash = '#/libreria'`); await sleep(1000); await shot('v-libre
 check('in Libreria ci sono i due allenamenti tuoi', await ev(`document.querySelectorAll('.li.col').length`), 2);
 await ev(`location.hash = '#/progressi/mappa/dritto'`); await sleep(1300); await shot('v-mappa');
 check('nella mappa le medaglie già prese', await ev(`document.querySelectorAll('#map .nd:not(.empty)').length > 0`), true);
-await tap('.notes', 700); check('le note di prima sono fra quelle del dritto', await ev(`document.querySelector('.sheet').textContent.includes('Il polso parte troppo presto.')`), true); await shot('v-note'); await tap('.sheet .icon-btn');
+await tap('.notes', 900); check('le note di prima sono fra quelle del dritto, nel Diario', [await ev('location.hash'), await ev(`document.querySelector('.notes').textContent.includes('Il polso parte troppo presto.')`)], ['#/calendario/note/dritto', true]); await shot('v-note');
 await ev(`location.hash = '#/calendario'`); await sleep(1000); await shot('v-diario');
 check('dal Diario si aggiunge un’attività', await ev(`[...document.querySelectorAll('button.add')].some((b) => /Aggiungi/.test(b.textContent))`), true);
 await ev(`location.hash = '#/progressi'`); await sleep(1000); await shot('v-progressi');

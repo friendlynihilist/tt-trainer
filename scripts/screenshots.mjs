@@ -60,12 +60,15 @@ function seed(theme, stages = null) {
     ev(2, { kind: 'test', minutes: 20, attempts: [{ ex: 'ap-d', fmt: 'su', tries: [9] }, { ex: 'srv-pendolo', fmt: 'su', tries: [7] }] }),
     ev(1, { kind: 'partite', minutes: 90 }),
     // Stamattina un test veloce: metà oro sul pendolo, così in Oggi c'è una medaglia presa oggi.
-    ev(0, { kind: 'test', minutes: 15, attempts: [{ ex: 'srv-pendolo', fmt: 'su', tries: [8] }] })
+    ev(0, { kind: 'test', minutes: 15, attempts: [{ ex: 'srv-pendolo', fmt: 'su', tries: [8] }] }),
+    // Un torneo con gli appunti e una nota tecnica scritti con le versioni di prima, e un compagno fuori dall'app.
+    ev(4, { kind: 'torneo', minutes: 180, partner: { id: null, name: 'Paolo' }, note: 'Perso al quinto set: nei punti importanti ho servito corto.', obs: [{ stroke: 'top-r', note: 'In rete quando la palla è bassa.', score: 5 }] })
   ];
   const notes = [
     { id: 'n1', stroke: 'ap-d', family: 'attacco', date: daysAgo(9), text: 'Il polso parte troppo presto.', feel: 2, createdAt: 1, updatedAt: 1 },
     { id: 'n2', stroke: 'ap-d', family: 'attacco', date: daysAgo(2), text: 'Meglio quando aspetto la palla. Gambe più basse.', feel: 4, ex: 'ap-d-multiball', createdAt: 2, updatedAt: 2 },
-    { id: 'n3', stroke: 'srv-pendolo', family: 'servizio', date: daysAgo(5), text: 'Lancio più alto.', feel: 3, createdAt: 3, updatedAt: 3 }
+    { id: 'n3', stroke: 'srv-pendolo', family: 'servizio', date: daysAgo(5), text: 'Lancio più alto.', feel: 3, createdAt: 3, updatedAt: 3 },
+    { id: 'n4', stroke: null, family: null, date: daysAgo(4), text: 'Contro i mancini servire lungo sul rovescio.', feel: null, eventId: 's9', createdAt: 4, updatedAt: 4 }
   ];
   const meta = {
     onboarded: true,
@@ -175,6 +178,12 @@ const SHOTS = [
   { name: 'foglio-aggiungi', hash: 'calendario', steps: [click('/Aggiungi a/', 'button.add')], viewport: true },
   { name: 'costruttore', hash: 'oggi', steps: [`document.querySelector('nav button.add').click()`, `document.querySelector('[data-tile=dritto]').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 5, clientY: 5 })); window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 5, clientY: 5 }))`], viewport: true },
   { name: 'mappa', hash: 'progressi/mappa/dritto' },
+  { name: 'note', hash: 'calendario/note' },
+  { name: 'foglio-torneo', hash: 'calendario', steps: [click('/^Nel mese/'), click('/^Torneo/', 'button.item')], viewport: true },
+  { name: 'modulo-torneo', hash: 'calendario', steps: [click('/^Nel mese/'), click('/^Torneo/', 'button.item'), click('/^Modifica/'), `document.querySelector('.sheet .body, .sheet')?.querySelector('textarea')?.scrollIntoView({ block: 'center' })`], viewport: true },
+  { name: 'note-colpi', hash: 'calendario/note/colpi' },
+  { name: 'compagno', hash: 'oggi', steps: [`document.querySelector('.court .with').click()`], viewport: true },
+  { name: 'nota-nuova', hash: 'calendario/note', steps: [click('/^Scrivi una nota/')], viewport: true },
   { name: 'progressi-giorni', hash: 'progressi', steps: [click('/^30 giorni/', '[role=tab]')] },
   { name: 'progressi-mesi', hash: 'progressi', steps: [click('/^12 mesi/', '[role=tab]')] },
   { name: 'sessione-pausa', hash: 'oggi', steps: [click('/^(Inizia|Riprendi)/'), ...Array(4).fill(`document.querySelector('.now.rest') || document.querySelector('.live footer .after.grow').click()`)], viewport: true },

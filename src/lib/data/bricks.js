@@ -11,7 +11,7 @@
 // Fra un fondamentale e l'altro c'è un minuto di pausa, come in tutti gli allenamenti: la durata è la
 // somma dei fondamentali più le pause, e il costruttore la mostra già così.
 
-import { STROKE } from './taxonomy.js';
+import { STROKE, KIND } from './taxonomy.js';
 import { LEVEL_IDS } from './library.js';
 import { BASE } from './catalog.js';
 import { PAUSE_MINUTES } from './program.js';
@@ -279,4 +279,12 @@ export function eventName(ev, catalog = BASE) {
   if (t?.custom && t.name) return t.name;
   const bricks = eventBricks(ev, catalog);
   return bricks.length ? workoutName(bricks) : 'Allenamento';
+}
+
+/** Il nome di una voce del diario qualsiasi: un allenamento per quello che contiene, il resto con il suo tipo. */
+export function entryName(ev, catalog = BASE) {
+  if (!ev) return '';
+  if (ev.kind === 'livello') return 'Livello';
+  if (ev.kind === 'training') return eventName(ev, catalog);
+  return KIND[ev.kind]?.short ?? 'Attività';
 }

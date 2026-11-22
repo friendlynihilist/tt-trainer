@@ -2,13 +2,17 @@
   // Una voce del diario: allenamento (con il suo modello), test, o attività libera. Serve sia per
   // registrare sia per correggere, anche a distanza di tempo.
   //
+  // Le note sono note come tutte le altre (engine/notes.js), legate alla voce: una su ogni colpo e
+  // una sulla voce. I testi scritti dentro la voce con le versioni di prima (appunti, da correggere,
+  // note tecniche) restano: si possono ancora correggere o togliere, non aggiungere.
+  //
   // Le misure sono tentativi sugli esercizi: righe indipendenti, una per esercizio. I test sui
   // percorsi salvati con le versioni di prima restano come sono, si vedono in sola lettura e si
   // possono togliere: modificare una voce vecchia non perde nulla.
   import Plus from '@lucide/svelte/icons/plus';
   import Trash from '@lucide/svelte/icons/trash';
   import X from '@lucide/svelte/icons/x';
-  import { app } from '../store/app.svelte.js';
+  import { app, newId } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { weekOf, proposalFor } from '../store/actions.js';
   import { composeSession } from '../engine/compose.js';
@@ -18,7 +22,10 @@
   import { legacyExercise } from '../data/catalog.js';
   import { templateMinutes } from '../data/templates.js';
   import { TRIES_PER_DAY, TIER } from '../data/library.js';
-  import { KINDS, KIND, BALL, POINT_PHASE, zoneLabel } from '../data/taxonomy.js';
+  import { KINDS, KIND } from '../data/taxonomy.js';
+  import { BRICK, brickOfStroke } from '../data/bricks.js';
+  import { storedPartner } from '../engine/partner.js';
+  import { describeOld } from '../ui/oldNotes.js';
   import { fmtLong } from '../util/dates.js';
   import { pickExercise } from '../ui/pickers.js';
   import Sheet from '../ui/Sheet.svelte';
@@ -45,6 +52,11 @@
   let focus = $state(base.focus ?? null);
   let obs = $state(base.obs ?? []);
   let partner = $state(base.partner ?? null);
+  // L'id della voce si decide subito, così le note scritte prima di salvare puntano già a lei.
+  const eventId = original?.id ?? fromPlanned ?? newId();
+  const linkedNotes = $derived(app.notes.filter((n) => n.eventId === eventId));
+  const hadNote = Boolean(base.note?.trim());
+  const hadFocus = Boolean(base.focus?.stroke || base.focus?.error);
   let minutesTouched = $state(Boolean(original));
 
   function defaultMinutes(k, t) {
@@ -117,12 +129,11 @@
   function save() {
     const out = { ...(original ?? (found?.planned ? found : {})), kind, date, minutes, note: note.trim(), feel, focus, obs: $state.snapshot(obs) };
     delete out.planned;
-    if (fromPlanned) {
-      out.id = fromPlanned;
-      out.adhoc = true;
-    }
+    out.id = eventId;
+    if (fromPlanned) out.adhoc = true;
     if (draft?.occ && !out.occ) out.occ = draft.occ;
-    if (partner?.name) out.partner = { id: partner.id ?? null, name: partner.name };
+    const who = storedPartner(partner);
+    if (who) out.partner = who;
     else delete out.partner;
 
     if (measured) {
@@ -159,6 +170,8 @@
       delete out.withTest;
     }
     app.saveEvent(out);
+    // Le note legate alla voce seguono la sua data.
+    for (const n of linkedNotes) if (n.date !== date) app.saveNote({ ...n, date });
     ui.close();
     ui.toast(original ? 'Modifiche salvate' : 'Aggiunto al diario');
   }
@@ -189,11 +202,13 @@
     });
   }
 
-  function obsLine(o) {
-    return [app.strokeName(o.stroke, true), app.errorName(o.error), BALL[o.ball]?.name, zoneLabel(o.zone), POINT_PHASE[o.phase]?.name]
-      .filter(Boolean)
-      .join(' · ');
+  function writeNote(about) {
+    const name = kind === 'training' ? 'Questo allenamento' : (KIND[kind]?.name ?? 'Questa attività');
+    ui.open('note', { draft: about === 'altro' ? { about: 'altro', linked: name, date, eventId } : { date, eventId } });
   }
+  /** A cosa è legata una nota senza colpo: «Sull'allenamento», «Sul torneo», «In generale». */
+  const aboutAll = $derived(kind === 'training' ? 'Sull’allenamento' : kind === 'torneo' ? 'Sul torneo' : 'In generale');
+  const noteTitle = (n) => (n.stroke ? (BRICK[brickOfStroke(app.stroke(n.stroke))]?.name ?? app.strokeName(n.stroke, true)) : aboutAll);
 
   function chooseKind(k) {
     kind = k;
@@ -322,32 +337,42 @@
       </section>
 
       <section class="stack g-8">
-        <h3 class="heading">Con chi ti sei allenato</h3>
-        <PartnerField value={partner} onchange={(p) => (partner = p)} />
-      </section>
-
-      <section class="stack g-12">
-        <h3 class="heading">Da correggere</h3>
-        <FocusEditor value={focus} onchange={(v) => (focus = v)} />
-      </section>
-
-      <section class="stack g-8">
-        <h3 class="heading">Note tecniche</h3>
-        {#each obs as o, i (i)}
-          <button class="obs" onclick={() => editObs(i)}>
-            <span class="grow">
-              {obsLine(o) || 'Nota'}
-              {#if o.note}<span class="small muted block">{o.note}</span>{/if}
-            </span>
-            {#if o.score != null}<span class="mono">{o.score}/10</span>{/if}
-          </button>
-        {/each}
-        <button class="btn ghost small add" onclick={() => editObs(null)}><Plus size={16} /> Colpo, palla, zona, errore</button>
+        <h3 class="heading">Con chi</h3>
+        <PartnerField value={partner} title="Con chi ti sei allenato?" empty="Non indicato" onchange={(p) => (partner = p)} />
       </section>
 
       <section class="stack g-8">
         <h3 class="heading">Note</h3>
-        <textarea class="field" placeholder="Cosa ha funzionato, cosa no" bind:value={note}></textarea>
+        {#each linkedNotes as n (n.id)}
+          <button class="obs" data-fam={BRICK[brickOfStroke(app.stroke(n.stroke))]?.fam} onclick={() => ui.open('note', { id: n.id })}>
+            <span class="grow">
+              <b>{noteTitle(n)}</b>
+              {#if n.text}<span class="small muted block">{n.text}</span>{/if}
+            </span>
+          </button>
+        {/each}
+        <div class="row g-8 wrap">
+          <button class="btn ghost small add" onclick={() => writeNote('colpo')}><Plus size={16} /> Su un colpo</button>
+          {#if !linkedNotes.some((n) => !n.stroke)}
+            <button class="btn ghost small add" onclick={() => writeNote('altro')}><Plus size={16} /> {aboutAll}</button>
+          {/if}
+        </div>
+
+        {#if hadNote}
+          <textarea class="field" placeholder="Cosa ha funzionato, cosa no" bind:value={note} aria-label="Appunti scritti con una versione di prima"></textarea>
+        {/if}
+        {#if hadFocus}
+          <span class="small muted">Da correggere, scritto con una versione di prima</span>
+          <FocusEditor value={focus} onchange={(v) => (focus = v)} />
+        {/if}
+        {#each obs as o, i (i)}
+          <button class="obs" onclick={() => editObs(i)}>
+            <span class="grow">
+              {app.strokeName(o.stroke, true) || 'Nota tecnica'}
+              <span class="small muted block">{describeOld({ kind: 'obs', ...o })}</span>
+            </span>
+          </button>
+        {/each}
       </section>
 
       <section class="stack g-8">

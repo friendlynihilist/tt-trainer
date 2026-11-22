@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { makeNote, isValidNote, notesOf, feelSummary, notesForExercise, feelSeries, fmtFeel } from '../src/lib/engine/notes.js';
+import { makeNote, isValidNote, notesOf, feelSummary, notesForExercise, feelSeries, fmtFeel, allNotes } from '../src/lib/engine/notes.js';
+import { normalizePartner, storedPartner, hasTurns, partnerName, partnerWith, samePartner, recentPartners, lastPartnerOf } from '../src/lib/engine/partner.js';
 import { diaryRows, diaryCsv, backup, parseBackup, CSV_HEADER } from '../src/lib/engine/export.js';
 import { createLocalBackend } from '../src/lib/store/local.js';
 import { LIBRARY_BY_ID } from '../src/lib/data/library.js';
@@ -26,7 +27,15 @@ describe('una nota', () => {
   it('serve almeno il testo o la sensazione', () => {
     expect(isValidNote({ stroke: 'ap-d', date: '2026-11-20', text: '', feel: null })).toBe(false);
     expect(isValidNote({ stroke: 'ap-d', date: '2026-11-20', text: '', feel: 4 })).toBe(true);
-    expect(isValidNote({ stroke: '', date: '2026-11-20', text: 'x' })).toBe(false);
+    // Senza colpo serve il testo: la sensazione da sola non basta.
+    expect(isValidNote({ stroke: '', date: '2026-11-20', text: 'x' })).toBe(true);
+    expect(isValidNote({ stroke: null, date: '2026-11-20', text: '', feel: 4 })).toBe(false);
+    expect(isValidNote({ stroke: null, date: '', text: 'x' })).toBe(false);
+  });
+
+  it('può non essere su un colpo: resta legata a una voce del diario, senza sensazione', () => {
+    const a = makeNote({ id: 'a', stroke: null, date: '2026-11-15', text: 'Servire lungo ai mancini', feel: 4, eventId: 'torneo1' }, { now: 5 });
+    expect(a).toEqual({ id: 'a', stroke: null, family: null, date: '2026-11-15', text: 'Servire lungo ai mancini', feel: null, eventId: 'torneo1', createdAt: 5, updatedAt: 5 });
   });
 });
 
@@ -154,5 +163,86 @@ describe('ripristino della copia completa', () => {
     expect(() => parseBackup('ciao')).toThrow(/non è una copia/);
     expect(() => parseBackup('{"esercizi": []}')).toThrow(/non è una copia/);
     expect(() => parseBackup('[]')).toThrow(/non è una copia/);
+  });
+});
+
+describe('tutte le note in un elenco solo', () => {
+  const notes = [
+    makeNote({ id: 'n1', stroke: 'ap-d', date: '2026-11-20', text: 'Polso', feel: 2, createdAt: 3 }, { now: 3 }),
+    makeNote({ id: 'n2', stroke: null, date: '2026-11-15', text: 'Servire lungo', eventId: 't1', createdAt: 2 }, { now: 2 })
+  ];
+  const events = [
+    { id: 't1', kind: 'torneo', date: '2026-11-15', createdAt: 1, note: ' Perso al quinto ', obs: [{ stroke: 'top-r', error: 'e1', note: 'in rete' }, { note: 'servizio corto' }] },
+    { id: 'a1', kind: 'training', date: '2026-11-10', createdAt: 1, focus: { stroke: 'top-d', error: 'e2' } },
+    { id: 'a2', kind: 'training', date: '2026-11-22', createdAt: 1, note: 'in programma', planned: true },
+    { id: 'a3', kind: 'training', date: '2026-11-01', createdAt: 1, note: '' }
+  ];
+  const describeOld = (x) => (x.kind === 'focus' ? `Da correggere: ${x.error}` : [x.error, x.note].filter(Boolean).join(': '));
+  const list = allNotes(notes, events, describeOld);
+
+  it('dalla più recente, ognuna con il suo gruppo', () => {
+    expect(list.map((n) => [n.key, n.group, n.source])).toEqual([
+      ['n:n1', 'colpi', 'note'],
+      ['n:n2', 'altro', 'note'],
+      ['e:t1', 'altro', 'event'],
+      ['o:t1:0', 'colpi', 'obs'],
+      ['o:t1:1', 'altro', 'obs'],
+      ['f:a1', 'colpi', 'focus']
+    ]);
+  });
+
+  it('i testi rimasti nelle voci di prima non si perdono', () => {
+    const by = Object.fromEntries(list.map((n) => [n.key, n]));
+    expect(by['e:t1']).toMatchObject({ text: 'Perso al quinto', eventId: 't1', stroke: null });
+    expect(by['o:t1:0']).toMatchObject({ text: 'e1: in rete', stroke: 'top-r', eventId: 't1' });
+    expect(by['f:a1']).toMatchObject({ text: 'Da correggere: e2', stroke: 'top-d' });
+    // Le voci in programma e gli appunti vuoti non contano.
+    expect(list.some((n) => n.eventId === 'a2' || n.eventId === 'a3')).toBe(false);
+  });
+
+  it('la copia completa tiene anche le note senza colpo', () => {
+    const back = parseBackup(JSON.stringify(backup({ meta: {}, events, notes })));
+    expect(back.notes.map((n) => n.id).sort()).toEqual(['n1', 'n2']);
+  });
+});
+
+describe('con chi ti alleni', () => {
+  it('quattro casi, e le voci di prima si leggono ancora', () => {
+    expect(normalizePartner(null)).toBe(null);
+    expect(normalizePartner({ kind: 'solo', id: 'x', name: 'Marco' })).toEqual({ kind: 'solo' });
+    expect(normalizePartner({ kind: 'robot' })).toEqual({ kind: 'robot' });
+    expect(normalizePartner({ id: 'u1', name: 'Marco' })).toEqual({ kind: 'mate', id: 'u1', name: 'Marco' });
+    expect(normalizePartner({ id: null, name: ' Paolo ' })).toEqual({ kind: 'guest', name: 'Paolo' });
+    expect(normalizePartner({ kind: null, id: null, name: null })).toBe(null);
+    expect(storedPartner({ kind: 'robot' })).toEqual({ kind: 'robot', id: null, name: null });
+    expect(storedPartner({ name: 'Paolo' })).toEqual({ kind: 'guest', id: null, name: 'Paolo' });
+  });
+
+  it('i turni ci sono con una persona, non da solo o con il robot', () => {
+    expect(hasTurns(null)).toBe(true);
+    expect(hasTurns({ id: 'u1', name: 'Marco' })).toBe(true);
+    expect(hasTurns({ name: 'Paolo' })).toBe(true);
+    expect(hasTurns({ kind: 'solo' })).toBe(false);
+    expect(hasTurns({ kind: 'robot' })).toBe(false);
+  });
+
+  it('a parole', () => {
+    expect([null, { kind: 'solo' }, { kind: 'robot' }, { name: 'Paolo' }].map(partnerWith)).toEqual(['', 'Da solo', 'Con il robot', 'Con Paolo']);
+    expect([null, { kind: 'solo' }, { kind: 'robot' }, { name: 'Paolo' }].map(partnerName)).toEqual(['', 'Da solo', 'Robot', 'Paolo']);
+    expect(samePartner({ name: 'paolo' }, { kind: 'guest', name: 'Paolo' })).toBe(true);
+    expect(samePartner({ kind: 'solo' }, { kind: 'robot' })).toBe(false);
+  });
+
+  it('dal diario: le persone già scritte e l’ultima scelta', () => {
+    const events = [
+      { id: '1', date: '2026-11-01', partner: { id: null, name: 'Paolo' } },
+      { id: '2', date: '2026-11-05', partner: { id: 'u1', name: 'Marco' } },
+      { id: '3', date: '2026-11-08', partner: { kind: 'robot' } },
+      { id: '4', date: '2026-11-09', partner: { id: null, name: 'paolo' } },
+      { id: '5', date: '2026-11-10' }
+    ];
+    expect(recentPartners(events).map((p) => p.name)).toEqual(['paolo', 'Marco']);
+    expect(lastPartnerOf(events)).toEqual({ kind: 'guest', name: 'paolo' });
+    expect(lastPartnerOf(events.slice(0, 3))).toEqual({ kind: 'robot' });
   });
 });

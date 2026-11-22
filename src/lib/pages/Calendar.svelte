@@ -1,5 +1,8 @@
 <script>
-  // Diario. Appena entri: il mese, e sotto oggi se c'è qualcosa. Toccando un giorno si apre quel
+  // Diario, in due viste. «Giorni»: il calendario, descritto qui sotto. «Note»: tutte le note in un
+  // elenco solo (ui/NoteBook.svelte); l'indirizzo ricorda la vista: #/calendario/note/dritto.
+  //
+  // Giorni. Appena entri: il mese, e sotto oggi se c'è qualcosa. Toccando un giorno si apre quel
   // giorno; l'elenco di tutte le voci del mese è chiuso e si apre a richiesta. Il nome del mese e le
   // frecce stanno in cima al calendario; il mese cambia anche scorrendo il calendario di lato.
   //
@@ -22,6 +25,10 @@
   import EventRow from '../ui/EventRow.svelte';
   import PlannedRow from '../ui/PlannedRow.svelte';
   import Collapse from '../ui/Collapse.svelte';
+  import Segmented from '../ui/Segmented.svelte';
+  import NoteBook from '../ui/NoteBook.svelte';
+
+  const view = $derived(ui.route.params[0] === 'note' ? 'note' : 'giorni');
 
   // Da Oggi si arriva anche su un giorno preciso: #/calendario/2026-11-20.
   const asked = /^\d{4}-\d{2}-\d{2}$/.test(ui.route.params[0] ?? '') ? ui.route.params[0] : null;
@@ -116,6 +123,20 @@
 <div class="page enter diary">
   <PageHead title="Diario" />
 
+  <div class="views">
+    <Segmented
+      options={[
+        { id: 'giorni', label: 'Giorni' },
+        { id: 'note', label: 'Note' }
+      ]}
+      value={view}
+      onchange={(v) => (v === 'note' ? ui.go('calendario', 'note') : ui.go('calendario'))}
+    />
+  </div>
+
+  {#if view === 'note'}
+    <NoteBook filter={ui.route.params[1] ?? null} onfilter={(f) => (f ? ui.go('calendario', 'note', f) : ui.go('calendario', 'note'))} />
+  {:else}
   <!-- Il mese -->
   <section class="cal" role="group" aria-label="Calendario del mese" onpointerdown={down} onpointerup={up} onpointercancel={() => (x0 = null)}>
     <div class="cal-head">
@@ -214,9 +235,13 @@
       </Collapse>
     </div>
   {/if}
+  {/if}
 </div>
 
 <style>
+  .views {
+    margin: 16px 0 14px;
+  }
   .cal-head {
     display: flex;
     align-items: center;

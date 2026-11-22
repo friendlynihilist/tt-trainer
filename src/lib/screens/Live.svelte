@@ -23,8 +23,7 @@
   import Users from '@lucide/svelte/icons/users';
   import Save from '@lucide/svelte/icons/save';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
-  import { BRICK, brickOfExercise, sessionBricks } from '../data/bricks.js';
-  import Collapse from '../ui/Collapse.svelte';
+  import { BRICK, brickOfExercise, brickOfStroke, sessionBricks } from '../data/bricks.js';
   import { app, newId } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
   import { loadLive, saveLive, clearLive } from '../store/live.js';
@@ -46,8 +45,8 @@
   import Brick from '../ui/Brick.svelte';
   import { stepFamily } from '../ui/design.js';
   import { celebrateFinish } from '../util/celebrate.js';
-  import FocusEditor from '../ui/FocusEditor.svelte';
-  import PartnerField, { lastPartner } from '../ui/PartnerField.svelte';
+  import PartnerField, { currentPartner } from '../ui/PartnerField.svelte';
+  import { hasTurns, normalizePartner, storedPartner } from '../engine/partner.js';
   import FeelPicker from '../ui/FeelPicker.svelte';
 
   const uid = app.user.uid;
@@ -81,8 +80,8 @@
       // Gli esercizi cambiati (prima o durante): servono a salvare l'allenamento come tuo.
       changes: { ...(live.overrides ?? {}) },
       focus: null,
-      // Con chi ti alleni: si propone l'ultimo compagno, e si cambia alla chiusura.
-      partner: lastPartner(),
+      // Con chi ti alleni: la scelta fatta in Oggi; si può cambiare alla chiusura.
+      partner: currentPartner(),
       note: '',
       feel: null,
       beat: Date.now(),
@@ -207,18 +206,24 @@
   // Ogni esercizio a coppie si divide a metà: prima tocca a te, poi al compagno. Il riquadro del tempo
   // cambia colore quando tocca al compagno. Se comincia lui, si tocca l'etichetta e i turni si invertono.
   // Niente turni da soli, con il robot e nel palleggio, dove fate tutti e due la stessa cosa.
+  // Se il compagno ha un nome, l'etichetta lo dice: «Tocca a Marco».
 
   let flash = $state(false);
   let flashTimer = null;
 
+  const mate = $derived(normalizePartner(draft?.partner));
+  const mateName = $derived(mate?.kind === 'mate' || mate?.kind === 'guest' ? mate.name : null);
   const turnable = $derived.by(() => {
+    if (!hasTurns(draft?.partner)) return false;
     if (step?.kind === 'serve') return true;
     if (step?.kind !== 'exercise' || !app.settings.turns || !stepEx) return false;
     const modes = stepEx.modes ?? [];
     return stepEx.family !== 'palleggio' && (modes.includes('compagno') || modes.includes('multiball'));
   });
   const partner = $derived(turnable && (elapsed >= total / 2) !== Boolean(draft?.swap?.[step?.id]));
-  const turnLabel = $derived(step?.kind === 'serve' ? (partner ? 'Serve il compagno' : 'Servi tu') : partner ? 'Tocca al compagno' : 'Tocca a te');
+  const turnLabel = $derived(
+    step?.kind === 'serve' ? (partner ? `Serve ${mateName ?? 'il compagno'}` : 'Servi tu') : partner ? (mateName ? `Tocca a ${mateName}` : 'Tocca al compagno') : 'Tocca a te'
+  );
 
   function swapTurns() {
     buzz();
@@ -415,7 +420,8 @@
       note: draft.note.trim(),
       feel: draft.feel
     };
-    if (draft.partner?.name) ev.partner = { id: draft.partner.id ?? null, name: draft.partner.name };
+    const who = storedPartner(draft.partner);
+    if (who) ev.partner = who;
     // I test contati in una sessione cominciata con la 0.2 si salvano come allora.
     if (draft.legacyTests?.tests?.length) ev.tests = draft.legacyTests.tests;
     if (draft.legacyTests?.serve) ev.serve = draft.legacyTests.serve;
@@ -453,14 +459,6 @@
   const doneExercises = $derived(closing ? new Set(steps.filter((s) => s.ex && draft.timers[s.id]).map((s) => s.ex)).size : 0);
 
   // ── Nota sul colpo ──────────────────────────────────────────────────────
-  /** L'ultimo esercizio fatto e il suo colpo principale, già pronti per la nota. */
-  const lastDone = $derived.by(() => {
-    const s = [...steps].reverse().find((x) => (x.kind === 'exercise' || x.kind === 'serve') && x.ex);
-    const ex = s && app.catalog.exercise(s.ex);
-    return ex ? { ex: ex.id, stroke: ex.strokes?.find((id) => app.stroke(id)) ?? null } : null;
-  });
-  const sessionNotes = $derived(draft?.newId ? app.notes.filter((n) => n.eventId === draft.newId).length : 0);
-
   /** Il colpo principale di un esercizio (il primo che esiste fra i colpi). */
   function strokeOf(ex) {
     return ex?.strokes?.find((id) => app.stroke(id)) ?? null;
@@ -482,15 +480,26 @@
     }
     return out;
   });
+  /** Le note già scritte in questa sessione. */
+  const mine = $derived(draft?.newId ? app.notes.filter((n) => n.eventId === draft.newId) : []);
+  /** La nota già scritta su un fondamentale (o, con null, sull'allenamento). */
+  function written(brick) {
+    return mine.find((n) => (brick ? n.stroke && brickOfStroke(app.stroke(n.stroke)) === brick : !n.stroke)) ?? null;
+  }
   function noteOn(t) {
+    const done = written(t.brick);
+    if (done) return ui.open('note', { id: done.id });
     draft.newId ??= draft.eventId ?? newId();
     ui.open('note', { draft: { stroke: t.stroke, ex: t.ex, date: draft.date, eventId: draft.newId } });
   }
-
-  function addNote() {
+  function noteOnAll() {
+    const done = written(null);
+    if (done) return ui.open('note', { id: done.id });
     draft.newId ??= draft.eventId ?? newId();
-    ui.open('note', { draft: { stroke: lastDone?.stroke ?? null, ex: lastDone?.ex ?? null, date: draft.date, eventId: draft.newId } });
+    ui.open('note', { draft: { about: 'altro', linked: 'Questo allenamento', date: draft.date, eventId: draft.newId } });
   }
+  // Gli appunti di una sessione cominciata con una versione di prima.
+  const hadNote = Boolean(draft?.note?.trim());
 </script>
 
 {#if draft}
@@ -651,38 +660,39 @@
               <FeelPicker value={draft.feel} onchange={(v) => (draft.feel = v)} />
             </section>
 
-            <!-- Una nota per ogni colpo allenato: si scrive qui, si rilegge in Progressi e nel Diario. -->
             <section class="group">
-              <h2 class="t-name">Una nota sui colpi?</h2>
-              {#if !app.meta?.noteTold}<p class="small muted">Le ritrovi in Progressi, nella mappa di ogni colpo.</p>{/if}
-              <div class="hands">
-                {#each trained as t (t.brick)}
-                  <button class="hand" data-fam={BRICK[t.brick].fam} onclick={() => noteOn(t)}>
-                    <i></i><span class="grow">{BRICK[t.brick].name}</span><span class="small muted">Scrivi</span>
-                  </button>
-                {:else}
-                  <button class="hand" onclick={addNote}><span class="grow">Scegli il colpo</span><span class="small muted">Scrivi</span></button>
-                {/each}
-              </div>
-              {#if sessionNotes}<p class="small muted">{sessionNotes === 1 ? '1 nota salvata' : `${sessionNotes} note salvate`}</p>{/if}
+              <h2 class="t-label muted">Con chi</h2>
+              <PartnerField value={draft.partner ?? null} title="Con chi ti sei allenato?" empty="Non indicato" onchange={(p) => (draft.partner = p)} />
             </section>
 
-            <Collapse title="Altri dettagli" open={false} key="live-altro">
-              <section class="group">
-                <h2 class="t-label muted">Con chi</h2>
-                <PartnerField value={draft.partner ?? null} onchange={(p) => (draft.partner = p)} />
-              </section>
+            <!-- Le note: una per ogni fondamentale allenato e una sull'allenamento. Si rileggono nel Diario, in «Note». -->
+            <section class="group">
+              <h2 class="t-name">Una nota?</h2>
+              {#if !app.meta?.noteTold}<p class="small muted">Le ritrovi tutte nel Diario, in «Note».</p>{/if}
+              <div class="hands">
+                {#each trained as t (t.brick)}
+                  {@const done = written(t.brick)}
+                  <button class="hand" data-fam={BRICK[t.brick].fam} onclick={() => noteOn(t)}>
+                    <i></i>
+                    <span class="grow">{BRICK[t.brick].name}{#if done?.text}<span class="small muted block clamp1">{done.text}</span>{/if}</span>
+                    <span class="small muted">{done ? 'Cambia' : 'Scrivi'}</span>
+                  </button>
+                {/each}
+                <button class="hand" onclick={noteOnAll}>
+                  <i class="all"></i>
+                  <span class="grow">Sull’allenamento{#if written(null)?.text}<span class="small muted block clamp1">{written(null).text}</span>{/if}</span>
+                  <span class="small muted">{written(null) ? 'Cambia' : 'Scrivi'}</span>
+                </button>
+              </div>
+            </section>
 
-              <section class="group">
-                <h2 class="t-label muted">Da correggere la prossima volta</h2>
-                <FocusEditor value={draft.focus} onchange={(v) => (draft.focus = v)} />
-              </section>
-
+            {#if hadNote}
+              <!-- Una sessione cominciata prima della 0.10 aveva già gli appunti: restano dove sono. -->
               <section class="group">
                 <h2 class="t-label muted">Appunti sull’allenamento</h2>
                 <textarea class="field" placeholder="Cosa ha funzionato, cosa no" bind:value={draft.note}></textarea>
               </section>
-            </Collapse>
+            {/if}
           {/if}
         </div>
       {/key}
@@ -737,10 +747,24 @@
     font-weight: 650;
   }
   .hand i {
+    flex: none;
     width: 12px;
     height: 12px;
     border-radius: 4px;
     background: var(--f);
+  }
+  .hand i.all {
+    border-radius: 50%;
+    background: var(--ink-3);
+  }
+  .hand .grow {
+    min-width: 0;
+  }
+  .clamp1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 400;
   }
   .live {
     position: fixed;

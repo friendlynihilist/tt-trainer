@@ -121,16 +121,31 @@ check('eliminato', await ev(`document.querySelectorAll('.li.col').length`), 1);
 await tapText('/^Rovescio/', '.mat button', 1200); await shot('mappa-rovescio');
 check('dai fondamentali alla mappa', await ev('location.hash'), '#/progressi/mappa/rovescio');
 // La sessione, la chiusura, le note
-await ev(`location.hash = '#/oggi'`); await sleep(900); await tapText('/^Inizia/', '.court button', 1500); await shot('sessione');
+await ev(`location.hash = '#/oggi'`); await sleep(900);
+// Con chi: all'inizio non è indicato; si sceglie il robot, poi un nome scritto a mano.
+check('sopra «Inizia» si sceglie con chi', await ev(`document.querySelector('.court .with .grow').textContent.trim()`), 'Con chi ti alleni?');
+await tap('.court .with', 700); await shot('compagno');
+check('da solo, robot e «Un altro»', await ev(`[...document.querySelectorAll('.sheet .tile span')].map((x) => x.textContent)`), ['Da solo', 'Robot', 'Un altro']);
+await tapText('/^Robot/', '.sheet .tile', 700);
+check('scelto il robot, e ricordato', [await ev(`document.querySelector('.court .with .grow').textContent.trim()`), (await store()).meta.with.kind], ['Con il robot', 'robot']);
+await tap('.court .with', 700); await tapText('/^Un altro/', '.sheet .tile', 500); await type('.sheet .new input', 'Paolo'); await tapText('/^Scegli/', '.sheet .new button', 700);
+check('scritto un nome: «Con Paolo»', [await ev(`document.querySelector('.court .with .grow').textContent.trim()`), (await store()).meta.with], ['Con Paolo', { kind: 'guest', id: null, name: 'Paolo' }]);
+await tapText('/^Inizia/', '.court button', 1500); await shot('sessione');
 await ev(`document.querySelector('[role=tab][aria-label=Chiusura]').click()`); await sleep(900); await shot('chiusura');
-check('una riga per ogni colpo allenato, e si dice dove restano le note', [await ev(`[...document.querySelectorAll('.hand .grow')].map((x) => x.textContent)`), await ev(`document.querySelector('.live').textContent.includes('Le ritrovi in Progressi')`)], [['Servizio', 'Dritto', 'Gambe', 'Gioco tagliato'], true]);
+check('una riga per ogni colpo allenato, e si dice dove restano le note', [await ev(`[...document.querySelectorAll('.hand .grow')].map((x) => x.textContent)`), await ev(`document.querySelector('.live').textContent.includes('Le ritrovi tutte nel Diario')`)], [['Servizio', 'Dritto', 'Gambe', 'Gioco tagliato', 'Sull’allenamento'], true]);
+check('alla chiusura c’è il compagno scelto in Oggi', await ev(`document.querySelector('.live .with .grow').textContent.trim()`), 'Con Paolo');
 await tapText('/^Dritto/', '.hand', 800); await type('.sheet textarea', 'Gomito più avanti.'); await shot('nota'); await tapText('/^Salva/', '.sheet button', 900);
-check('prima nota: si dice dove resta', await ev(`document.querySelector('.toast')?.textContent.includes('Le note sono in Progressi')`), true);
+check('prima nota: si dice dove resta', await ev(`document.querySelector('.toast')?.textContent.includes('Le ritrovi tutte nel Diario')`), true);
+check('la riga del dritto mostra la nota scritta', await ev(`[...document.querySelectorAll('.hand')].find((x) => /^Dritto/.test(x.textContent.trim())).textContent.includes('Gomito più avanti.')`), true);
+await sleep(5600); await tapText('/^Sull’allenamento/', '.hand', 800); await type('.sheet textarea', 'Arrivato stanco.'); await tapText('/^Salva/', '.sheet button', 900);
 await tapText('/Salva nel diario/', 'button', 1500); await shot('oggi-fatto');
 check('fatto', await ev(`Boolean(document.querySelector('.court .done'))`), true);
-await ev(`location.hash = '#/progressi/mappa/dritto'`); await sleep(1200); await tap('.notes', 700); await shot('note-colpo');
-check('la nota è fra quelle del dritto', await ev(`document.querySelector('.sheet').textContent.includes('Gomito più avanti.')`), true);
-await tap('.sheet .icon-btn');
+{ const d = await store(); const e = Object.values(d.events).find((x) => x.kind === 'training');
+  check('nel diario: il compagno e le due note legate all’allenamento', [e.partner, Object.values(d.notes).filter((n) => n.eventId === e.id).map((n) => [Boolean(n.stroke), n.text]).sort()], [{ kind: 'guest', id: null, name: 'Paolo' }, [[false, 'Arrivato stanco.'], [true, 'Gomito più avanti.']]]); }
+await ev(`location.hash = '#/progressi/mappa/dritto'`); await sleep(1200); await tap('.notes', 900); await shot('note-colpo');
+check('dalla mappa si arriva alle note del dritto, nel Diario', [await ev('location.hash'), await ev(`[...document.querySelectorAll('.notes .nrow .text')].map((x) => x.textContent)`)], ['#/calendario/note/dritto', ['Gomito più avanti.']]);
+await tapText('/^Tutte/', '.chip', 600); await shot('note-tutte');
+check('in «Tutte» c’è anche quella sull’allenamento', await ev(`[...document.querySelectorAll('.notes .nrow')].map((x) => [x.querySelector('b').textContent, x.querySelector('.text').textContent]).sort()`), [['Dritto', 'Gomito più avanti.'], ['Martedì forte', 'Arrivato stanco.']]);
 await ev(`location.hash = '#/calendario'`); await sleep(1000); await shot('diario');
 await ev(`location.hash = '#/progressi'`); await sleep(1000); await shot('progressi');
 } catch (e) { bad++; console.log('FERMO:', e.message.split('\n')[0]); await shot('fermo').catch(() => {}); }

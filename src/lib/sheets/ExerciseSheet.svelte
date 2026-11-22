@@ -21,7 +21,7 @@
   import LevelBadge from '../ui/LevelBadge.svelte';
   import Collapse from '../ui/Collapse.svelte';
   import MeasureChart from '../ui/MeasureChart.svelte';
-  import NoteRow from '../ui/NoteRow.svelte';
+  import { brickOfExercise } from '../data/bricks.js';
   import { notesForExercise } from '../engine/notes.js';
 
   let { id } = $props();
@@ -42,7 +42,7 @@
     return rows.sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 12);
   });
   const family = $derived(ex?.family ? FAMILY[ex.family] : null);
-  const notes = $derived(ex ? notesForExercise(app.notes, ex) : []);
+  const notes = $derived(ex ? notesForExercise(app.notes, ex, 999) : []);
   const imported = $derived(Boolean(ex?.custom && !ex.track && (app.meta?.custom?.exercises ?? []).some((e) => e.id === id)));
 
   function measureText(e) {
@@ -136,11 +136,11 @@
           <p class="small muted">{measureText(ex)} Le medaglie non si perdono e non bloccano niente.</p>
         </Collapse>
         {#if notes.length}
-          <Collapse title="Note sui colpi" count={notes.length} open={false} key="ex-note">
-            <div class="card flush list">
-              {#each notes as n (n.id)}<NoteRow note={n} showStroke onclick={() => ui.open('stroke', { id: n.stroke })} />{/each}
-            </div>
-          </Collapse>
+          <div class="card flush list">
+            <button class="item" onclick={() => ui.go('calendario', 'note', brickOfExercise(ex) ?? 'colpi')}>
+              <span class="grow">Note sui colpi</span><span class="muted">{notes.length}</span><span class="muted"><ChevronRight size={18} /></span>
+            </button>
+          </div>
         {/if}
         {#if ex.errors?.length}
           <Collapse title="Errori comuni" count={ex.errors.length} open={false} key="ex-errori">

@@ -13,7 +13,8 @@
   import Collapse from '../ui/Collapse.svelte';
   import Crosshair from '@lucide/svelte/icons/crosshair';
   import Trash from '@lucide/svelte/icons/trash-2';
-  import NoteRow from '../ui/NoteRow.svelte';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import { brickOfStroke } from '../data/bricks.js';
   import { FEEL } from '../ui/FeelPicker.svelte';
   import Plus from '@lucide/svelte/icons/plus';
   import { notesOf, feelSummary, fmtFeel } from '../engine/notes.js';
@@ -75,12 +76,14 @@
       {/if}
 
       <div class="more">
-        <Collapse title="Le tue note" count={notes.length || null} open={notes.length > 0}>
-          <div class="card flush list">
-            {#each notes as n (n.id)}<NoteRow note={n} onclick={() => ui.open('note', { id: n.id })} />{/each}
-            <button class="add" onclick={() => ui.open('note', { draft: { stroke: id } })}><Plus size={18} />Aggiungi una nota</button>
-          </div>
-        </Collapse>
+        <div class="card flush list">
+          {#if notes.length}
+            <button class="item" onclick={() => ui.go('calendario', 'note', brickOfStroke(stroke) ?? 'colpi')}>
+              <span class="grow">Le tue note</span><span class="muted">{notes.length}</span><span class="muted"><ChevronRight size={18} /></span>
+            </button>
+          {/if}
+          <button class="add" onclick={() => ui.open('note', { draft: { stroke: id } })}><Plus size={18} />Scrivi una nota</button>
+        </div>
 
         {#if drills.length}
           <Collapse title="Dove lo alleni" count={drills.length} key="colpo-esercizi">

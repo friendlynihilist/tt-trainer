@@ -1,80 +1,106 @@
 <script module>
   import { app } from '../store/app.svelte.js';
-  import { byTime } from '../engine/events.js';
-
-  /** I compagni con cui ti sei allenato, il più recente prima (solo i nomi, dal tuo diario). */
-  export function recentPartners(events) {
-    const out = [];
-    for (const e of [...events].sort(byTime).reverse()) {
-      const name = e.partner?.name?.trim();
-      if (name && !out.some((p) => p.name.toLowerCase() === name.toLowerCase())) out.push({ id: e.partner.id ?? null, name });
-    }
-    return out;
-  }
+  import { normalizePartner, storedPartner, lastPartnerOf } from '../engine/partner.js';
 
   /**
-   * Il compagno da proporre in una sessione nuova: l'ultimo con cui ti sei allenato, altrimenti
-   * quello scelto nelle impostazioni della 0.2 (se è ancora nel gruppo).
+   * Il compagno da proporre: l'ultima scelta fatta in Oggi; altrimenti l'ultima scritta nel diario;
+   * altrimenti quello scelto nelle impostazioni della 0.2 (se è ancora nel gruppo).
    */
-  export function lastPartner() {
+  export function currentPartner() {
+    const chosen = normalizePartner(app.meta?.with);
+    if (chosen) return chosen.kind === 'mate' ? (app.mates.some((m) => m.id === chosen.id) ? chosen : { kind: 'guest', name: chosen.name }) : chosen;
     const mate = app.mates.find((m) => m.id === app.settings.partner);
-    return recentPartners(app.events)[0] ?? (mate?.name ? { id: mate.id, name: mate.name } : null);
+    return lastPartnerOf(app.events) ?? (mate?.name ? { kind: 'mate', id: mate.id, name: mate.name } : null);
+  }
+
+  /** Ricorda la scelta per la prossima volta. */
+  export function rememberPartner(p) {
+    app.patchMeta({ with: storedPartner(p) ?? { kind: null, id: null, name: null } });
   }
 </script>
 
 <script>
-  // Con chi ti sei allenato: solo un nome. Si sceglie fra i compagni del gruppo e quelli già
-  // scritti nel diario, oppure se ne scrive uno nuovo. Del compagno non si mostra altro.
-  import Users from '@lucide/svelte/icons/users';
+  // Con chi ti alleni, in una riga: il nome (o «Da solo», «Con il robot») e un tocco per cambiare.
+  // `court`: sopra il tavolo blu di Oggi.
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
+  import User from '@lucide/svelte/icons/user';
+  import Users from '@lucide/svelte/icons/users';
+  import Bot from '@lucide/svelte/icons/bot';
   import { ui } from '../store/ui.svelte.js';
+  import { partnerWith } from '../engine/partner.js';
 
-  let { value = null, onchange } = $props();
+  let { value = null, onchange, court = false, title = 'Con chi ti alleni?', empty = 'Con chi ti alleni?' } = $props();
 
-  function pick() {
-    const mates = app.mates.map((m) => ({ id: m.id, name: m.name })).filter((m) => m.name);
-    const recent = recentPartners(app.events).filter((p) => !mates.some((m) => m.name.toLowerCase() === p.name.toLowerCase()));
-    const all = [...mates, ...recent];
-    const key = (p) => (p.id ? `m:${p.id}` : `n:${p.name}`);
-    const groups = [];
-    if (mates.length) groups.push({ name: 'Il gruppo', options: mates.map((p) => ({ id: key(p), label: p.name })) });
-    if (recent.length) groups.push({ name: 'Già nel diario', options: recent.map((p) => ({ id: key(p), label: p.name })) });
-    ui.open('pick', {
-      title: 'Con chi ti sei allenato?',
-      value: value ? key(value) : null,
-      clearable: true,
-      groups,
-      onpick: (id) => onchange?.(id ? (all.find((p) => key(p) === id) ?? null) : null),
-      onadd: (name) => onchange?.({ id: null, name: name.trim() })
-    });
-  }
+  const p = $derived(normalizePartner(value));
 </script>
 
-<button class="select" class:empty={!value} onclick={pick}>
-  <Users size={18} />
-  <span class="grow">{value?.name ?? 'Da solo, o non lo indico'}</span>
+<button class="with" class:on-court={court} class:none={!p} onclick={() => ui.open('partner', { value: p, title, onpick: (v) => onchange?.(normalizePartner(v)) })}>
+  <i class="av" class:robot={p?.kind === 'robot'} class:guest={p?.kind === 'guest'} class:line={!p || p.kind === 'solo'}>
+    {#if p?.kind === 'mate' || p?.kind === 'guest'}{p.name.charAt(0).toUpperCase()}{:else if p?.kind === 'robot'}<Bot size={16} />{:else if p?.kind === 'solo'}<User size={16} />{:else}<Users size={16} />{/if}
+  </i>
+  <span class="grow">{p ? partnerWith(p) : empty}</span>
   <ChevronDown size={18} />
 </button>
 
 <style>
-  .select {
+  .with {
     display: flex;
     align-items: center;
     gap: 10px;
     width: 100%;
     min-height: 48px;
-    padding: 0 14px;
-    border-radius: var(--r-s);
-    border: 1px solid var(--line-strong);
-    background: var(--card);
+    padding: 0 14px 0 8px;
+    border-radius: 999px;
+    background: var(--sunk);
     font-size: 16px;
+    font-weight: 650;
     text-align: left;
   }
-  .select.empty {
-    color: var(--ink-3);
+  .with.none {
+    color: var(--ink-2);
   }
-  .select :global(svg) {
-    color: var(--ink-3);
+  .with :global(svg) {
     flex: none;
+  }
+  .av {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-on);
+    font-style: normal;
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .av.guest {
+    background: var(--ink-2);
+    color: var(--card);
+  }
+  .av.robot {
+    border-radius: 10px;
+    background: var(--fam-controllo);
+    color: var(--fam-controllo-on);
+  }
+  .av.line {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--line-strong);
+    color: var(--ink-2);
+  }
+  /* Sopra il tavolo blu: bianco velato, come una riga del campo. */
+  .with.on-court {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+  }
+  .with.on-court .av {
+    background: #fff;
+    color: #10151d;
+  }
+  .with.on-court .av.line {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7);
+    color: #fff;
   }
 </style>

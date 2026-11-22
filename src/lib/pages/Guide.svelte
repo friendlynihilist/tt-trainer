@@ -15,7 +15,7 @@
     ['Costruire un allenamento', 'Tocca il tasto + in basso. Ogni fondamentale è una cosa da allenare: aggiungi quelli che vuoi, decidi quanto durano e scegli gli esercizi.'],
     ['Allenarsi', 'Apri Oggi e tocca Inizia: trovi l’allenamento del giorno con il timer. Puoi allenarti anche nei giorni che non hai messo in programma.'],
     ['Provare un obiettivo', 'Su ogni esercizio puoi toccare «Prova l’obiettivo»: l’app ti mostra la prossima medaglia, per esempio «Argento: 10 di fila».'],
-    ['Alla fine', 'Di’ com’è andata e, se vuoi, scrivi una nota per ogni colpo. Le note le rileggi in Progressi, nella mappa del colpo.']
+    ['Alla fine', 'Di’ com’è andata e, se vuoi, scrivi una nota per ogni colpo o sull’allenamento. Le note le rileggi tutte nel Diario, in «Note».']
   ];
   const example = LIBRARY.find((e) => e.id === 'top-d-block');
 </script>
@@ -74,7 +74,8 @@
     <Collapse title="Durante l’allenamento" open={false} key="guida-sessione">
       <p>Un allenamento è una fila di fondamentali. Ogni fondamentale ha la sua durata; se ha più esercizi, il tempo si divide in parti uguali. La partita si gioca metà {MATCH_TYPES.risk.name.toLowerCase()} e metà {MATCH_TYPES.scheme.name.toLowerCase()}.</p>
       <ul class="rules">
-        <li><b>Il cambio.</b> A metà di ogni esercizio in due suona un doppio bip e il riquadro del tempo diventa scuro: tocca al compagno. Se comincia lui, tocca l’etichetta «Tocca a te» e i turni si invertono. Nel palleggio e negli esercizi da solo non c’è cambio.</li>
+        <li><b>Con chi.</b> In Oggi, sopra «Inizia», scegli con chi ti alleni: da solo, con il robot, con uno del gruppo o con qualcuno fuori dall’app. L’app si ricorda l’ultima scelta.</li>
+        <li><b>Il cambio.</b> A metà di ogni esercizio in due suona un doppio bip e il riquadro del tempo cambia colore: tocca al compagno, e l’etichetta dice il suo nome. Se comincia lui, tocca l’etichetta «Tocca a te» e i turni si invertono. Nel palleggio, da solo e con il robot non c’è cambio.</li>
         <li><b>Le pause.</b> Fra un fondamentale e l’altro c’è sempre {PAUSE_MINUTES} minuto di pausa: quando finisce, un bip ti avvisa e il fondamentale dopo comincia da solo. Se non ti serve la salti. La durata di un allenamento conta anche le pause.</li>
       </ul>
     </Collapse>

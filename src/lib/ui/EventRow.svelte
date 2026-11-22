@@ -1,10 +1,11 @@
 <script>
   // Una voce del diario in elenco. Ogni informazione ha il suo posto e il suo stile, così cose
-  // diverse non si confondono: il nome in grassetto, la data a destra; durata,
-  // compagno e cosa correggere con la loro icona; i risultati come chip («Pendolo laterale 8/10»).
+  // diverse non si confondono: il nome in grassetto, la data a destra; durata, compagno e quante
+  // note ha, ognuno con la sua icona; i risultati come chip («Pendolo laterale 8/10»). Le note si
+  // leggono aprendo la voce, oppure tutte insieme in Diario → Note.
   import Timer from '@lucide/svelte/icons/timer';
   import UsersIcon from '@lucide/svelte/icons/users';
-  import Crosshair from '@lucide/svelte/icons/crosshair';
+  import NotebookPen from '@lucide/svelte/icons/notebook-pen';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { KIND } from '../data/taxonomy.js';
@@ -13,6 +14,7 @@
   import { shortValue, size } from '../engine/medals.js';
   import { TRIES_PER_DAY } from '../data/library.js';
   import { fmtShort, fmtDuration } from '../util/dates.js';
+  import { partnerName } from '../engine/partner.js';
 
   let { event, showDate = true } = $props();
 
@@ -30,6 +32,11 @@
   // Un allenamento si chiama per quello che contiene («Dritto e servizio»); il resto con il suo tipo.
   const kind = $derived(event.kind === 'livello' ? 'Livello' : event.kind === 'training' ? eventName(event, app.catalog) : (KIND[event.kind]?.short ?? 'Attività'));
   const minutes = $derived(event.minutes && event.kind !== 'test' ? fmtDuration(event.minutes) : '');
+  const who = $derived(partnerName(event.partner));
+  // Quante note ha: quelle legate alla voce, più i testi rimasti dentro la voce dalle versioni di prima.
+  const noteCount = $derived(
+    app.notes.filter((n) => n.eventId === event.id).length + (event.note?.trim() ? 1 : 0) + (event.focus?.stroke || event.focus?.error ? 1 : 0) + (event.obs?.length ?? 0)
+  );
 </script>
 
 <button class="item" onclick={() => ui.open(event.kind === 'livello' ? 'event' : 'done', { id: event.id })}>
@@ -39,11 +46,11 @@
       <strong>{kind}</strong>
       {#if showDate}<span class="date">{fmtShort(event.date)}</span>{/if}
     </span>
-    {#if minutes || event.partner?.name || event.focus?.stroke}
+    {#if minutes || who || noteCount}
       <span class="meta">
         {#if minutes}<span><Timer size={14} />{minutes}</span>{/if}
-        {#if event.partner?.name}<span><UsersIcon size={14} />{event.partner.name}</span>{/if}
-        {#if event.focus?.stroke}<span class="fix"><Crosshair size={14} />{app.strokeName(event.focus.stroke, true)}</span>{/if}
+        {#if who}<span><UsersIcon size={14} />{who}</span>{/if}
+        {#if noteCount}<span><NotebookPen size={14} />{noteCount === 1 ? '1 nota' : `${noteCount} note`}</span>{/if}
       </span>
     {/if}
     {#if scores.length}
@@ -51,7 +58,6 @@
         {#each scores as sc, i (i)}<span class="res"><span class="nm">{sc.name}</span><b class="t-num">{sc.value}</b></span>{/each}
       </span>
     {/if}
-    {#if event.note}<span class="small note">{event.note}</span>{/if}
   </span>
 </button>
 
@@ -102,9 +108,6 @@
   .meta :global(svg) {
     color: var(--ink-3);
   }
-  .fix :global(svg) {
-    color: var(--down);
-  }
   .chips {
     display: flex;
     flex-wrap: wrap;
@@ -135,14 +138,5 @@
   }
   strong {
     font-weight: 650;
-  }
-  .note {
-    margin-top: 2px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    color: var(--ink);
   }
 </style>

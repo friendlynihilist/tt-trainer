@@ -25,6 +25,7 @@
   import { startTour } from '../ui/tours.js';
   import { unseen } from '../data/changelog.js';
   import PageHead from '../ui/PageHead.svelte';
+  import PartnerField, { currentPartner, rememberPartner } from '../ui/PartnerField.svelte';
   import PlannedRow from '../ui/PlannedRow.svelte';
   import MedalBadge from '../ui/MedalBadge.svelte';
   import Flame from '../ui/Flame.svelte';
@@ -196,6 +197,7 @@
       {#if doneToday && !trainingToday}
         <span class="done"><Check size={20} strokeWidth={3} /> Fatto, {doneToday.minutes ?? session.minutes} minuti</span>
       {:else}
+        <PartnerField court value={currentPartner()} onchange={rememberPartner} />
         <button class="go" onclick={startTraining}><Play size={18} fill="currentColor" strokeWidth={0} /> Inizia · {session.minutes} min</button>
       {/if}
     {:else if testToday}
