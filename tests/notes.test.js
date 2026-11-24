@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { makeNote, isValidNote, notesOf, feelSummary, notesForExercise, feelSeries, fmtFeel, allNotes } from '../src/lib/engine/notes.js';
+import { makeNote, isValidNote, notesOf, feelSummary, notesForExercise, feelSeries, fmtFeel, allNotes, onStroke } from '../src/lib/engine/notes.js';
+import { brickOfNote } from '../src/lib/data/bricks.js';
 import { normalizePartner, storedPartner, hasTurns, partnerName, partnerWith, samePartner, recentPartners, lastPartnerOf } from '../src/lib/engine/partner.js';
 import { diaryRows, diaryCsv, backup, parseBackup, CSV_HEADER } from '../src/lib/engine/export.js';
 import { createLocalBackend } from '../src/lib/store/local.js';
@@ -36,6 +37,38 @@ describe('una nota', () => {
   it('può non essere su un colpo: resta legata a una voce del diario, senza sensazione', () => {
     const a = makeNote({ id: 'a', stroke: null, date: '2026-11-15', text: 'Servire lungo ai mancini', feel: 4, eventId: 'torneo1' }, { now: 5 });
     expect(a).toEqual({ id: 'a', stroke: null, family: null, date: '2026-11-15', text: 'Servire lungo ai mancini', feel: null, eventId: 'torneo1', createdAt: 5, updatedAt: 5 });
+  });
+});
+
+describe('una nota su un fondamentale', () => {
+  it('basta il fondamentale: il colpo preciso c’è solo quando si sa', () => {
+    const a = makeNote({ id: 'a', brick: 'dritto', date: '2026-11-24', text: 'Più gambe', feel: 4 }, { now: 1 });
+    expect(a).toEqual({ id: 'a', stroke: null, family: null, brick: 'dritto', date: '2026-11-24', text: 'Più gambe', feel: 4, createdAt: 1, updatedAt: 1 });
+    expect(isValidNote({ brick: 'dritto', date: '2026-11-24', text: '', feel: 3 })).toBe(true);
+    expect(onStroke(a)).toBe(true);
+    expect(onStroke({ stroke: 'ap-d' })).toBe(true);
+    expect(onStroke({ text: 'torneo' })).toBe(false);
+  });
+
+  it('sta nel gruppo «Colpi», sotto il suo fondamentale', () => {
+    const rows = allNotes([makeNote({ id: 'a', brick: 'servizio', date: '2026-11-24', text: 'x' }), makeNote({ id: 'b', stroke: 'ap-r', date: '2026-11-23', text: 'y' }), makeNote({ id: 'c', date: '2026-11-22', text: 'z' })]);
+    expect(rows.map((r) => [r.id, r.group, r.brick])).toEqual([['a', 'colpi', 'servizio'], ['b', 'colpi', null], ['c', 'altro', null]]);
+    expect(brickOfNote(rows[0], null)).toBe('servizio');
+    expect(brickOfNote(rows[1], STROKE['ap-r'])).toBe('rovescio');
+    // Il fondamentale scelto vince sul colpo; uno che non esiste non conta.
+    expect(brickOfNote({ brick: 'dritto', stroke: 'ap-r' }, STROKE['ap-r'])).toBe('dritto');
+    expect(brickOfNote({ brick: 'boh' }, STROKE['ap-r'])).toBe('rovescio');
+    expect(brickOfNote({ brick: 'partita' }, null)).toBe(null);
+  });
+
+  it('la copia completa e il CSV la tengono', () => {
+    const a = makeNote({ id: 'a', brick: 'dritto', date: '2026-11-24', text: '', feel: 2 });
+    const copy = parseBackup(JSON.stringify(backup({ meta: {}, events: [], notes: [a] })));
+    expect(copy.notes).toEqual([a]);
+    const rows = diaryRows({ events: [], notes: [a], catalog: undefined, names: { strokeName: () => '', errorName: () => '' } });
+    // La prima riga è l'intestazione.
+    expect(rows[1][1]).toBe('Nota sul colpo');
+    expect(rows[1][5]).toBe('Dritto');
   });
 });
 

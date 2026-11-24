@@ -3,6 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
+import { pack, unpack } from '../../src/lib/store/nested.js';
 
 const env = await initializeTestEnvironment({ projectId: 'demo-tt-trainer', firestore: { rules: readFileSync('firestore.rules', 'utf8') } });
 const user = (uid, email) => env.authenticatedContext(uid, { email, email_verified: true }).firestore();
@@ -57,6 +58,37 @@ await check('non il profilo di un’altra', assertFails(setDoc(doc(bea, 'profile
 await check('i membri leggono i profili', assertSucceeds(getDocs(collection(anna, 'profiles'))));
 await check('chi è fuori no', assertFails(getDocs(collection(carla, 'profiles'))));
 await check('ognuno toglie il proprio profilo', assertSucceeds(deleteDoc(doc(bea, 'profiles', 'bea'))));
+
+// Le misure in due parti: un elenco dentro un elenco Firestore lo rifiuta, impacchettato lo accetta.
+const twoParts = { kind: 'training', date: '2026-11-24', attempts: [{ ex: 'srv-regolare', fmt: 'su', tries: [[8, 6]] }] };
+let refused = false;
+try {
+  await setDoc(doc(bea, 'users', 'bea', 'events', 'e2'), twoParts);
+} catch {
+  refused = true;
+}
+await check('una misura in due parti scritta così com’è viene rifiutata', refused ? Promise.resolve() : Promise.reject(new Error('accettata')));
+await check('impacchettata si salva', assertSucceeds(setDoc(doc(bea, 'users', 'bea', 'events', 'e2'), pack(twoParts))));
+await check('e riletta torna uguale', getDoc(doc(bea, 'users', 'bea', 'events', 'e2')).then((snap) => {
+  if (JSON.stringify(unpack(snap.data())) !== JSON.stringify(twoParts)) throw new Error('diversa');
+}));
+
+// L'allenamento fatto insieme: Anna lo lascia nella posta in arrivo di Bea.
+const share = { from: 'anna', name: 'Anna', date: '2026-11-24', minutes: 50, bricks: [{ type: 'dritto', minutes: 20, exs: ['top-top-lontano'] }], at: 1 };
+const inbox = (db, uid, id) => doc(db, 'users', uid, 'inbox', id);
+await check('un membro lascia a un’altra l’allenamento fatto insieme', assertSucceeds(setDoc(inbox(anna, 'bea', 's1'), share)));
+await check('non a nome di un’altra', assertFails(setDoc(inbox(anna, 'bea', 's2'), { ...share, from: 'bea' })));
+await check('non con campi in più', assertFails(setDoc(inbox(anna, 'bea', 's2'), { ...share, attempts: [] })));
+await check('non con una durata assurda', assertFails(setDoc(inbox(anna, 'bea', 's2'), { ...share, minutes: 100000 })));
+await check('non con una data scritta male', assertFails(setDoc(inbox(anna, 'bea', 's2'), { ...share, date: 'ieri' })));
+await check('chi l’ha lasciato non lo rilegge', assertFails(getDoc(inbox(anna, 'bea', 's1'))));
+await check('e non lo cambia', assertFails(setDoc(inbox(anna, 'bea', 's1'), { ...share, minutes: 90 })));
+await check('né lo toglie', assertFails(deleteDoc(inbox(anna, 'bea', 's1'))));
+await check('chi è fuori non lascia niente', assertFails(setDoc(inbox(carla, 'bea', 's3'), { ...share, from: 'carla' })));
+await check('nessuna se lo lascia da sola', assertFails(setDoc(inbox(bea, 'bea', 's4'), { ...share, from: 'bea' })));
+await check('la destinataria legge la sua posta', assertSucceeds(getDocs(collection(bea, 'users', 'bea', 'inbox'))));
+await check('un’altra no', assertFails(getDocs(collection(anna, 'users', 'bea', 'inbox'))));
+await check('la destinataria la svuota', assertSucceeds(deleteDoc(inbox(bea, 'bea', 's1'))));
 
 await env.cleanup();
 console.log(`\n${ok} ok, ${ko} no`);

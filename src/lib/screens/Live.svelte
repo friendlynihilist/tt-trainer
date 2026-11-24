@@ -23,13 +23,14 @@
   import Users from '@lucide/svelte/icons/users';
   import Save from '@lucide/svelte/icons/save';
   import NotebookPen from '@lucide/svelte/icons/notebook-pen';
-  import { BRICK, brickOfExercise, brickOfStroke, sessionBricks } from '../data/bricks.js';
+  import { BRICK, brickOfExercise, brickOfNote, sessionBricks } from '../data/bricks.js';
+  import { onStroke } from '../engine/notes.js';
   import { app, newId } from '../store/app.svelte.js';
   import { ui, buzz } from '../store/ui.svelte.js';
   import { loadLive, saveLive, clearLive } from '../store/live.js';
   import { weekFor } from '../engine/plan.js';
   import { composeSession, composeTest, exerciseStep, sessionExercises, trainedTracks, matchHalves, TEST_MINUTES, replaceStepExercise, schemeOf, templateWithOverrides } from '../engine/compose.js';
-  import { upgradeDraft, makeAttempt, allAttempts } from '../engine/attempts.js';
+  import { upgradeDraft, makeAttempt, allAttempts, settleGoal } from '../engine/attempts.js';
   import { allMedals, newMedals, valueText, size, nextGoal } from '../engine/medals.js';
   import { SCHEMES, DEFAULT_SCHEME } from '../data/program.js';
   import { TIER } from '../data/library.js';
@@ -265,7 +266,10 @@
 
   function goTo(index) {
     unlockAudio();
-    if (!closing && step) pause(step.id);
+    if (!closing && step) {
+      pause(step.id);
+      settle(step);
+    }
     dir = index >= draft.step ? 1 : -1;
     info = false;
     draft.step = Math.max(0, Math.min(steps.length, index));
@@ -282,6 +286,21 @@
   }
 
   // ── Obiettivi ────────────────────────────────────────────────────────────
+
+  /**
+   * Lasciando un esercizio, il numero già scritto vale anche senza «Registra»: altrimenti la misura
+   * andrebbe persa. Una serie palla per palla lasciata a metà invece non conta: lo si dice.
+   */
+  function settle(s) {
+    const v = draft.attempts?.[s.id];
+    const ex = v && app.catalog.exercise(v.ex);
+    if (!ex) return;
+    const next = settleGoal(ex, v);
+    if (next !== v) draft.attempts[s.id] = next;
+    else if (ex.measure?.type === 'su' && !ex.measure.parts && v.marks?.length && v.score == null) {
+      ui.toast(`La serie di «${ex.name}» è a metà (${v.marks.length} su ${ex.measure.n}): finché non la finisci non conta.`, { ms: 5200 });
+    }
+  }
 
   function openGoal(s) {
     unlockAudio();
@@ -384,8 +403,8 @@
   function collect() {
     const out = [];
     for (const s of steps) {
-      const v = draft.attempts?.[s.id];
-      const ex = v && app.catalog.exercise(v.ex);
+      const ex = app.catalog.exercise(draft.attempts?.[s.id]?.ex);
+      const v = settleGoal(ex, draft.attempts?.[s.id]);
       const tries = goalTries(ex, v);
       if (!ex || !tries.length) continue;
       out.push(makeAttempt({ ex: ex.id, fmt: ex.measure.type, tries, tier: v.tier, marks: v.marks?.length ? v.marks.join('') : null, q: v.q }));
@@ -441,13 +460,15 @@
       ev.id = draft.newId;
     }
     const won = summary?.won ?? [];
-    app.saveEvent(ev);
+    const saved = app.saveEvent(ev);
     celebrateFinish(steps.map((s) => stepFamily(s, app.catalog)).filter((f) => f && f !== 'pausa'));
     finished = true;
     clearLive(uid);
     ui.live = null;
     const full = won.filter((w) => !w.half);
-    ui.toast(full.length ? `Sessione salvata · ${full.length === 1 ? 'una medaglia nuova' : `${full.length} medaglie nuove`}` : 'Sessione salvata nel diario');
+    // Con un iscritto del gruppo la sessione va anche nel suo diario (engine/shared.js).
+    const also = saved.sharedTo ? `, anche nel diario di ${saved.partner.name}` : '';
+    ui.toast(full.length ? `Sessione salvata${also} · ${full.length === 1 ? 'una medaglia nuova' : `${full.length} medaglie nuove`}` : also ? `Sessione salvata${also}` : 'Sessione salvata nel diario');
   }
 
   /** I minuti fatti (dai timer), oppure quelli previsti se i timer non sono stati usati. */
@@ -484,13 +505,13 @@
   const mine = $derived(draft?.newId ? app.notes.filter((n) => n.eventId === draft.newId) : []);
   /** La nota già scritta su un fondamentale (o, con null, sull'allenamento). */
   function written(brick) {
-    return mine.find((n) => (brick ? n.stroke && brickOfStroke(app.stroke(n.stroke)) === brick : !n.stroke)) ?? null;
+    return mine.find((n) => (brick ? onStroke(n) && brickOfNote(n, app.stroke(n.stroke)) === brick : !onStroke(n))) ?? null;
   }
   function noteOn(t) {
     const done = written(t.brick);
     if (done) return ui.open('note', { id: done.id });
     draft.newId ??= draft.eventId ?? newId();
-    ui.open('note', { draft: { stroke: t.stroke, ex: t.ex, date: draft.date, eventId: draft.newId } });
+    ui.open('note', { draft: { brick: t.brick, stroke: t.stroke, ex: t.ex, date: draft.date, eventId: draft.newId } });
   }
   function noteOnAll() {
     const done = written(null);

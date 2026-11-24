@@ -47,6 +47,7 @@
       </div>
       <ul class="rules">
         <li>Quando conti quante di fila hai tre tentativi per seduta, e vale il migliore. Se sbaglia il compagno, il tentativo non conta: ripetilo.</li>
+        <li>Il numero che hai scritto vale anche se passi all’esercizio dopo senza toccare «Registra». Una serie contata palla per palla, invece, conta solo se la finisci.</li>
         <li>Quando conti su 10 o su 20 vale la prima serie del giorno: non si ripete finché esce il numero giusto.</li>
         <li>L’oro chiede la soglia in due giorni diversi. Con un giorno solo hai «metà oro».</li>
         <li>Le medaglie non si perdono. Se non misuri un esercizio da 90 giorni, l’app lo segna «da ripassare».</li>
@@ -75,6 +76,7 @@
       <p>Un allenamento è una fila di fondamentali. Ogni fondamentale ha la sua durata; se ha più esercizi, il tempo si divide in parti uguali. La partita si gioca metà {MATCH_TYPES.risk.name.toLowerCase()} e metà {MATCH_TYPES.scheme.name.toLowerCase()}.</p>
       <ul class="rules">
         <li><b>Con chi.</b> In Oggi, sopra «Inizia», scegli con chi ti alleni: da solo, con il robot, con uno del gruppo o con qualcuno fuori dall’app. L’app si ricorda l’ultima scelta.</li>
+        <li><b>Con uno del gruppo.</b> L’allenamento che registri finisce anche nel suo diario: giorno, durata e fondamentali, con te come compagno. Le misure, le note e com’è andata restano tue. Se lui quell’allenamento l’ha già segnato, non si aggiunge niente. Le correzioni che fai dopo non gli arrivano: ognuno sistema il proprio diario.</li>
         <li><b>Il cambio.</b> A metà di ogni esercizio in due suona un doppio bip e il riquadro del tempo cambia colore: tocca al compagno, e l’etichetta dice il suo nome. Se comincia lui, tocca l’etichetta «Tocca a te» e i turni si invertono. Nel palleggio, da solo e con il robot non c’è cambio.</li>
         <li><b>Le pause.</b> Fra un fondamentale e l’altro c’è sempre {PAUSE_MINUTES} minuto di pausa: quando finisce, un bip ti avvisa e il fondamentale dopo comincia da solo. Se non ti serve la salti. La durata di un allenamento conta anche le pause.</li>
       </ul>

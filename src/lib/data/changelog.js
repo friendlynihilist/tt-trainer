@@ -10,6 +10,17 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.11.0',
+    date: '2026-11-24',
+    title: 'L’allenamento in due, le medaglie che mancavano, le note più semplici',
+    items: [
+      { icon: 'users', text: 'Se ti alleni con uno del gruppo, l’allenamento che registri finisce anche nel suo diario: giorno, durata e fondamentali. Le misure e le note restano tue.' },
+      { icon: 'medal', text: 'Le misure in due parti, come «Servizio regolamentare», non si salvavano: ora sì, e la medaglia arriva.' },
+      { icon: 'medal', text: 'Il numero che scrivi in un obiettivo vale anche se passi all’esercizio dopo senza toccare «Registra».' },
+      { icon: 'pencil', text: 'Per scrivere una nota su un colpo scegli il fondamentale fra le etichette colorate: non ci sono più elenchi da aprire.' }
+    ]
+  },
+  {
     version: '0.10.1',
     date: '2026-11-22',
     title: 'Il grafico: settimana, mese, tre mesi',

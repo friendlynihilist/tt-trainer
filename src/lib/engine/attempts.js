@@ -7,6 +7,7 @@
 
 import { BASE, legacyExercise, serveExercise } from '../data/catalog.js';
 import { BLOCKS } from '../data/program.js';
+import { TRIES_PER_DAY } from '../data/library.js';
 import { byTime, serveScore } from './events.js';
 
 /** La serie più lunga di palle buone nei segni di un test («1101111111» → 7). */
@@ -74,6 +75,24 @@ export function makeAttempt({ ex, fmt, tries, tier = null, marks = null, q = nul
   if (marks) a.marks = marks;
   if (q != null) a.q = q;
   return a;
+}
+
+/**
+ * Un obiettivo provato in sessione, quando lo si lascia (ui/GoalPad.svelte ne tiene lo stato:
+ * `tries` i tentativi registrati, `cur` il numero scritto, `parts` le parti di una serie in due
+ * parti). Il numero scritto e non ancora registrato diventa un tentativo, se ce ne stanno ancora;
+ * una serie in due parti già compilata diventa la serie. Così una misura non si perde solo perché
+ * non si è toccato «Registra». Senza niente da sistemare torna lo stesso oggetto.
+ */
+export function settleGoal(exercise, v) {
+  const m = exercise?.measure;
+  if (!m || !v) return v;
+  if (m.type === 'su') {
+    const whole = m.parts && !v.tries?.length && v.parts?.length === m.parts.length && v.parts.every((x) => x != null);
+    return whole ? { ...v, tries: [[...v.parts]] } : v;
+  }
+  const room = (v.tries?.length ?? 0) < (TRIES_PER_DAY[m.type] ?? 1);
+  return v.cur != null && room ? { ...v, tries: [...(v.tries ?? []), v.cur], cur: null } : v;
 }
 
 // ── Sessioni dal vivo lasciate a metà con le versioni di prima ──────────────

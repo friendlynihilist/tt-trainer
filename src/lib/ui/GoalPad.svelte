@@ -1,5 +1,6 @@
 <script module>
   import { nextGoal } from '../engine/medals.js';
+  import { TRIES_PER_DAY } from '../data/library.js';
 
   /** Lo stato iniziale di un obiettivo provato in sessione. */
   export function startGoal(exercise, medals) {
@@ -13,6 +14,7 @@
     if (exercise.measure.type === 'su' && !exercise.measure.parts) return v.score != null ? [v.score] : [];
     return v.tries ?? [];
   }
+
 </script>
 
 <script>
@@ -22,7 +24,7 @@
   import Timer from '@lucide/svelte/icons/timer';
   import { app } from '../store/app.svelte.js';
   import { buzz } from '../store/ui.svelte.js';
-  import { TIER, TIERS, TRIES_PER_DAY } from '../data/library.js';
+  import { TIER, TIERS } from '../data/library.js';
   import { medalsFor, dayValues, valueText, size } from '../engine/medals.js';
   import { chime } from '../util/device.js';
   import { celebrateMedal } from '../util/celebrate.js';

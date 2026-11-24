@@ -4,6 +4,7 @@
 
 import { BASE, exerciseLabel } from '../data/catalog.js';
 import { TRIES_PER_DAY } from '../data/library.js';
+import { BRICK } from '../data/bricks.js';
 import { attemptsOf } from './attempts.js';
 import { valueText, size } from './medals.js';
 import { byTime, eventTitle } from './events.js';
@@ -40,7 +41,7 @@ export function diaryRows({ events = [], notes = [], catalog = BASE, names }) {
     rows.push({
       date: n.date,
       createdAt: n.createdAt ?? 0,
-      cells: [n.date, n.stroke ? 'Nota sul colpo' : 'Nota', '', '', '', names.strokeName(n.stroke), '', n.ex ? exerciseLabel(n.ex, catalog) : '', n.feel ?? '', n.text ?? '']
+      cells: [n.date, n.stroke || n.brick ? 'Nota sul colpo' : 'Nota', '', '', '', names.strokeName(n.stroke) || (BRICK[n.brick]?.name ?? ''), '', n.ex ? exerciseLabel(n.ex, catalog) : '', n.feel ?? '', n.text ?? '']
     });
   }
   return [CSV_HEADER, ...rows.sort(byTime).map((r) => r.cells)];
@@ -81,7 +82,7 @@ export function parseBackup(text) {
     return [...byId.values()];
   };
   const events = keep(data.events, (e) => typeof e.kind === 'string' && e.kind);
-  const notes = keep(Array.isArray(data.notes) ? data.notes : [], (n) => (typeof n.stroke === 'string' && n.stroke) || (typeof n.text === 'string' && n.text.trim()));
+  const notes = keep(Array.isArray(data.notes) ? data.notes : [], (n) => (typeof n.stroke === 'string' && n.stroke) || (typeof n.brick === 'string' && n.brick) || (typeof n.text === 'string' && n.text.trim()));
   const total = data.events.length + (Array.isArray(data.notes) ? data.notes.length : 0);
   return {
     meta: isObject(data.meta) ? data.meta : null,

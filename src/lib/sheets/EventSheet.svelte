@@ -23,7 +23,8 @@
   import { templateMinutes } from '../data/templates.js';
   import { TRIES_PER_DAY, TIER } from '../data/library.js';
   import { KINDS, KIND } from '../data/taxonomy.js';
-  import { BRICK, brickOfStroke } from '../data/bricks.js';
+  import { BRICK, brickOfNote } from '../data/bricks.js';
+  import { onStroke } from '../engine/notes.js';
   import { storedPartner } from '../engine/partner.js';
   import { describeOld } from '../ui/oldNotes.js';
   import { fmtLong } from '../util/dates.js';
@@ -169,11 +170,13 @@
       delete out.trained;
       delete out.withTest;
     }
-    app.saveEvent(out);
+    const saved = app.saveEvent(out);
     // Le note legate alla voce seguono la sua data.
     for (const n of linkedNotes) if (n.date !== date) app.saveNote({ ...n, date });
     ui.close();
-    ui.toast(original ? 'Modifiche salvate' : 'Aggiunto al diario');
+    // Con un iscritto del gruppo l'allenamento va anche nel suo diario (engine/shared.js).
+    const also = saved.sharedTo && saved.sharedTo !== original?.sharedTo ? `, anche in quello di ${saved.partner.name}` : '';
+    ui.toast(original ? (also ? `Modifiche salvate. L’allenamento è ora anche nel diario di ${saved.partner.name}` : 'Modifiche salvate') : `Aggiunto al diario${also}`);
   }
 
   function remove() {
@@ -208,7 +211,7 @@
   }
   /** A cosa è legata una nota senza colpo: «Sull'allenamento», «Sul torneo», «In generale». */
   const aboutAll = $derived(kind === 'training' ? 'Sull’allenamento' : kind === 'torneo' ? 'Sul torneo' : 'In generale');
-  const noteTitle = (n) => (n.stroke ? (BRICK[brickOfStroke(app.stroke(n.stroke))]?.name ?? app.strokeName(n.stroke, true)) : aboutAll);
+  const noteTitle = (n) => (onStroke(n) ? (BRICK[brickOfNote(n, app.stroke(n.stroke))]?.name ?? app.strokeName(n.stroke, true)) : aboutAll);
 
   function chooseKind(k) {
     kind = k;
@@ -344,7 +347,7 @@
       <section class="stack g-8">
         <h3 class="heading">Note</h3>
         {#each linkedNotes as n (n.id)}
-          <button class="obs" data-fam={BRICK[brickOfStroke(app.stroke(n.stroke))]?.fam} onclick={() => ui.open('note', { id: n.id })}>
+          <button class="obs" data-fam={BRICK[brickOfNote(n, app.stroke(n.stroke))]?.fam} onclick={() => ui.open('note', { id: n.id })}>
             <span class="grow">
               <b>{noteTitle(n)}</b>
               {#if n.text}<span class="small muted block">{n.text}</span>{/if}
@@ -353,7 +356,7 @@
         {/each}
         <div class="row g-8 wrap">
           <button class="btn ghost small add" onclick={() => writeNote('colpo')}><Plus size={16} /> Su un colpo</button>
-          {#if !linkedNotes.some((n) => !n.stroke)}
+          {#if !linkedNotes.some((n) => !onStroke(n))}
             <button class="btn ghost small add" onclick={() => writeNote('altro')}><Plus size={16} /> {aboutAll}</button>
           {/if}
         </div>

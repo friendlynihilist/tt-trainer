@@ -111,6 +111,9 @@ export function createLocalBackend() {
       write();
       emit();
     },
+    // Senza account non c'è un gruppo: niente da mandare ai compagni.
+    async sendShare() {},
+    async deleteShare() {},
     async saveProfile() {},
     async setMembers() {},
     async approve() {},

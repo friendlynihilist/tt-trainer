@@ -9,7 +9,7 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { startItem } from '../store/actions.js';
-  import { SKILLS, BRICK, brickMap, brickOfStroke, medalRank } from '../data/bricks.js';
+  import { SKILLS, BRICK, brickMap, brickOfNote, medalRank } from '../data/bricks.js';
   import { PLAYER_LEVELS, TIER } from '../data/library.js';
   import { topTier, valueText } from '../engine/medals.js';
   import { allNotes } from '../engine/notes.js';
@@ -48,7 +48,7 @@
   });
 
   // Quante note ha il colpo: si leggono tutte nel Diario, in «Note», già filtrate.
-  const notes = $derived(allNotes(app.notes, app.events).filter((n) => n.stroke && brickOfStroke(app.stroke(n.stroke)) === brick).length);
+  const notes = $derived(allNotes(app.notes, app.events).filter((n) => n.group === 'colpi' && brickOfNote(n, app.stroke(n.stroke)) === brick).length);
   let picked = $state(null);
   $effect(() => {
     if (picked) return ui.hold(() => (picked = null));

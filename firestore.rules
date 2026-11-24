@@ -1,6 +1,7 @@
 rules_version = '2';
 
-// Ognuno legge e scrive solo i propri dati. Il gruppo è su invito:
+// Ognuno legge e scrive solo i propri dati (l'unica eccezione è la posta in arrivo, più sotto).
+// Il gruppo è su invito:
 // config/access elenca chi può entrare; il primo che accede lo crea e ne diventa amministratore.
 
 service cloud.firestore {
@@ -65,6 +66,22 @@ service cloud.firestore {
       }
       match /notes/{id} {
         allow read, write: if isMember() && request.auth.uid == uid;
+      }
+      // Posta in arrivo: l'allenamento che un compagno ha fatto con te e ha segnato anche per te.
+      // Lo lascia un altro membro, a nome proprio e solo con giorno, durata e fondamentali; non può
+      // rileggerlo né cambiarlo. Lo leggi e lo togli solo tu: è la tua app a metterlo nel diario.
+      match /inbox/{id} {
+        allow read, delete: if isMember() && request.auth.uid == uid;
+        allow create: if isMember() && request.auth.uid != uid
+          && request.resource.data.keys().hasOnly(['from', 'name', 'date', 'minutes', 'bricks', 'at'])
+          && request.resource.data.from == request.auth.uid
+          && shortText(request.resource.data, 'name', 120)
+          && request.resource.data.date is string && request.resource.data.date.size() == 10
+          && request.resource.data.minutes is number
+          && request.resource.data.minutes >= 0 && request.resource.data.minutes <= 600
+          && (!('bricks' in request.resource.data)
+            || (request.resource.data.bricks is list && request.resource.data.bricks.size() <= 20))
+          && request.resource.data.at is number;
       }
     }
 

@@ -5,7 +5,7 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { KIND } from '../data/taxonomy.js';
-  import { BRICK, brickOfStroke, eventBricks, eventName } from '../data/bricks.js';
+  import { BRICK, brickOfNote, eventBricks, eventName } from '../data/bricks.js';
   import { attemptsOf } from '../engine/attempts.js';
   import { shortValue, size } from '../engine/medals.js';
   import { TRIES_PER_DAY } from '../data/library.js';
@@ -44,13 +44,13 @@
     !ev
       ? []
       : allNotes(
-          app.notes.filter((n) => (n.eventId ? n.eventId === ev.id : n.stroke && n.date === ev.date)),
+          app.notes.filter((n) => (n.eventId ? n.eventId === ev.id : (n.stroke || n.brick) && n.date === ev.date)),
           [ev],
           describeOld
         )
-          .filter((n) => n.text || n.stroke)
+          .filter((n) => n.text || n.stroke || n.brick)
           .reverse()
-          .map((n) => ({ ...n, brick: BRICK[brickOfStroke(app.stroke(n.stroke))] ?? null, name: n.stroke ? app.strokeName(n.stroke, true) : '' }))
+          .map((n) => ({ ...n, onStroke: n.group === 'colpi', brick: BRICK[brickOfNote(n, app.stroke(n.stroke))] ?? null, name: n.stroke ? app.strokeName(n.stroke, true) : '' }))
   );
 
   function edit() {
@@ -62,6 +62,7 @@
 {#if ev}
   <Sheet {title} onclose={() => ui.close()} sans>
     <p class="muted facts">{facts}</p>
+    {#if ev.from}<p class="small muted from">L’ha segnato {ev.partner?.name ?? 'un compagno'} dopo l’allenamento fatto insieme. È tuo: puoi correggerlo o toglierlo.</p>{/if}
 
     {#if bricks.length}<BrickStack {bricks} />{/if}
 
@@ -84,12 +85,12 @@
     {#each notes as n (n.key)}
       {#if n.source === 'note'}
         <button class="note" data-fam={n.brick?.fam ?? 'libero'} onclick={() => ui.open('note', { id: n.id })}>
-          {#if n.stroke}<b>{n.brick?.name ?? n.name}</b>{/if}
+          {#if n.onStroke}<b>{n.brick?.name ?? n.name}</b>{/if}
           {n.text}
         </button>
       {:else}
         <span class="note" data-fam={n.brick?.fam ?? 'libero'}>
-          {#if n.stroke}<b>{n.brick?.name ?? n.name}</b>{/if}
+          {#if n.onStroke}<b>{n.brick?.name ?? n.name}</b>{/if}
           {n.text}
         </span>
       {/if}
@@ -104,6 +105,9 @@
 <style>
   .facts {
     margin: -4px 0 14px;
+  }
+  .from {
+    margin: -8px 0 14px;
   }
   .group {
     display: flex;

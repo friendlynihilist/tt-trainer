@@ -10,6 +10,7 @@ import { allAttempts } from '../engine/attempts.js';
 import { allMedals } from '../engine/medals.js';
 import { normalizePlayer, suggestLevel } from '../engine/player.js';
 import { makeNote } from '../engine/notes.js';
+import { shareTarget, makeShare, receiveShare } from '../engine/shared.js';
 import { buildCatalog } from '../data/catalog.js';
 import { STROKES, ERRORS } from '../data/taxonomy.js';
 import { today } from '../util/dates.js';
@@ -58,6 +59,8 @@ class AppState {
   access = $state.raw(null);
   requests = $state.raw([]);
   error = $state(null);
+  /** Gli allenamenti appena arrivati dai compagni, da annunciare: [{ name, date }]. */
+  arrivals = $state.raw([]);
   today = $state(today());
   online = $state(typeof navigator === 'undefined' ? true : navigator.onLine);
 
@@ -107,6 +110,9 @@ class AppState {
   #unwatch = null;
   #got = { meta: false, events: false };
   #profileTimer = null;
+  /** La posta in arrivo (gli allenamenti segnati dai compagni) e quella già guardata. */
+  #inbox = [];
+  #seenShares = new Set();
 
   stroke(id) {
     return this.#strokeIndex[id] ?? null;
@@ -159,6 +165,9 @@ class AppState {
     this.profiles = [];
     this.requests = [];
     this.access = null;
+    this.#inbox = [];
+    this.#seenShares = new Set();
+    this.arrivals = [];
 
     if (!user) {
       this.role = null;
@@ -185,6 +194,7 @@ class AppState {
       this.#got[key] = true;
       if (this.#got.meta && this.#got.events && this.stage === 'loading') this.stage = 'ready';
       this.#queueProfile();
+      this.#drainInbox();
     };
 
     this.#unwatch = this.#backend.watch(
@@ -200,6 +210,10 @@ class AppState {
         },
         notes: (notes) => (this.notes = notes),
         profiles: (profiles) => (this.profiles = profiles),
+        inbox: (shares) => {
+          this.#inbox = shares;
+          this.#drainInbox();
+        },
         access: (access) => {
           this.access = access;
           if (access && this.user) this.role = access.admins?.includes(this.user.email) ? 'admin' : 'member';
@@ -220,8 +234,13 @@ class AppState {
     this.error = humanError(err);
   }
 
-  #run(promise) {
-    Promise.resolve(promise).catch((err) => this.#fail(err));
+  /** Lancia una scrittura. Anche un errore immediato (dati che Firestore rifiuta) diventa un avviso, non un blocco. */
+  #run(write) {
+    try {
+      Promise.resolve(write()).catch((err) => this.#fail(err));
+    } catch (err) {
+      this.#fail(err);
+    }
   }
 
   clearError() {
@@ -249,7 +268,7 @@ class AppState {
   }
 
   signOut() {
-    this.#run(this.#backend.signOut());
+    this.#run(() => this.#backend.signOut());
   }
 
   async requestAccess() {
@@ -268,7 +287,7 @@ class AppState {
   // ── Scritture ────────────────────────────────────────────────────────────
 
   patchMeta(patch) {
-    this.#run(this.#backend.saveMeta(this.user.uid, clean(patch)));
+    this.#run(() => this.#backend.saveMeta(this.user.uid, clean(patch)));
   }
 
   patchSettings(patch) {
@@ -288,12 +307,50 @@ class AppState {
   saveEvent(ev) {
     const now = Date.now();
     const full = clean({ ...ev, id: ev.id ?? newId(), createdAt: ev.createdAt ?? now, updatedAt: now });
-    this.#run(this.#backend.saveEvent(this.user.uid, full));
+    // Fatto con un iscritto del gruppo: una copia va anche nel suo diario (engine/shared.js).
+    const to = shareTarget(full, this.rawEvents.find((e) => e.id === full.id) ?? null, this.mates);
+    if (to) full.sharedTo = to;
+    this.#run(() => this.#backend.saveEvent(this.user.uid, full));
+    if (to) {
+      const share = clean(makeShare(full, { uid: this.user.uid, name: this.name }, this.catalog));
+      // Se non parte (regole non ancora aggiornate) il tuo diario resta comunque a posto.
+      Promise.resolve()
+        .then(() => this.#backend.sendShare(to, share))
+        .catch((err) => console.warn('Allenamento non arrivato al compagno', err?.code ?? err));
+    }
     return full;
   }
 
   deleteEvent(id) {
-    this.#run(this.#backend.deleteEvent(this.user.uid, id));
+    this.#run(() => this.#backend.deleteEvent(this.user.uid, id));
+  }
+
+  /**
+   * Gli allenamenti che i compagni hanno segnato anche per te: entrano nel diario e la posta si
+   * svuota. Si aspetta di avere il diario caricato, per non aggiungere quello che c'è già.
+   */
+  #drainInbox() {
+    if (!this.user || !this.#got.events || !this.#got.meta) return;
+    const added = [];
+    let events = this.rawEvents;
+    for (const share of this.#inbox) {
+      if (this.#seenShares.has(share.id)) continue;
+      this.#seenShares.add(share.id);
+      const name = this.mates.find((m) => m.id === share.from)?.name ?? '';
+      const ev = receiveShare(share, events, { name, catalog: this.catalog });
+      if (ev) {
+        const saved = this.saveEvent(ev);
+        events = [...events, saved];
+        added.push({ name: saved.partner.name, date: saved.date });
+      }
+      const uid = this.user.uid;
+      this.#run(() => this.#backend.deleteShare(uid, share.id));
+    }
+    if (added.length) this.arrivals = [...this.arrivals, ...added];
+  }
+
+  clearArrivals() {
+    this.arrivals = [];
   }
 
   // ── Note per colpo ───────────────────────────────────────────────────────
@@ -302,12 +359,12 @@ class AppState {
   saveNote(input) {
     const strokes = Object.fromEntries(this.strokes.map((s) => [s.id, s]));
     const note = clean(makeNote({ ...input, id: input.id ?? newId('n') }, { strokes }));
-    this.#run(this.#backend.saveNote(this.user.uid, note));
+    this.#run(() => this.#backend.saveNote(this.user.uid, note));
     return note;
   }
 
   deleteNote(id) {
-    this.#run(this.#backend.deleteNote(this.user.uid, id));
+    this.#run(() => this.#backend.deleteNote(this.user.uid, id));
   }
 
   eventById(id) {
@@ -412,13 +469,13 @@ class AppState {
   // ── Gruppo ───────────────────────────────────────────────────────────────
 
   setMembers(emails) {
-    this.#run(this.#backend.setMembers(emails));
+    this.#run(() => this.#backend.setMembers(emails));
   }
   approve(request) {
-    this.#run(this.#backend.approve(request));
+    this.#run(() => this.#backend.approve(request));
   }
   reject(request) {
-    this.#run(this.#backend.reject(request));
+    this.#run(() => this.#backend.reject(request));
   }
 
   /** Tiene aggiornato il profilo visibile al gruppo: solo il nome. Medaglie e livello sono personali. */
@@ -433,13 +490,13 @@ class AppState {
     if (!uid || this.stage !== 'ready') return;
     const mine = this.profiles.find((p) => p.id === uid);
     if (!this.settings.share || !this.onboarded) {
-      if (mine) this.#run(this.#backend.saveProfile(uid, null));
+      if (mine) this.#run(() => this.#backend.saveProfile(uid, null));
       return;
     }
     const next = { name: this.name };
     const { id: _id, updatedAt: _at, ...prev } = mine ?? {};
     if (JSON.stringify(sortKeys(prev)) === JSON.stringify(sortKeys(next))) return;
-    this.#run(this.#backend.saveProfile(uid, clean({ ...next, updatedAt: Date.now() })));
+    this.#run(() => this.#backend.saveProfile(uid, clean({ ...next, updatedAt: Date.now() })));
   }
 
   refreshProfile() {

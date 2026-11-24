@@ -7,7 +7,7 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { allNotes, NOTE_GROUPS } from '../engine/notes.js';
-  import { BRICK, SKILLS, brickOfStroke, entryName } from '../data/bricks.js';
+  import { BRICK, SKILLS, brickOfNote, entryName } from '../data/bricks.js';
   import { describeOld } from './oldNotes.js';
   import { exerciseLabel } from '../data/catalog.js';
   import { fmtRelative } from '../util/dates.js';
@@ -17,7 +17,7 @@
 
   const all = $derived(
     allNotes(app.notes, app.events, describeOld).map((n) => {
-      const brick = n.stroke ? brickOfStroke(app.stroke(n.stroke)) : null;
+      const brick = n.group === 'colpi' ? brickOfNote(n, app.stroke(n.stroke)) : null;
       const ev = n.eventId ? app.eventById(n.eventId) : null;
       const stroke = n.stroke ? app.strokeName(n.stroke, true) : '';
       const title = n.group === 'colpi' ? (BRICK[brick]?.name ?? (stroke || 'Colpo')) : ev ? entryName(ev, app.catalog) : 'Nota';
@@ -38,8 +38,7 @@
     else ui.open('done', { id: n.eventId });
   }
   function write() {
-    const stroke = brick ? (app.strokes.find((s) => brickOfStroke(s) === brick)?.id ?? null) : null;
-    ui.open('note', { draft: group === 'altro' ? { about: 'altro' } : { stroke } });
+    ui.open('note', { draft: group === 'altro' ? { about: 'altro' } : { brick } });
   }
   const when = (d) => fmtRelative(d).replace(/^(lun|mar|mer|gio|ven|sab|dom) /, '$1 ');
 </script>

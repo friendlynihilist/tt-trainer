@@ -4,6 +4,7 @@
   import { cubicOut } from 'svelte/easing';
   import { app } from './lib/store/app.svelte.js';
   import { ui } from './lib/store/ui.svelte.js';
+  import { fmtShort } from './lib/util/dates.js';
 
   import Nav from './lib/ui/Nav.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
@@ -87,6 +88,17 @@
       ui.toast(app.error, { tone: 'error' });
       app.clearError();
     }
+  });
+
+  // Un compagno ha segnato un allenamento fatto con te: è già nel diario, qui lo si dice.
+  $effect(() => {
+    const list = app.arrivals;
+    if (!list.length) return;
+    for (const a of list) {
+      const day = a.date === app.today ? 'di oggi' : `di ${fmtShort(a.date)}`;
+      ui.toast(`${a.name} ha segnato l’allenamento ${day} fatto con te: è anche nel tuo diario.`, { ms: 6000 });
+    }
+    app.clearArrivals();
   });
 
   // Il tema scelto vale anche prima dell'accesso: lo ricordiamo sul dispositivo.

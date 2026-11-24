@@ -1,29 +1,32 @@
 <script>
-  // Una nota: un testo, una data e la cosa a cui è legata. «Su un colpo»: il colpo, come lo senti
-  // (da 1 a 5) e, se vuoi, l'esercizio in cui è nata. «Su altro»: un allenamento, un torneo, o niente.
+  // Una nota: un testo, una data e la cosa a cui è legata. «Su un colpo»: il fondamentale, scelto
+  // fra le etichette colorate (le stesse del Diario), e come lo senti (da 1 a 5). «Su altro»: un
+  // allenamento, un torneo, o niente. Nel modulo non ci sono elenchi da aprire: il colpo preciso e
+  // l'esercizio ci sono solo quando la nota nasce da lì (durante una sessione, dalla scheda di un
+  // colpo), e allora si leggono sotto le etichette.
   // Con `quick` (durante la sessione) solo testo e sensazione: colpo, esercizio e data sono già
   // quelli dell'esercizio in corso.
-  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import Trash from '@lucide/svelte/icons/trash';
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { isValidNote } from '../engine/notes.js';
   import { exerciseLabel } from '../data/catalog.js';
-  import { entryName } from '../data/bricks.js';
+  import { SKILLS, brickOfNote, entryName } from '../data/bricks.js';
   import { fmtLong, fmtShort } from '../util/dates.js';
-  import { pickStroke, pickExercise } from '../ui/pickers.js';
   import Sheet from '../ui/Sheet.svelte';
   import Segmented from '../ui/Segmented.svelte';
   import FeelPicker from '../ui/FeelPicker.svelte';
 
-  // draft: { stroke, ex, date, eventId, about, linked }. `about: 'altro'` apre la nota senza colpo;
-  // `linked` è il nome della voce a cui è legata, quando la voce non è ancora nel diario.
+  // draft: { brick, stroke, ex, date, eventId, about, linked }. `about: 'altro'` apre la nota senza
+  // colpo; `linked` è il nome della voce a cui è legata, quando la voce non è ancora nel diario.
   let { id = null, draft = null, onsaved = null, quick = false } = $props();
 
   const original = id ? (app.notes.find((n) => n.id === id) ?? null) : null;
   const base = original ?? { date: app.today, text: '', feel: null, ...draft };
+  const wasOnStroke = Boolean(base.stroke || base.brick);
 
-  let about = $state(original ? (original.stroke ? 'colpo' : 'altro') : draft?.about === 'altro' ? 'altro' : 'colpo');
+  let about = $state(original ? (wasOnStroke ? 'colpo' : 'altro') : draft?.about === 'altro' ? 'altro' : 'colpo');
+  let brick = $state(brickOfNote(base, app.stroke(base.stroke)));
   let stroke = $state(base.stroke ?? null);
   let date = $state(base.date);
   let text = $state(base.text ?? '');
@@ -31,15 +34,26 @@
   let ex = $state(base.ex ?? null);
 
   const onStroke = $derived(about === 'colpo');
-  const valid = $derived(isValidNote({ stroke: onStroke ? stroke : null, date, text, feel }) && (!onStroke || Boolean(stroke)));
+  const valid = $derived(isValidNote({ brick: onStroke ? brick : null, stroke: onStroke ? stroke : null, date, text, feel }) && (!onStroke || Boolean(brick || stroke)));
+  // Da dove viene la nota, quando si sa: «Top di dritto · Top su block».
+  const detail = $derived([stroke ? app.strokeName(stroke) : null, ex ? exerciseLabel(ex, app.catalog) : null].filter(Boolean).join(' · '));
   // La voce del diario a cui è legata: «Torneo · dom 15 nov».
   const event = base.eventId ? app.eventById(base.eventId) : null;
   const linked = event ? `${entryName(event, app.catalog)} · ${fmtShort(event.date)}` : (draft?.linked ?? '');
+
+  /** Un altro fondamentale: il colpo preciso e l'esercizio di prima non valgono più. */
+  function pickBrick(b) {
+    if (b === brick) return;
+    brick = b;
+    stroke = null;
+    ex = null;
+  }
 
   function save() {
     const n = app.saveNote({
       ...(original ?? {}),
       id: original?.id,
+      brick: onStroke ? brick : null,
       stroke: onStroke ? stroke : null,
       date,
       text,
@@ -82,10 +96,14 @@
         onchange={(v) => (about = v)}
       />
       {#if onStroke}
-        <button class="select" class:empty={!stroke} onclick={() => pickStroke({ value: stroke, onpick: (s) => s && (stroke = s) })}>
-          <span class="grow">{stroke ? app.strokeName(stroke) : 'Scegli il colpo'}</span>
-          <ChevronDown size={18} />
-        </button>
+        <div class="stack g-8">
+          <div class="chips which" role="group" aria-label="Su quale colpo">
+            {#each SKILLS as b (b.id)}
+              <button class="chip" data-fam={b.fam} aria-pressed={brick === b.id} onclick={() => pickBrick(b.id)}><i class="sq"></i>{b.name}</button>
+            {/each}
+          </div>
+          {#if detail}<p class="small muted detail">{detail}</p>{/if}
+        </div>
       {:else if linked}
         <p class="muted linked">{linked}</p>
       {/if}
@@ -100,20 +118,11 @@
       </div>
     {/if}
 
-    {#if !quick}
-      {#if onStroke}
-        <button class="select" class:empty={!ex} onclick={() => pickExercise({ title: 'Esercizio', value: ex, other: true, onpick: (v) => (ex = v) })}>
-          <span class="grow">{ex ? exerciseLabel(ex, app.catalog) : 'Esercizio (facoltativo)'}</span>
-          <ChevronDown size={18} />
-        </button>
-      {/if}
-
-      {#if !base.eventId}
-        <div class="stack g-4">
-          <input class="field" type="date" bind:value={date} aria-label="Data" />
-          {#if date}<p class="small muted when">{fmtLong(date)}</p>{/if}
-        </div>
-      {/if}
+    {#if !quick && !base.eventId}
+      <div class="stack g-4">
+        <input class="field" type="date" bind:value={date} aria-label="Data" />
+        {#if date}<p class="small muted when">{fmtLong(date)}</p>{/if}
+      </div>
     {/if}
 
     {#if original}
@@ -127,25 +136,18 @@
 </Sheet>
 
 <style>
-  .select {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    min-height: 48px;
-    padding: 0 14px;
-    border-radius: var(--r-s);
-    border: 1px solid var(--line-strong);
-    background: var(--card);
-    font-size: 16px;
-    text-align: left;
+  .which {
+    flex-wrap: wrap;
   }
-  .select.empty {
-    color: var(--ink-3);
-  }
-  .select :global(svg) {
-    color: var(--ink-3);
+  .sq {
     flex: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+    background: var(--f, var(--ink-3));
+  }
+  .detail {
+    margin: 0;
   }
   textarea.big {
     min-height: 180px;

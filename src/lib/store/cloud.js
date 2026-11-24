@@ -5,9 +5,11 @@
 //   users/{uid}              impostazioni e piano dell'utente
 //   users/{uid}/events/{id}  le sue attività (sessioni, test, note)
 //   users/{uid}/notes/{id}   le sue note per colpo
+//   users/{uid}/inbox/{id}   gli allenamenti che un compagno ha segnato anche per lui (li scrive il
+//                            compagno, li legge e li toglie solo lui: vedi engine/shared.js)
 //   profiles/{uid}           ciò che il gruppo può vedere: nome e livelli
 //
-// Ognuno legge e scrive solo sotto il proprio uid (vedi firestore.rules). Gli esercizi e la
+// Ognuno legge e scrive solo sotto il proprio uid (vedi firestore.rules), tranne la posta in arrivo. Gli esercizi e la
 // tassonomia non stanno nel database: sono nel codice, quindi nessuno può sovrascriverli.
 
 import { initializeApp } from 'firebase/app';
@@ -36,6 +38,8 @@ import {
   arrayUnion
 } from 'firebase/firestore';
 
+import { pack, unpack } from './nested.js';
+
 const ROLE_KEY = 'tt-trainer:role:';
 
 function toUser(u) {
@@ -61,11 +65,13 @@ export function createCloudBackend(config, { emulator = false } = {}) {
   const userRef = (uid) => doc(db, 'users', uid);
   const eventsRef = (uid) => collection(db, 'users', uid, 'events');
   const notesRef = (uid) => collection(db, 'users', uid, 'notes');
+  const inboxRef = (uid) => collection(db, 'users', uid, 'inbox');
 
   /** Cancella tutte le voci e le note di un utente. I batch arrivano a 500 scritture. */
   async function clear(uid) {
-    for (const ref of [eventsRef(uid), notesRef(uid)]) {
-      const snap = await getDocs(ref);
+    for (const ref of [eventsRef(uid), notesRef(uid), inboxRef(uid)]) {
+      // La posta in arrivo può non essere ancora leggibile (regole di prima): il resto si cancella lo stesso.
+      const snap = await getDocs(ref).catch((err) => (ref.id === 'inbox' && denied(err) ? { docs: [] } : Promise.reject(err)));
       for (let i = 0; i < snap.docs.length; i += 400) {
         const batch = writeBatch(db);
         snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
@@ -161,13 +167,15 @@ export function createCloudBackend(config, { emulator = false } = {}) {
 
     watch(uid, h, { admin = false } = {}) {
       const fail = (err) => h.error?.(err);
-      const list = (snap) => snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      const list = (snap) => snap.docs.map((d) => ({ ...unpack(d.data()), id: d.id }));
       const subs = [
-        onSnapshot(userRef(uid), (snap) => h.meta(snap.exists() ? snap.data() : null), fail),
+        onSnapshot(userRef(uid), (snap) => h.meta(snap.exists() ? unpack(snap.data()) : null), fail),
         onSnapshot(eventsRef(uid), (snap) => h.events(list(snap)), fail),
         // Le note hanno un errore tutto loro: se le regole sul server non sono ancora quelle della
         // 0.5, il resto dell'app deve funzionare lo stesso (niente nuovo controllo dell'accesso).
         onSnapshot(notesRef(uid), (snap) => h.notes?.(list(snap)), (err) => console.warn('Note non disponibili', err?.code ?? err)),
+        // Anche la posta in arrivo: con le regole di prima il rifiuto non deve fermare il resto.
+        onSnapshot(inboxRef(uid), (snap) => h.inbox?.(list(snap)), (err) => console.warn('Allenamenti dei compagni non disponibili', err?.code ?? err)),
         onSnapshot(collection(db, 'profiles'), (snap) => h.profiles?.(list(snap)), fail),
         // Solo gli amministratori leggono l'elenco: per gli altri il rifiuto è normale.
         onSnapshot(accessRef, (snap) => h.access?.(snap.data() ?? null), (err) => (denied(err) ? h.access?.(null) : fail(err)))
@@ -179,6 +187,7 @@ export function createCloudBackend(config, { emulator = false } = {}) {
     // Le scritture non aspettano il server: Firestore aggiorna subito la cache locale
     // e le mette in coda se manca la rete.
     saveMeta(uid, patch) {
+      patch = pack(patch);
       if (!('plan' in patch)) return setDoc(userRef(uid), patch, { merge: true });
       // Il piano si sostituisce intero (mergeFields rimpiazza il campo): un piano nuovo non eredita
       // i campi di quello vecchio. Il resto si unisce come sempre, nella stessa scrittura.
@@ -189,16 +198,24 @@ export function createCloudBackend(config, { emulator = false } = {}) {
       return batch.commit();
     },
     saveEvent(uid, ev) {
-      return setDoc(doc(eventsRef(uid), ev.id), ev);
+      return setDoc(doc(eventsRef(uid), ev.id), pack(ev));
     },
     deleteEvent(uid, id) {
       return deleteDoc(doc(eventsRef(uid), id));
     },
     saveNote(uid, note) {
-      return setDoc(doc(notesRef(uid), note.id), note);
+      return setDoc(doc(notesRef(uid), note.id), pack(note));
     },
     deleteNote(uid, id) {
       return deleteDoc(doc(notesRef(uid), id));
+    },
+    /** Lascia a un compagno l'allenamento fatto insieme: lo troverà nel suo diario. */
+    sendShare(toUid, share) {
+      const { id, ...data } = share;
+      return setDoc(doc(inboxRef(toUid), id), pack(data));
+    },
+    deleteShare(uid, id) {
+      return deleteDoc(doc(inboxRef(uid), id));
     },
     saveProfile(uid, profile) {
       return profile ? setDoc(doc(db, 'profiles', uid), profile) : deleteDoc(doc(db, 'profiles', uid));
@@ -221,12 +238,12 @@ export function createCloudBackend(config, { emulator = false } = {}) {
     /** Sostituisce tutti i dati con quelli di una copia completa. */
     async restore(uid, { meta, events, notes }) {
       await clear(uid);
-      if (meta) await setDoc(userRef(uid), meta);
+      if (meta) await setDoc(userRef(uid), pack(meta));
       else await deleteDoc(userRef(uid));
       for (const [ref, list] of [[eventsRef(uid), events ?? []], [notesRef(uid), notes ?? []]]) {
         for (let i = 0; i < list.length; i += 400) {
           const batch = writeBatch(db);
-          list.slice(i, i + 400).forEach((x) => batch.set(doc(ref, x.id), x));
+          list.slice(i, i + 400).forEach((x) => batch.set(doc(ref, x.id), pack(x)));
           await batch.commit();
         }
       }

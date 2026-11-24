@@ -79,6 +79,14 @@ export function brickOfStroke(stroke) {
   return BRICKS.find((b) => !b.extra && b.fam === stroke.family)?.id ?? null;
 }
 
+/**
+ * Il fondamentale di una nota: quello scelto scrivendola, altrimenti quello del suo colpo.
+ * `stroke` è il colpo della nota già cercato fra i colpi (di base e tuoi), oppure null.
+ */
+export function brickOfNote(note, stroke = null) {
+  return BRICK[note?.brick] && !BRICK[note.brick].extra ? note.brick : brickOfStroke(stroke);
+}
+
 /** Le file di un fondamentale: per famiglia in Dritto e Rovescio, tre file a giro negli altri. */
 export function lanesOf(id, catalog = BASE, medals = {}) {
   const b = BRICK[id];
