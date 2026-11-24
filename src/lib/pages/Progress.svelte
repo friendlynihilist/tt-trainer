@@ -35,9 +35,9 @@
   // i tre nomi sopra il grafico oppure con due dita: allargando si stringe il periodo (verso la
   // settimana), stringendo lo si allarga (verso i tre mesi).
   const NAMES = {
-    settimana: { label: 'Settimana', span: 'ultimi 7 giorni' },
-    mese: { label: 'Mese', span: 'ultimi 30 giorni' },
-    'tre-mesi': { label: 'Tre mesi', span: 'ultimi tre mesi, settimana per settimana' }
+    settimana: { label: 'Settimana', span: 'ultimi 7 giorni', total: 'Ultimi 7 giorni' },
+    mese: { label: 'Mese', span: 'ultimi 30 giorni', total: 'Ultimi 30 giorni' },
+    'tre-mesi': { label: 'Tre mesi', span: 'ultimi tre mesi, settimana per settimana', total: 'Ultimi tre mesi' }
   };
   const ZOOMS = PERIODS.map((p) => ({ ...p, ...NAMES[p.id] }));
   // Dal più largo al più stretto: è l'ordine in cui si ingrandisce.
@@ -83,17 +83,29 @@
   const dense = $derived(points.length > 16);
 
   const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
-  /** Il periodo del punto scelto, a parole. */
+  /** Una durata a parole: «45 minuti», «1 ora», «6 ore e 15 minuti». */
+  function spell(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    const hours = h === 1 ? '1 ora' : `${h} ore`;
+    const mins = m === 1 ? '1 minuto' : `${m} minuti`;
+    return !h ? mins : !m ? hours : `${hours} e ${mins}`;
+  }
+  // Sotto il grafico: senza un punto scelto, il totale del periodo (quante attività e quante ore,
+  // di ogni tipo: allenamenti, lezioni, partite, tornei…); con un punto scelto, quel giorno o
+  // quella settimana.
+  const sum = $derived({ count: points.reduce((n, p) => n + p.count, 0), minutes: points.reduce((n, p) => n + p.minutes, 0) });
   const when = $derived.by(() => {
+    if (picked == null) return period.total;
     const p = points[tip];
     const back = last - tip;
     if (period.unit === 'day') return back === 0 ? 'Oggi' : back === 1 ? 'Ieri' : cap(fmtShort(p.from));
     return back === 0 ? 'Questa settimana' : back === 1 ? 'Una settimana fa' : `${back} settimane fa`;
   });
   const what = $derived.by(() => {
-    const p = points[tip];
+    const p = picked == null ? sum : points[tip];
     if (!p.count) return 'nessuna attività';
-    return `${p.count} attività${p.minutes ? `, ${p.minutes} minuti` : ''}`;
+    return `${p.count} attività${p.minutes ? `, ${spell(p.minutes)}` : ''}`;
   });
 
   // Un dito scorre fra i punti; due dita cambiano l'ingrandimento.
@@ -112,6 +124,7 @@
   /** Il punto scelto prima che arrivasse il primo dito: con due dita non si sceglie, si ingrandisce. */
   let before = null;
   function down(e) {
+    clearTimeout(release);
     fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (fingers.size === 2) {
       spread = gap();
@@ -136,9 +149,13 @@
       }
     }
   }
+  // Tolto il dito, il punto scelto resta qualche secondo e poi torna il totale del periodo.
+  let release = null;
   function up(e) {
-    fingers.delete(e.pointerId);
+    if (!fingers.delete(e.pointerId)) return;
     spread = 0;
+    clearTimeout(release);
+    if (!fingers.size) release = setTimeout(() => (picked = null), 4000);
   }
   /** Sul computer: il gesto delle due dita sul trackpad arriva come rotella con Ctrl. */
   let wheelAt = 0;
@@ -150,8 +167,10 @@
     zoom(e.deltaY < 0 ? 1 : -1);
   }
   function keys2(e) {
-    if (e.key === 'ArrowLeft') picked = Math.max(0, tip - 1);
-    else if (e.key === 'ArrowRight') picked = Math.min(last, tip + 1);
+    // La prima freccia sceglie l'ultimo punto (oggi, o questa settimana); Esc torna al totale.
+    if (e.key === 'ArrowLeft') picked = picked == null ? last : Math.max(0, tip - 1);
+    else if (e.key === 'ArrowRight') picked = picked == null ? last : Math.min(last, tip + 1);
+    else if (e.key === 'Escape' && picked != null) picked = null;
     else if (e.key === '+' || e.key === '=') zoom(1);
     else if (e.key === '-') zoom(-1);
     else return;
@@ -262,7 +281,7 @@
               <polygon points="8,96 {line} 312,96" fill="var(--accent)" opacity="0.16" />
               <polyline points={line} fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" />
               {#each points as p, i (p.from)}
-                {#if tip === i}
+                {#if picked != null && tip === i}
                   <circle cx={X(i)} cy={Y(p.count)} r="6" fill="var(--accent)" stroke="var(--accent)" stroke-width="2.5" />
                 {:else if !dense || p.count}
                   <circle cx={X(i)} cy={Y(p.count)} r={dense ? 2.5 : 4} fill="var(--card)" stroke="var(--accent)" stroke-width={dense ? 2 : 2.5} />

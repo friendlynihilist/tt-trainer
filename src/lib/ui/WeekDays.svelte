@@ -8,7 +8,11 @@
   import { app } from '../store/app.svelte.js';
   import { ui } from '../store/ui.svelte.js';
   import { agenda } from '../engine/events.js';
-  import { addDays, mondayOf, WEEKDAYS_MIN, WEEKDAYS } from '../util/dates.js';
+  import { activity } from '../engine/stats.js';
+  import { addDays, mondayOf, fmtDuration, WEEKDAYS_MIN, WEEKDAYS } from '../util/dates.js';
+
+  // Il totale della settimana in corso: quante attività e quanto tempo.
+  const total = $derived(activity(app.events, 'week', 1, app.today)[0]);
 
   const week = $derived(Array.from({ length: 7 }, (_, i) => addDays(mondayOf(app.today), i)));
   const map = $derived(agenda(app.plan, app.events, app.planned, week[0], week[6], app.catalog));
@@ -33,7 +37,11 @@
 </script>
 
 <div class="week">
-  <span class="t-name">{title}</span>
+  <div class="head">
+    <span class="t-name grow">{title}</span>
+    <!-- Quanto hai fatto in settimana, di ogni tipo: allenamenti, lezioni, partite, tornei. -->
+    {#if total.count}<span class="sum">{total.count} attività{total.minutes ? ` · ${fmtDuration(total.minutes)}` : ''}</span>{/if}
+  </div>
 
   {#if steps}
     <div class="segs" aria-hidden="true">
@@ -69,6 +77,17 @@
     border-radius: var(--r-card);
     background: var(--card);
     box-shadow: var(--shadow-card);
+  }
+  .head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .sum {
+    flex: none;
+    font-size: 14px;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
   }
   .segs {
     display: flex;

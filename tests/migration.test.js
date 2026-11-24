@@ -200,6 +200,32 @@ describe('agenda flessibile', () => {
     expect(d.todo.map((x) => x.kind)).toEqual(['test']);
   });
 
+  it('una lezione, delle partite o un torneo fatti quel giorno coprono l’allenamento in programma', () => {
+    for (const kind of ['lezione', 'partite', 'torneo', 'servizi', 'altro']) {
+      const evs = [{ id: 'l', kind, date: '2026-11-16', minutes: 60 }];
+      const d = agenda(p, evs, [], '2026-11-16', '2026-11-16').get('2026-11-16');
+      expect([kind, d.todo.length, d.done.map((x) => x.id)]).toEqual([kind, 0, ['l']]);
+    }
+  });
+
+  it('ma solo quello dello stesso giorno, e uno per attività', () => {
+    // La lezione di martedì non copre l'allenamento di lunedì né quello di mercoledì.
+    const evs = [{ id: 'l', kind: 'lezione', date: '2026-11-17', minutes: 60 }];
+    const occ = occurrencesBetween(p, evs, '2026-11-16', '2026-11-22');
+    expect(occ.filter((o) => o.event).length).toBe(0);
+    // Mercoledì ci sono un allenamento e un test: la lezione copre l'allenamento, il test resta.
+    const wed = agenda(p, [{ id: 'l', kind: 'lezione', date: '2026-11-18', minutes: 60 }], [], '2026-11-18', '2026-11-18').get('2026-11-18');
+    expect(wed.todo.map((x) => x.kind)).toEqual(['test']);
+    // Due allenamenti in programma lo stesso giorno e una sola lezione: uno resta da fare.
+    const two = normalizePlan({ id: 'q', start: '2026-11-16', weeks: ['1'], slots: [{ id: 'a', day: 1, kind: 'training', template: 'completo' }, { id: 'b', day: 1, kind: 'training', template: 'breve' }] });
+    expect(agenda(two, [{ id: 'l', kind: 'lezione', date: '2026-11-16' }], [], '2026-11-16', '2026-11-16').get('2026-11-16').todo.length).toBe(1);
+  });
+
+  it('una lezione in programma, non ancora fatta, non copre niente', () => {
+    const d = agenda(p, [], [{ id: 'l', kind: 'lezione', date: '2026-11-16', planned: true }], '2026-11-16', '2026-11-16').get('2026-11-16');
+    expect(d.todo.map((x) => x.kind).sort()).toEqual(['lezione', 'training']);
+  });
+
   it('un allenamento in più non ne «consuma» uno previsto in un altro giorno', () => {
     const evs = [{ id: 'e', kind: 'training', template: 'breve', date: '2026-11-17' }];
     const occ = occurrencesBetween(p, evs, '2026-11-16', '2026-11-22');

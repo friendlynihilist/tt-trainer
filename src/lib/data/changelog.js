@@ -10,6 +10,15 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.11.2',
+    date: '2026-11-25',
+    title: 'Lezioni, partite e tornei contano',
+    items: [
+      { icon: 'calendar', text: 'Una lezione, delle partite o un torneo fatti in un giorno coprono l’allenamento che era in programma: il giorno risulta fatto, non più «non registrato».' },
+      { icon: 'trending', text: 'In Oggi la settimana dice quante attività hai fatto e quanto tempo. In Progressi, sotto il grafico, c’è il totale del periodo in ore; toccando un punto vedi quel giorno.' }
+    ]
+  },
+  {
     version: '0.11.1',
     date: '2026-11-25',
     title: 'Lezioni, partite e tornei nel Diario',

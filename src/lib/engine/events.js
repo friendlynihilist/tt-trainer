@@ -9,7 +9,7 @@
 // normalizeEvent le legge come allenamenti completi; quelle B avevano il test dentro.
 
 import { BLOCKS } from '../data/program.js';
-import { KIND } from '../data/taxonomy.js';
+import { KIND, FREE_KINDS } from '../data/taxonomy.js';
 import { BASE } from '../data/catalog.js';
 import { LEGACY_TEMPLATE } from '../data/templates.js';
 import { weekAt, weekIndex, weekOccurrences, themedWeek } from './plan.js';
@@ -124,7 +124,21 @@ function matchWeek(occ, inWeek) {
     const e = free(o).find((x) => x.legacy);
     if (e) take(o, e);
   }
+  // 4. Quel giorno hai fatto altro (una lezione, delle partite, un torneo…): l'allenamento che era
+  // in programma si considera coperto, e il giorno non resta «non registrato». Un test no:
+  // misurarsi non è allenarsi. Ogni attività copre un solo allenamento.
+  const spent = new Set();
+  for (const o of occ) {
+    if (o.event || o.kind !== 'training') continue;
+    const e = inWeek.find((x) => x.date === o.date && COVERS.has(x.kind) && !spent.has(x.id));
+    if (!e) continue;
+    o.event = e;
+    spent.add(e.id);
+  }
 }
+
+/** Le attività che, fatte in un giorno, coprono l'allenamento in programma quel giorno. */
+const COVERS = new Set(FREE_KINDS.map((k) => k.id));
 
 /**
  * L'agenda di un intervallo: per ogni giorno cosa era previsto e non è ancora fatto, e cosa
