@@ -121,7 +121,16 @@
 </script>
 
 <div class="page enter diary">
-  <PageHead title="Diario" />
+  <!-- «Aggiungi» sta in cima, sempre in vista: la riga sotto il giorno, sul telefono, finisce sotto il calendario. -->
+  <PageHead title="Diario">
+    {#snippet aside()}
+      {#if view !== 'note'}
+        <button class="btn ghost small add-top" onclick={() => ui.open('add', { date: selected })} aria-label="Aggiungi un’attività a {selected === app.today ? 'oggi' : fmtLong(selected)}">
+          <Plus size={16} /> Aggiungi
+        </button>
+      {/if}
+    {/snippet}
+  </PageHead>
 
   <div class="views">
     <Segmented

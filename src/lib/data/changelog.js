@@ -10,6 +10,15 @@ export const VERSION = pkg.version;
 
 export const CHANGELOG = [
   {
+    version: '0.11.1',
+    date: '2026-11-25',
+    title: 'Lezioni, partite e tornei nel Diario',
+    items: [
+      { icon: 'calendar', text: 'Nel Diario c’è «Aggiungi» in alto, sempre in vista. La prima cosa che chiede è che cos’era: allenamento, lezione, partite, torneo, servizi, test o altro.' },
+      { icon: 'calendar', text: 'Per oggi scegli se è già fatto o in programma; un giorno passato si registra, uno futuro si mette in programma.' }
+    ]
+  },
+  {
     version: '0.11.0',
     date: '2026-11-24',
     title: 'L’allenamento in due, le medaglie che mancavano, le note più semplici',

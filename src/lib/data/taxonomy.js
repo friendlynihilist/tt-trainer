@@ -161,7 +161,7 @@ export const KINDS = [
   { id: 'servizi', name: 'Servizi da solo', short: 'Servizi', color: 'brown', minutes: 30 },
   { id: 'partite', name: 'Partite di allenamento', short: 'Partite', color: 'teal', minutes: 90 },
   { id: 'torneo', name: 'Torneo o campionato', short: 'Torneo', color: 'pink', minutes: 180 },
-  { id: 'altro', name: 'Altro allenamento', short: 'Altro', color: 'slate', minutes: 60 }
+  { id: 'altro', name: 'Altra attività', short: 'Altro', color: 'slate', minutes: 60 }
 ];
 
 /** Le attività «libere»: niente modello e niente test, solo durata e diario. */

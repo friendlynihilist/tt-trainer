@@ -86,7 +86,7 @@
       <ul class="rules">
         <li>Al primo avvio scegli per quanto tempo fare il tuo allenamento: solo oggi, una settimana o un mese, e in quali giorni.</li>
         <li>In Oggi trovi sempre un allenamento pronto. Per cambiarlo, apri la Libreria, tocca uno dei tuoi allenamenti e poi «Mettilo in calendario».</li>
-        <li>Lezioni, partite e tornei si aggiungono dal Diario: tocca un giorno e poi «Aggiungi a questo giorno».</li>
+        <li>Lezioni, partite, tornei e tutto quello che non è un allenamento si aggiungono dal Diario: tocca «Aggiungi» in alto e scegli che cos’era. Vale per oggi o per il giorno che hai toccato nel calendario: un giorno passato si registra, uno futuro si mette in programma.</li>
       </ul>
     </Collapse>
 
